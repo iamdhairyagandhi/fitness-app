@@ -1,7 +1,9 @@
 import { Button, Card } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { getLevelProgress } from '@/lib/gamification';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
+import { useWorkoutStore } from '@/stores/workoutStore';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React from 'react';
@@ -18,11 +20,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export default function ProfileScreen() {
     const insets = useSafeAreaInsets();
     const { user, logout } = useAuthStore();
+    const { recentWorkouts, personalRecords } = useWorkoutStore();
 
     const displayName = user?.display_name || 'Athlete';
     const email = user?.email || 'user@fitfusion.app';
     const level = user?.level || 1;
     const xp = user?.xp || 0;
+    const levelProgress = getLevelProgress(xp);
+    const workoutCount = user?.workouts_completed || recentWorkouts.length;
+    const streakCount = user?.streak_count || 0;
+    const prCount = personalRecords.length;
 
     const handleLogout = () => {
         Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
@@ -43,19 +50,19 @@ export default function ProfileScreen() {
         {
             title: 'Account',
             items: [
-                { icon: 'person-outline' as const, label: 'Edit Profile', onPress: () => { } },
-                { icon: 'fitness-outline' as const, label: 'Fitness Goals', onPress: () => { } },
-                { icon: 'nutrition-outline' as const, label: 'Nutrition Targets', onPress: () => { } },
-                { icon: 'body-outline' as const, label: 'Body Measurements', onPress: () => { } },
+                { icon: 'person-outline' as const, label: 'Edit Profile', onPress: () => router.push('/settings') },
+                { icon: 'fitness-outline' as const, label: 'Fitness Goals', onPress: () => router.push('/progress/create-goal') },
+                { icon: 'nutrition-outline' as const, label: 'Nutrition Targets', onPress: () => router.push('/nutrition/diet-settings') },
+                { icon: 'body-outline' as const, label: 'Body Measurements', onPress: () => router.push('/progress/measurements') },
             ],
         },
         {
             title: 'Preferences',
             items: [
-                { icon: 'scale-outline' as const, label: 'Units (Metric/Imperial)', onPress: () => { } },
-                { icon: 'notifications-outline' as const, label: 'Notifications', onPress: () => { } },
-                { icon: 'moon-outline' as const, label: 'Appearance', onPress: () => { } },
-                { icon: 'language-outline' as const, label: 'Language', onPress: () => { } },
+                { icon: 'scale-outline' as const, label: 'Units & Settings', onPress: () => router.push('/settings') },
+                { icon: 'notifications-outline' as const, label: 'Notifications', onPress: () => router.push('/settings') },
+                { icon: 'trophy-outline' as const, label: 'Achievements', onPress: () => router.push('/achievements') },
+                { icon: 'analytics-outline' as const, label: 'Analytics', onPress: () => router.push('/analytics') },
             ],
         },
         {
@@ -104,7 +111,7 @@ export default function ProfileScreen() {
                                 <View
                                     style={[
                                         styles.xpBarFill,
-                                        { width: `${Math.min((xp % 1000) / 10, 100)}%` },
+                                        { width: `${levelProgress}%` },
                                     ]}
                                 />
                             </View>
@@ -115,17 +122,17 @@ export default function ProfileScreen() {
                     {/* Quick Stats */}
                     <View style={styles.statsRow}>
                         <View style={styles.stat}>
-                            <Text style={styles.statValue}>0</Text>
+                            <Text style={styles.statValue}>{workoutCount}</Text>
                             <Text style={styles.statLabel}>Workouts</Text>
                         </View>
                         <View style={styles.statDivider} />
                         <View style={styles.stat}>
-                            <Text style={styles.statValue}>0</Text>
+                            <Text style={styles.statValue}>{streakCount}</Text>
                             <Text style={styles.statLabel}>Day Streak</Text>
                         </View>
                         <View style={styles.statDivider} />
                         <View style={styles.stat}>
-                            <Text style={styles.statValue}>0</Text>
+                            <Text style={styles.statValue}>{prCount}</Text>
                             <Text style={styles.statLabel}>PRs</Text>
                         </View>
                     </View>
@@ -163,7 +170,7 @@ export default function ProfileScreen() {
                     style={{ marginTop: Spacing.lg }}
                 />
 
-                <Text style={styles.version}>FitFusion v1.0.0</Text>
+                <Text style={styles.version}>FitFusion v2.0.0 (Phase 2)</Text>
             </ScrollView>
         </View>
     );
@@ -175,30 +182,36 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.background,
     },
     scrollContent: {
-        paddingHorizontal: Spacing.lg,
+        paddingHorizontal: Spacing.xl,
         paddingBottom: 100,
     },
     title: {
         color: Colors.text,
         fontSize: FontSize.xxl,
         fontWeight: FontWeight.heavy,
-        paddingVertical: Spacing.lg,
+        paddingVertical: Spacing.xl,
+        letterSpacing: -0.3,
     },
 
     // Profile card
     profileCard: {
         alignItems: 'center',
-        paddingVertical: Spacing.xxl,
+        paddingVertical: Spacing.xxxl,
         marginBottom: Spacing.lg,
     },
     avatar: {
-        width: 72,
-        height: 72,
-        borderRadius: 36,
+        width: 80,
+        height: 80,
+        borderRadius: 40,
         backgroundColor: Colors.primary,
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: Spacing.md,
+        shadowColor: Colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+        elevation: 4,
     },
     avatarText: {
         color: Colors.text,
@@ -209,29 +222,31 @@ const styles = StyleSheet.create({
         color: Colors.text,
         fontSize: FontSize.xl,
         fontWeight: FontWeight.bold,
+        letterSpacing: -0.2,
     },
     userEmail: {
         color: Colors.textTertiary,
         fontSize: FontSize.sm,
-        marginTop: 2,
+        marginTop: 4,
     },
     levelContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: Spacing.md,
-        marginTop: Spacing.lg,
+        marginTop: Spacing.xl,
         width: '100%',
     },
     levelBadge: {
-        backgroundColor: Colors.primary,
+        backgroundColor: Colors.primary + '20',
         paddingHorizontal: Spacing.md,
         paddingVertical: Spacing.xs,
         borderRadius: BorderRadius.full,
     },
     levelText: {
-        color: Colors.text,
+        color: Colors.primary,
         fontSize: FontSize.xs,
         fontWeight: FontWeight.bold,
+        letterSpacing: 0.3,
     },
     xpBar: {
         flex: 1,
@@ -256,6 +271,9 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         marginTop: Spacing.xxl,
         width: '100%',
+        paddingTop: Spacing.lg,
+        borderTopWidth: 1,
+        borderTopColor: Colors.border,
     },
     stat: {
         flex: 1,
@@ -269,11 +287,15 @@ const styles = StyleSheet.create({
         color: Colors.text,
         fontSize: FontSize.xl,
         fontWeight: FontWeight.bold,
+        letterSpacing: -0.3,
     },
     statLabel: {
         color: Colors.textTertiary,
-        fontSize: FontSize.xs,
-        marginTop: 2,
+        fontSize: FontSize.xxs,
+        marginTop: 4,
+        letterSpacing: 0.3,
+        textTransform: 'uppercase',
+        fontWeight: FontWeight.medium,
     },
 
     // Settings
@@ -281,12 +303,12 @@ const styles = StyleSheet.create({
         marginBottom: Spacing.lg,
     },
     groupTitle: {
-        color: Colors.textSecondary,
-        fontSize: FontSize.sm,
+        color: Colors.textTertiary,
+        fontSize: FontSize.xxs,
         fontWeight: FontWeight.semibold,
         marginBottom: Spacing.sm,
         textTransform: 'uppercase',
-        letterSpacing: 0.5,
+        letterSpacing: 0.8,
     },
     settingsRow: {
         flexDirection: 'row',
@@ -303,13 +325,15 @@ const styles = StyleSheet.create({
         flex: 1,
         color: Colors.text,
         fontSize: FontSize.md,
+        letterSpacing: 0.1,
     },
 
     version: {
         color: Colors.textTertiary,
-        fontSize: FontSize.xs,
+        fontSize: FontSize.xxs,
         textAlign: 'center',
-        marginTop: Spacing.xl,
+        marginTop: Spacing.xxl,
         marginBottom: Spacing.lg,
+        letterSpacing: 0.5,
     },
 });

@@ -110,6 +110,10 @@ export default function OnboardingScreen() {
             streak_count: 0,
             xp: 0,
             level: 1,
+            weight_kg: w,
+            preferred_rest_seconds: 90,
+            workouts_completed: 0,
+            last_workout_date: null,
         });
 
         setOnboarded(true);

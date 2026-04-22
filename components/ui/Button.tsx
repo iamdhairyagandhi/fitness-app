@@ -85,23 +85,32 @@ const styles = StyleSheet.create({
     },
     primary: {
         backgroundColor: Colors.primary,
+        shadowColor: Colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+        elevation: 4,
     },
     secondary: {
-        backgroundColor: Colors.surface,
+        backgroundColor: Colors.surfaceLight,
+        borderWidth: 1,
+        borderColor: Colors.border,
     },
     outline: {
         backgroundColor: 'transparent',
         borderWidth: 1.5,
-        borderColor: Colors.primary,
+        borderColor: Colors.borderLight,
     },
     ghost: {
         backgroundColor: 'transparent',
     },
     danger: {
-        backgroundColor: Colors.error,
+        backgroundColor: Colors.error + '15',
+        borderWidth: 1,
+        borderColor: Colors.error + '30',
     },
     disabled: {
-        opacity: 0.5,
+        opacity: 0.45,
     },
     size_sm: {
         paddingVertical: Spacing.sm,
@@ -120,6 +129,7 @@ const styles = StyleSheet.create({
     },
     text: {
         fontWeight: FontWeight.semibold,
+        letterSpacing: 0.2,
     },
     text_primary: {
         color: Colors.text,
@@ -134,7 +144,7 @@ const styles = StyleSheet.create({
         color: Colors.primary,
     },
     text_danger: {
-        color: Colors.text,
+        color: Colors.error,
     },
     text_sm: {
         fontSize: FontSize.sm,

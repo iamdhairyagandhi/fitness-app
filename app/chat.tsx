@@ -3,7 +3,9 @@ import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants
 import { buildCoachingSystemPrompt, chatCompletion, type OpenAIMessage } from '@/lib/openai';
 import { generateId } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
+import { useMealPlanStore } from '@/stores/mealPlanStore';
 import { useNutritionStore } from '@/stores/nutritionStore';
+import { useRecoveryStore } from '@/stores/recoveryStore';
 import { useWorkoutStore } from '@/stores/workoutStore';
 import type { ChatMessage } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,6 +29,8 @@ const QUICK_PROMPTS = [
     { icon: '💪', text: 'Create a workout for today' },
     { icon: '📊', text: 'Analyze my progress this week' },
     { icon: '💤', text: 'Tips for better recovery' },
+    { icon: '🍽️', text: 'Generate a meal plan for this week' },
+    { icon: '🔥', text: 'How should I adjust my diet phase?' },
 ];
 
 // Fallback responses when no API key is set
@@ -36,14 +40,22 @@ const DEMO_RESPONSES: Record<string, string> = {
     workout: "Here's a solid workout for today:\n\n**Upper Body Push (45 min)**\n\n1. Bench Press — 4×8 @ moderate weight\n2. Overhead Press — 3×10\n3. Incline DB Press — 3×12\n4. Lateral Raises — 3×15\n5. Tricep Pushdowns — 3×12\n6. Face Pulls — 3×15\n\n💡 **Tip:** Rest 90-120s between compound sets, 60s for isolation. Focus on controlled eccentrics!",
     progress: "Based on your activity:\n\n📈 **This Week's Summary:**\n- Workouts completed: Track more to see trends!\n- Average calorie adherence: Keep logging to build data\n- Protein goal hit: Aim for 4+ days this week\n\n🎯 **Focus Areas:**\n1. Consistency is key — try to log every meal\n2. Hit your protein target daily for optimal results\n3. Progressive overload — try to add weight or reps each week\n\nKeep pushing! Every workout counts. 🔥",
     recovery: "Here are my top recovery tips:\n\n😴 **Sleep:** Aim for 7-9 hours. This is when most muscle repair happens.\n\n💧 **Hydration:** Hit your water goal daily. Dehydration impairs recovery by 20-30%.\n\n🍗 **Post-Workout Nutrition:** Eat 20-40g protein within 2 hours of training.\n\n🧘 **Active Recovery:** Light walking, stretching, or yoga on rest days.\n\n🔄 **Deload Week:** Every 4-6 weeks, reduce volume by 40-50% to let your body catch up.\n\n📱 **Track Everything:** Use FitFusion to log sleep quality, soreness, and energy levels!",
+    mealplan: "Here's a sample day from a high-protein meal plan:\n\n🌅 **Breakfast (420 kcal)**\nProtein Overnight Oats — 35g protein, 48g carbs, 10g fat\n\n☀️ **Lunch (480 kcal)**\nGreek Protein Bowl — 42g protein, 35g carbs, 18g fat\n\n🌙 **Dinner (380 kcal)**\nChicken Stir Fry — 38g protein, 20g carbs, 14g fat\n\n🍿 **Snack (160 kcal)**\nGreek Yogurt + Berries — 15g protein, 18g carbs, 3g fat\n\n**Daily Total: ~1,440 kcal | 130g protein | 121g carbs | 45g fat**\n\nGo to the Meal Planner to auto-generate a full 7-day plan! 📅",
+    diet: "Here's how to think about your diet phase:\n\n📈 **Bulking:** +10-20% above maintenance. Focus on strength gains. Aim for 0.5-1kg/month gain.\n\n📉 **Cutting:** -20-25% below maintenance. High protein (2g/kg) to preserve muscle. Target 0.5-1% body weight loss per week.\n\n⚖️ **Maintenance:** Great for recomp. Train hard, eat at maintenance, high protein.\n\n🔁 **Reverse Diet:** After a long cut, slowly add 50-100 kcal/week back to prevent fat regain.\n\nGo to Diet Settings to switch your phase — I'll adjust your macro suggestions accordingly!",
+    fasting: "Intermittent fasting can be a great tool:\n\n⏰ **16:8** (Most popular): Eat noon–8pm. Easy to maintain.\n⏰ **18:6**: Slightly more aggressive. Eat 1pm–7pm.\n⏰ **20:4**: Warrior diet. 1-2 big meals.\n\n**Tips:**\n- Black coffee/tea during the fast is fine\n- Break your fast with protein-rich food\n- Time your workouts 1-2 hours before breaking fast for max fat burn\n- Stay hydrated!\n\nStart a fast timer in the Fasting screen! ⏱️",
+    supplement: "Here are evidence-backed supplements:\n\n💊 **Creatine Monohydrate** (5g/day) — Most researched, proven strength + muscle gains\n☀️ **Vitamin D3** (2000-4000 IU) — Most people are deficient. Supports hormones, immunity\n🐟 **Omega-3 Fish Oil** (1-2g EPA+DHA) — Anti-inflammatory, heart health\n🧲 **Magnesium** (400mg before bed) — Sleep quality, muscle recovery\n🥤 **Whey Protein** — Convenient way to hit protein targets\n\nTrack your supplement stack in the Supplements screen! 💊",
 };
 
 function getDemoResponse(message: string): string {
     const lower = message.toLowerCase();
+    if (lower.includes('meal plan') || lower.includes('weekly') || lower.includes('generate')) return DEMO_RESPONSES.mealplan;
     if (lower.includes('meal') || lower.includes('food') || lower.includes('eat') || lower.includes('macro')) return DEMO_RESPONSES.meal;
     if (lower.includes('workout') || lower.includes('exercise') || lower.includes('train')) return DEMO_RESPONSES.workout;
     if (lower.includes('progress') || lower.includes('week') || lower.includes('analyze')) return DEMO_RESPONSES.progress;
     if (lower.includes('recovery') || lower.includes('sleep') || lower.includes('rest') || lower.includes('tip')) return DEMO_RESPONSES.recovery;
+    if (lower.includes('diet') || lower.includes('phase') || lower.includes('bulk') || lower.includes('cut')) return DEMO_RESPONSES.diet;
+    if (lower.includes('fast')) return DEMO_RESPONSES.fasting;
+    if (lower.includes('supplement') || lower.includes('creatine') || lower.includes('vitamin')) return DEMO_RESPONSES.supplement;
     return DEMO_RESPONSES.default;
 }
 
@@ -52,6 +64,8 @@ export default function AIChatScreen() {
     const user = useAuthStore((s) => s.user);
     const todaySummary = useNutritionStore((s) => s.todaySummary);
     const recentWorkouts = useWorkoutStore((s) => s.recentWorkouts);
+    const { dietProfile, activeFast } = useMealPlanStore();
+    const { recoveryLogs } = useRecoveryStore();
     const flatListRef = useRef<FlatList>(null);
 
     const [messages, setMessages] = useState<ChatMessage[]>([
@@ -84,6 +98,7 @@ export default function AIChatScreen() {
 
             if (OPENAI_API_KEY) {
                 // Build conversation history for API
+                const lastRecovery = recoveryLogs[recoveryLogs.length - 1];
                 const systemPrompt = buildCoachingSystemPrompt({
                     name: user?.display_name,
                     goal: user?.goal,
@@ -96,6 +111,12 @@ export default function AIChatScreen() {
                     todayProtein: todaySummary.total_protein_g,
                     recentWorkouts: recentWorkouts.slice(0, 5).map((w) => w.name),
                     streak: user?.streak_count,
+                    dietTemplate: dietProfile?.template,
+                    dietPhase: dietProfile?.phase,
+                    recoveryScore: lastRecovery?.recovery_score ?? undefined,
+                    sleepHours: lastRecovery?.sleep_hours ?? undefined,
+                    bodyFatPct: undefined,
+                    fastingActive: !!activeFast,
                 });
 
                 const apiMessages: OpenAIMessage[] = [

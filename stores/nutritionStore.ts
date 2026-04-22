@@ -1,3 +1,4 @@
+import { applyXPReward } from '@/lib/gamification';
 import { generateId } from '@/lib/utils';
 import type {
     DailyNutritionSummary,
@@ -7,6 +8,7 @@ import type {
     WaterLog,
 } from '@/types';
 import { create } from 'zustand';
+import { useAuthStore } from './authStore';
 
 interface NutritionState {
     // Today's data
@@ -82,6 +84,20 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
                 meals,
             },
         });
+
+        // Award XP
+        const authState = useAuthStore.getState();
+        if (authState.user) {
+            authState.setUser({ ...authState.user, ...applyXPReward(authState.user, 'LOG_FOOD') });
+        }
+
+        // Check nutrition achievements
+        const totalMeals = Object.values(get().todaySummary.meals).flat().length;
+        const { useRecoveryStore } = require('./recoveryStore');
+        useRecoveryStore.getState().checkAchievements({
+            meals_logged: totalMeals,
+            max_protein_day: get().todaySummary.total_protein_g,
+        });
     },
 
     removeLogEntry: (entryId) => {
@@ -128,6 +144,12 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
                 water_ml: todaySummary.water_ml + amountMl,
             },
         });
+
+        // Award XP
+        const authState = useAuthStore.getState();
+        if (authState.user) {
+            authState.setUser({ ...authState.user, ...applyXPReward(authState.user, 'LOG_WATER') });
+        }
     },
 
     setTodaySummary: (summary) => set({ todaySummary: summary }),

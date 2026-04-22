@@ -29,6 +29,7 @@ export default function ProgressScreen() {
         progressPhotos,
         addWeightEntry,
         addGoal,
+        updateGoal,
     } = useProgressStore();
     const [activeTab, setActiveTab] = useState<'overview' | 'weight' | 'photos' | 'goals'>('overview');
     const [showWeightInput, setShowWeightInput] = useState(false);
@@ -325,6 +326,13 @@ export default function ProgressScreen() {
                             fullWidth={false}
                             style={{ marginTop: Spacing.sm }}
                         />
+                        <Button
+                            title="🧬 Body Composition"
+                            onPress={() => router.push('/progress/body-composition')}
+                            variant="outline"
+                            fullWidth={false}
+                            style={{ marginTop: Spacing.sm }}
+                        />
                     </View>
                 )}
 
@@ -375,6 +383,37 @@ export default function ProgressScreen() {
                                         <Text style={styles.goalMeta}>
                                             {goal.current_value} / {goal.target_value} {goal.unit}
                                         </Text>
+                                        {goal.status !== 'completed' && (
+                                            <View style={styles.goalActions}>
+                                                <TouchableOpacity
+                                                    style={styles.goalActionBtn}
+                                                    onPress={() => {
+                                                        const increment = goal.target_value * 0.1 || 1;
+                                                        const newVal = Math.min(goal.current_value + increment, goal.target_value);
+                                                        const isComplete = newVal >= goal.target_value;
+                                                        updateGoal(goal.id, {
+                                                            current_value: Math.round(newVal * 10) / 10,
+                                                            ...(isComplete ? { status: 'completed' as const } : {}),
+                                                        });
+                                                    }}
+                                                >
+                                                    <Ionicons name="add-circle" size={18} color={Colors.primary} />
+                                                    <Text style={styles.goalActionText}>+10%</Text>
+                                                </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    style={styles.goalActionBtn}
+                                                    onPress={() => {
+                                                        updateGoal(goal.id, {
+                                                            current_value: goal.target_value,
+                                                            status: 'completed',
+                                                        });
+                                                    }}
+                                                >
+                                                    <Ionicons name="checkmark-circle" size={18} color={Colors.success} />
+                                                    <Text style={[styles.goalActionText, { color: Colors.success }]}>Complete</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                        )}
                                     </Card>
                                 );
                             })
@@ -570,7 +609,7 @@ const styles = StyleSheet.create({
         borderRadius: BorderRadius.sm,
     },
     goalStatusComplete: {
-        backgroundColor: '#00B89420',
+        backgroundColor: Colors.success + '18',
     },
     goalStatusText: {
         color: Colors.textSecondary,
@@ -606,6 +645,26 @@ const styles = StyleSheet.create({
     goalMeta: {
         color: Colors.textTertiary,
         fontSize: FontSize.sm,
+    },
+    goalActions: {
+        flexDirection: 'row',
+        gap: Spacing.md,
+        marginTop: Spacing.sm,
+        paddingTop: Spacing.sm,
+        borderTopWidth: 1,
+        borderTopColor: Colors.surfaceLight,
+    },
+    goalActionBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingVertical: 4,
+        paddingHorizontal: 8,
+    },
+    goalActionText: {
+        color: Colors.primary,
+        fontSize: FontSize.sm,
+        fontWeight: FontWeight.medium,
     },
 
     // Empty

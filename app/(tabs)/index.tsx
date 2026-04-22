@@ -23,6 +23,7 @@ export default function HomeScreen() {
     const insets = useSafeAreaInsets();
     const user = useAuthStore((s) => s.user);
     const todaySummary = useNutritionStore((s) => s.todaySummary);
+    const logWater = useNutritionStore((s) => s.logWater);
     const recentWorkouts = useWorkoutStore((s) => s.recentWorkouts);
 
     // Defaults for demo
@@ -124,7 +125,7 @@ export default function HomeScreen() {
                         style={styles.quickAction}
                         onPress={() => router.push('/workout/active')}
                     >
-                        <View style={[styles.quickActionIcon, { backgroundColor: '#6C5CE720' }]}>
+                        <View style={[styles.quickActionIcon, { backgroundColor: Colors.primary + '15' }]}>
                             <Ionicons name="barbell" size={24} color={Colors.primary} />
                         </View>
                         <Text style={styles.quickActionText}>Start{'\n'}Workout</Text>
@@ -134,8 +135,8 @@ export default function HomeScreen() {
                         style={styles.quickAction}
                         onPress={() => router.push('/(tabs)/nutrition')}
                     >
-                        <View style={[styles.quickActionIcon, { backgroundColor: '#FF6B6B20' }]}>
-                            <Ionicons name="restaurant" size={24} color={Colors.accent} />
+                        <View style={[styles.quickActionIcon, { backgroundColor: Colors.protein + '15' }]}>
+                            <Ionicons name="restaurant" size={24} color={Colors.protein} />
                         </View>
                         <Text style={styles.quickActionText}>Log{'\n'}Food</Text>
                     </TouchableOpacity>
@@ -144,15 +145,15 @@ export default function HomeScreen() {
                         style={styles.quickAction}
                         onPress={() => router.push('/(tabs)/progress')}
                     >
-                        <View style={[styles.quickActionIcon, { backgroundColor: '#00CECE20' }]}>
-                            <Ionicons name="scale" size={24} color={Colors.secondary} />
+                        <View style={[styles.quickActionIcon, { backgroundColor: Colors.success + '15' }]}>
+                            <Ionicons name="scale" size={24} color={Colors.success} />
                         </View>
                         <Text style={styles.quickActionText}>Log{'\n'}Weight</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.quickAction}>
-                        <View style={[styles.quickActionIcon, { backgroundColor: '#FDCB6E20' }]}>
-                            <Ionicons name="water" size={24} color={Colors.warning} />
+                    <TouchableOpacity style={styles.quickAction} onPress={() => logWater(250)}>
+                        <View style={[styles.quickActionIcon, { backgroundColor: Colors.secondary + '15' }]}>
+                            <Ionicons name="water" size={24} color={Colors.secondary} />
                         </View>
                         <Text style={styles.quickActionText}>Log{'\n'}Water</Text>
                     </TouchableOpacity>
@@ -221,6 +222,65 @@ export default function HomeScreen() {
                     ))
                 )}
 
+                {/* Explore More */}
+                <Text style={styles.sectionTitle}>Explore</Text>
+                <View style={styles.exploreGrid}>
+                    <TouchableOpacity style={styles.exploreItem} onPress={() => router.push('/recovery')}>
+                        <View style={[styles.exploreIcon, { backgroundColor: Colors.recovery + '15' }]}>
+                            <Ionicons name="heart" size={22} color={Colors.recovery} />
+                        </View>
+                        <Text style={styles.exploreLabel}>Recovery</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.exploreItem} onPress={() => router.push('/achievements')}>
+                        <View style={[styles.exploreIcon, { backgroundColor: Colors.achievements + '15' }]}>
+                            <Ionicons name="trophy" size={22} color={Colors.achievements} />
+                        </View>
+                        <Text style={styles.exploreLabel}>Achievements</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.exploreItem} onPress={() => router.push('/analytics')}>
+                        <View style={[styles.exploreIcon, { backgroundColor: Colors.analytics + '15' }]}>
+                            <Ionicons name="analytics" size={22} color={Colors.analytics} />
+                        </View>
+                        <Text style={styles.exploreLabel}>Analytics</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.exploreItem} onPress={() => router.push('/nutrition/fasting')}>
+                        <View style={[styles.exploreIcon, { backgroundColor: Colors.fasting + '15' }]}>
+                            <Ionicons name="timer" size={22} color={Colors.fasting} />
+                        </View>
+                        <Text style={styles.exploreLabel}>Fasting</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.exploreItem} onPress={() => router.push('/nutrition/recipes')}>
+                        <View style={[styles.exploreIcon, { backgroundColor: Colors.recipes + '15' }]}>
+                            <Ionicons name="restaurant" size={22} color={Colors.recipes} />
+                        </View>
+                        <Text style={styles.exploreLabel}>Recipes</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.exploreItem} onPress={() => router.push('/recovery/supplements')}>
+                        <View style={[styles.exploreIcon, { backgroundColor: Colors.supplements + '15' }]}>
+                            <Ionicons name="medical" size={22} color={Colors.supplements} />
+                        </View>
+                        <Text style={styles.exploreLabel}>Supplements</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.exploreItem} onPress={() => router.push('/nutrition/meal-plan')}>
+                        <View style={[styles.exploreIcon, { backgroundColor: Colors.mealPlan + '15' }]}>
+                            <Ionicons name="calendar" size={22} color={Colors.mealPlan} />
+                        </View>
+                        <Text style={styles.exploreLabel}>Meal Plan</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.exploreItem} onPress={() => router.push('/progress/body-composition')}>
+                        <View style={[styles.exploreIcon, { backgroundColor: Colors.bodyComp + '15' }]}>
+                            <Ionicons name="body" size={22} color={Colors.bodyComp} />
+                        </View>
+                        <Text style={styles.exploreLabel}>Body Comp</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.exploreItem} onPress={() => router.push('/nutrition/micronutrients')}>
+                        <View style={[styles.exploreIcon, { backgroundColor: Colors.micros + '15' }]}>
+                            <Ionicons name="flask" size={22} color={Colors.micros} />
+                        </View>
+                        <Text style={styles.exploreLabel}>Micros</Text>
+                    </TouchableOpacity>
+                </View>
+
                 {/* AI Insight Card */}
                 <Card style={styles.aiCard}>
                     <View style={styles.aiHeader}>
@@ -249,34 +309,39 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.background,
     },
     scrollContent: {
-        paddingHorizontal: Spacing.lg,
+        paddingHorizontal: Spacing.xl,
         paddingBottom: 100,
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingVertical: Spacing.lg,
+        paddingVertical: Spacing.xl,
     },
     greeting: {
-        color: Colors.textSecondary,
-        fontSize: FontSize.md,
+        color: Colors.textTertiary,
+        fontSize: FontSize.sm,
+        letterSpacing: 0.5,
+        textTransform: 'uppercase',
+        fontWeight: FontWeight.medium,
     },
     name: {
         color: Colors.text,
         fontSize: FontSize.xxl,
         fontWeight: FontWeight.heavy,
+        letterSpacing: -0.3,
+        marginTop: 2,
     },
     headerRight: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: Spacing.md,
+        gap: Spacing.sm,
     },
     streakBadge: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 4,
-        backgroundColor: Colors.surface,
+        backgroundColor: Colors.surfaceLight,
         paddingHorizontal: Spacing.md,
         paddingVertical: Spacing.sm,
         borderRadius: BorderRadius.full,
@@ -284,18 +349,18 @@ const styles = StyleSheet.create({
         borderColor: Colors.border,
     },
     streakIcon: {
-        fontSize: 16,
+        fontSize: 14,
     },
     streakCount: {
         color: Colors.text,
         fontWeight: FontWeight.bold,
-        fontSize: FontSize.md,
+        fontSize: FontSize.sm,
     },
     notifButton: {
         width: 40,
         height: 40,
         borderRadius: BorderRadius.full,
-        backgroundColor: Colors.surface,
+        backgroundColor: Colors.surfaceLight,
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 1,
@@ -339,11 +404,12 @@ const styles = StyleSheet.create({
         fontSize: FontSize.lg,
         fontWeight: FontWeight.bold,
         marginBottom: Spacing.md,
-        marginTop: Spacing.sm,
+        marginTop: Spacing.md,
+        letterSpacing: 0.1,
     },
     quickActions: {
         flexDirection: 'row',
-        gap: Spacing.md,
+        gap: Spacing.sm,
         marginBottom: Spacing.xl,
     },
     quickAction: {
@@ -356,8 +422,8 @@ const styles = StyleSheet.create({
         borderColor: Colors.border,
     },
     quickActionIcon: {
-        width: 44,
-        height: 44,
+        width: 42,
+        height: 42,
         borderRadius: BorderRadius.md,
         alignItems: 'center',
         justifyContent: 'center',
@@ -365,9 +431,10 @@ const styles = StyleSheet.create({
     },
     quickActionText: {
         color: Colors.textSecondary,
-        fontSize: FontSize.xs,
+        fontSize: FontSize.xxs,
         textAlign: 'center',
         fontWeight: FontWeight.medium,
+        lineHeight: 14,
     },
 
     // Water
@@ -409,7 +476,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     waterGlassFilled: {
-        backgroundColor: '#00CECE20',
+        backgroundColor: Colors.primary + '18',
     },
 
     // Empty state
@@ -444,7 +511,7 @@ const styles = StyleSheet.create({
         width: 40,
         height: 40,
         borderRadius: BorderRadius.md,
-        backgroundColor: '#6C5CE720',
+        backgroundColor: Colors.primary + '15',
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -471,8 +538,9 @@ const styles = StyleSheet.create({
     aiCard: {
         marginTop: Spacing.sm,
         marginBottom: Spacing.xl,
-        borderColor: Colors.primaryDark,
+        borderColor: Colors.primary + '30',
         borderWidth: 1,
+        backgroundColor: Colors.surfaceLight,
     },
     aiHeader: {
         flexDirection: 'row',
@@ -481,15 +549,16 @@ const styles = StyleSheet.create({
         marginBottom: Spacing.md,
     },
     aiBadge: {
-        backgroundColor: Colors.primary,
+        backgroundColor: Colors.primary + '20',
         paddingHorizontal: Spacing.sm,
-        paddingVertical: 2,
-        borderRadius: BorderRadius.sm,
+        paddingVertical: 3,
+        borderRadius: BorderRadius.xs,
     },
     aiBadgeText: {
-        color: Colors.text,
-        fontSize: FontSize.xs,
+        color: Colors.primary,
+        fontSize: FontSize.xxs,
         fontWeight: FontWeight.bold,
+        letterSpacing: 0.5,
     },
     aiTitle: {
         color: Colors.text,
@@ -511,5 +580,37 @@ const styles = StyleSheet.create({
         color: Colors.primary,
         fontSize: FontSize.sm,
         fontWeight: FontWeight.semibold,
+    },
+
+    // Explore grid
+    exploreGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: Spacing.sm,
+        marginBottom: Spacing.xl,
+    },
+    exploreItem: {
+        width: (width - Spacing.xl * 2 - Spacing.sm * 2) / 3,
+        backgroundColor: Colors.surface,
+        borderRadius: BorderRadius.lg,
+        paddingVertical: Spacing.md,
+        paddingHorizontal: Spacing.sm,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: Colors.border,
+    },
+    exploreIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: BorderRadius.md,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: Spacing.sm,
+    },
+    exploreLabel: {
+        color: Colors.textSecondary,
+        fontSize: FontSize.xxs,
+        fontWeight: FontWeight.medium,
+        textAlign: 'center',
     },
 });

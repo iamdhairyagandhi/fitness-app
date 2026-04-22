@@ -1,4 +1,5 @@
 import { DEFAULT_REST_SECONDS } from '@/constants/config';
+import { applyXPReward, calculateStreak } from '@/lib/gamification';
 import { generateId } from '@/lib/utils';
 import type {
     Exercise,
@@ -9,6 +10,7 @@ import type {
     WorkoutTemplate,
 } from '@/types';
 import { create } from 'zustand';
+import { useAuthStore } from './authStore';
 
 interface WorkoutState {
     // Active workout
@@ -157,6 +159,49 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
             recentWorkouts: [finished, ...get().recentWorkouts],
             personalRecords: updatedPRs,
         });
+
+        // Award XP for completing workout
+        const authState = useAuthStore.getState();
+        if (authState.user) {
+            const user = authState.user;
+            const isFirst = get().recentWorkouts.length === 1; // only the one we just added
+            const xpUpdate = applyXPReward(user, isFirst ? 'FIRST_WORKOUT' : 'COMPLETE_WORKOUT');
+            const newStreak = calculateStreak(user.last_workout_date || null, user.streak_count);
+            authState.setUser({
+                ...user,
+                ...xpUpdate,
+                streak_count: newStreak,
+                workouts_completed: (user.workouts_completed || 0) + 1,
+                last_workout_date: new Date().toISOString(),
+            });
+
+            // Award streak bonus XP if streak > 1
+            if (newStreak > 1) {
+                const streakUpdate = applyXPReward(
+                    { ...user, ...xpUpdate },
+                    'MAINTAIN_STREAK',
+                );
+                authState.setUser({ ...user, ...xpUpdate, ...streakUpdate, streak_count: newStreak, workouts_completed: (user.workouts_completed || 0) + 1, last_workout_date: new Date().toISOString() });
+            }
+
+            // Check achievements
+            const { useRecoveryStore } = require('./recoveryStore');
+            const recoveryState = useRecoveryStore.getState();
+            recoveryState.checkAchievements({
+                workouts_completed: (user.workouts_completed || 0) + 1,
+                streak_days: newStreak,
+                prs_set: updatedPRs.length,
+                total_volume: Math.round(totalVolume) + get().recentWorkouts.reduce((s, w) => s + (w.total_volume_kg || 0), 0),
+                level: (xpUpdate.level || user.level || 1),
+            });
+
+            // Update weekly challenge progress
+            const challenges = recoveryState.challenges;
+            const activeChallenge = challenges.find((c: { status: string }) => c.status === 'active');
+            if (activeChallenge) {
+                recoveryState.updateChallengeProgress(activeChallenge.id, 1);
+            }
+        }
 
         return finished;
     },

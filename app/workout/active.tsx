@@ -392,7 +392,7 @@ const styles = StyleSheet.create({
         marginBottom: 2,
     },
     setRowCompleted: {
-        backgroundColor: '#00B89415',
+        backgroundColor: Colors.success + '15',
     },
     setNumber: {
         color: Colors.textSecondary,

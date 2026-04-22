@@ -1,3 +1,4 @@
+import { applyXPReward } from '@/lib/gamification';
 import type {
     BodyMeasurement,
     Goal,
@@ -5,6 +6,14 @@ import type {
     WeightEntry,
 } from '@/types';
 import { create } from 'zustand';
+import { useAuthStore } from './authStore';
+
+function awardXP(reward: 'LOG_WEIGHT' | 'LOG_MEASUREMENT' | 'TAKE_PROGRESS_PHOTO' | 'COMPLETE_GOAL') {
+    const authState = useAuthStore.getState();
+    if (authState.user) {
+        authState.setUser({ ...authState.user, ...applyXPReward(authState.user, reward) });
+    }
+}
 
 interface ProgressState {
     weightEntries: WeightEntry[];
@@ -23,6 +32,16 @@ interface ProgressState {
     updateGoal: (goalId: string, updates: Partial<Goal>) => void;
 }
 
+function checkBodyAchievements() {
+    const { useRecoveryStore } = require('./recoveryStore');
+    const state = useProgressStore.getState();
+    useRecoveryStore.getState().checkAchievements({
+        weight_logs: state.weightEntries.length,
+        photos_taken: state.progressPhotos.length,
+        measurements_logged: state.measurements.length,
+    });
+}
+
 export const useProgressStore = create<ProgressState>((set, get) => ({
     weightEntries: [],
     measurements: [],
@@ -30,23 +49,39 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
     goals: [],
 
     setWeightEntries: (weightEntries) => set({ weightEntries }),
-    addWeightEntry: (entry) =>
-        set({ weightEntries: [entry, ...get().weightEntries] }),
+    addWeightEntry: (entry) => {
+        set({ weightEntries: [entry, ...get().weightEntries] });
+        awardXP('LOG_WEIGHT');
+        checkBodyAchievements();
+    },
 
     setMeasurements: (measurements) => set({ measurements }),
-    addMeasurement: (measurement) =>
-        set({ measurements: [measurement, ...get().measurements] }),
+    addMeasurement: (measurement) => {
+        set({ measurements: [measurement, ...get().measurements] });
+        awardXP('LOG_MEASUREMENT');
+        checkBodyAchievements();
+    },
 
     setProgressPhotos: (progressPhotos) => set({ progressPhotos }),
-    addProgressPhoto: (photo) =>
-        set({ progressPhotos: [photo, ...get().progressPhotos] }),
+    addProgressPhoto: (photo) => {
+        set({ progressPhotos: [photo, ...get().progressPhotos] });
+        awardXP('TAKE_PROGRESS_PHOTO');
+        checkBodyAchievements();
+    },
 
     setGoals: (goals) => set({ goals }),
     addGoal: (goal) => set({ goals: [goal, ...get().goals] }),
-    updateGoal: (goalId, updates) =>
+    updateGoal: (goalId, updates) => {
         set({
             goals: get().goals.map((g) =>
                 g.id === goalId ? { ...g, ...updates } : g
             ),
-        }),
+        });
+
+        // Award XP when a goal is completed
+        const updated = get().goals.find((g) => g.id === goalId);
+        if (updated?.status === 'completed' || (updates.current_value && updated && updated.current_value >= updated.target_value)) {
+            awardXP('COMPLETE_GOAL');
+        }
+    },
 }));

@@ -1,47 +1,59 @@
 // FitFusion Design System
-// Dark-first, futuristic fitness aesthetic
+// Premium wellness aesthetic — warm, motivating, clean
 
 export const Colors = {
-    // Core palette
-    primary: '#6C5CE7',      // Electric purple
-    primaryLight: '#A29BFE',
-    primaryDark: '#5A4BD1',
+    // Core palette — sophisticated teal + warm amber
+    primary: '#0EA5E9',          // Sky blue — trust, clarity, focus
+    primaryLight: '#38BDF8',
+    primaryDark: '#0284C7',
 
-    secondary: '#00CECE',    // Cyan/teal accent
-    secondaryLight: '#55EFC4',
-    secondaryDark: '#00B894',
+    secondary: '#F59E0B',        // Warm amber — achievement, energy
+    secondaryLight: '#FBBF24',
+    secondaryDark: '#D97706',
 
-    accent: '#FF6B6B',       // Coral for alerts, calories
-    accentLight: '#FF8E8E',
-    warning: '#FDCB6E',      // Yellow for warnings
-    success: '#00B894',      // Green for goals met
-    error: '#E17055',        // Red-orange for errors
+    accent: '#F43F5E',           // Rose — alerts, urgency (used sparingly)
+    accentLight: '#FB7185',
+    warning: '#F59E0B',          // Amber
+    success: '#10B981',          // Emerald — goals met, positive
+    error: '#EF4444',            // Clean red for errors
 
-    // Backgrounds (dark theme)
-    background: '#0F0F0F',
-    surface: '#1A1A2E',
-    surfaceLight: '#232342',
-    surfaceElevated: '#2D2D4A',
+    // Backgrounds — deep warm neutrals (not pure black)
+    background: '#0C0C0F',
+    surface: '#16161D',
+    surfaceLight: '#1E1F28',
+    surfaceElevated: '#262733',
 
-    // Text
-    text: '#FFFFFF',
-    textSecondary: '#A0A0B8',
-    textTertiary: '#6C6C80',
-    textInverse: '#0F0F0F',
+    // Text — warm whites, clear hierarchy
+    text: '#F4F4F6',
+    textSecondary: '#9CA3AF',
+    textTertiary: '#6B7280',
+    textInverse: '#0C0C0F',
 
-    // Borders
-    border: '#2A2A40',
-    borderLight: '#3A3A55',
+    // Borders — subtle, warm
+    border: '#1F2029',
+    borderLight: '#2A2B38',
 
-    // Macro colors
-    protein: '#FF6B6B',
-    carbs: '#6C5CE7',
-    fat: '#FDCB6E',
-    calories: '#00CECE',
+    // Macro colors — distinctive, muted elegance
+    protein: '#F97316',          // Warm orange
+    carbs: '#6366F1',            // Indigo
+    fat: '#EAB308',              // Gold
+    calories: '#0EA5E9',         // Sky blue (matches primary)
+
+    // Feature colors — harmonious palette
+    recovery: '#10B981',         // Emerald
+    fasting: '#8B5CF6',          // Violet
+    supplements: '#EC4899',      // Pink
+    recipes: '#F97316',          // Orange
+    achievements: '#F59E0B',     // Amber
+    analytics: '#6366F1',        // Indigo
+    mealPlan: '#14B8A6',         // Teal
+    bodyComp: '#8B5CF6',         // Violet
+    micros: '#10B981',           // Emerald
 
     // Transparent overlays
-    overlay: 'rgba(15, 15, 15, 0.7)',
-    overlayLight: 'rgba(255, 255, 255, 0.05)',
+    overlay: 'rgba(12, 12, 15, 0.8)',
+    overlayLight: 'rgba(255, 255, 255, 0.04)',
+    glass: 'rgba(22, 22, 29, 0.85)',
 } as const;
 
 export const Spacing = {
@@ -56,6 +68,7 @@ export const Spacing = {
 } as const;
 
 export const BorderRadius = {
+    xs: 6,
     sm: 8,
     md: 12,
     lg: 16,
@@ -65,12 +78,13 @@ export const BorderRadius = {
 } as const;
 
 export const FontSize = {
+    xxs: 10,
     xs: 11,
     sm: 13,
     md: 15,
     lg: 17,
     xl: 20,
-    xxl: 24,
+    xxl: 26,
     xxxl: 32,
     hero: 40,
 } as const;
@@ -82,3 +96,35 @@ export const FontWeight = {
     bold: '700' as const,
     heavy: '800' as const,
 };
+
+// Shadows — reusable elevation presets
+export const Shadows = {
+    sm: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    md: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 3,
+    },
+    lg: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 16,
+        elevation: 5,
+    },
+    glow: (color: string) => ({
+        shadowColor: color,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+        elevation: 4,
+    }),
+} as const;

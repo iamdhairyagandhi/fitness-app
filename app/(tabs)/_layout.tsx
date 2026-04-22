@@ -1,4 +1,4 @@
-import { Colors, FontSize, FontWeight } from '@/constants/theme';
+import { Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import React from 'react';
@@ -14,6 +14,7 @@ export default function TabLayout() {
                 tabBarStyle: styles.tabBar,
                 tabBarLabelStyle: styles.tabBarLabel,
                 tabBarItemStyle: styles.tabBarItem,
+                tabBarIconStyle: styles.tabBarIcon,
             }}
         >
             <Tabs.Screen
@@ -69,16 +70,26 @@ const styles = StyleSheet.create({
     tabBar: {
         backgroundColor: Colors.surface,
         borderTopColor: Colors.border,
-        borderTopWidth: 1,
-        height: Platform.OS === 'ios' ? 88 : 64,
-        paddingTop: 8,
+        borderTopWidth: 0.5,
+        height: Platform.OS === 'ios' ? 88 : 68,
+        paddingTop: 6,
+        paddingBottom: Platform.OS === 'ios' ? 28 : 8,
         elevation: 0,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 16,
     },
     tabBarLabel: {
-        fontSize: FontSize.xs,
+        fontSize: FontSize.xxs,
         fontWeight: FontWeight.medium,
+        letterSpacing: 0.3,
+        marginTop: 2,
     },
     tabBarItem: {
-        paddingVertical: 4,
+        gap: 2,
+    },
+    tabBarIcon: {
+        marginBottom: -2,
     },
 });

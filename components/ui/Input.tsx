@@ -1,5 +1,5 @@
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
-import React from 'react';
+import React, { useState } from 'react';
 import {
     StyleSheet,
     Text,
@@ -26,10 +26,12 @@ export function Input({
     style,
     ...props
 }: InputProps) {
+    const [focused, setFocused] = useState(false);
+
     return (
         <View style={[styles.container, containerStyle]}>
             {label && <Text style={styles.label}>{label}</Text>}
-            <View style={[styles.inputWrapper, error && styles.inputError]}>
+            <View style={[styles.inputWrapper, focused && styles.inputFocused, error && styles.inputError]}>
                 {leftIcon && <View style={styles.iconLeft}>{leftIcon}</View>}
                 <TextInput
                     style={[
@@ -40,6 +42,14 @@ export function Input({
                     ]}
                     placeholderTextColor={Colors.textTertiary}
                     selectionColor={Colors.primary}
+                    onFocus={(e) => {
+                        setFocused(true);
+                        props.onFocus?.(e);
+                    }}
+                    onBlur={(e) => {
+                        setFocused(false);
+                        props.onBlur?.(e);
+                    }}
                     {...props}
                 />
                 {rightIcon && <View style={styles.iconRight}>{rightIcon}</View>}
@@ -58,14 +68,19 @@ const styles = StyleSheet.create({
         fontSize: FontSize.sm,
         fontWeight: FontWeight.medium,
         marginBottom: Spacing.sm,
+        letterSpacing: 0.1,
     },
     inputWrapper: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: Colors.surface,
+        backgroundColor: Colors.surfaceLight,
         borderRadius: BorderRadius.md,
         borderWidth: 1,
         borderColor: Colors.border,
+    },
+    inputFocused: {
+        borderColor: Colors.primary,
+        backgroundColor: Colors.surface,
     },
     inputError: {
         borderColor: Colors.error,

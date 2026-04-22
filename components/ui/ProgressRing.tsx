@@ -76,6 +76,7 @@ const styles = StyleSheet.create({
     value: {
         color: Colors.text,
         fontWeight: FontWeight.bold,
+        letterSpacing: -0.5,
     },
     label: {
         color: Colors.textSecondary,
@@ -84,6 +85,6 @@ const styles = StyleSheet.create({
     },
     sublabel: {
         color: Colors.textTertiary,
-        marginTop: 1,
+        marginTop: 0,
     },
 });

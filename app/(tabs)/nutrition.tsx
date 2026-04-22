@@ -27,7 +27,7 @@ const MEAL_ICONS: Record<MealType, string> = {
 export default function NutritionScreen() {
     const insets = useSafeAreaInsets();
     const user = useAuthStore((s) => s.user);
-    const { todaySummary, logWater } = useNutritionStore();
+    const { todaySummary, logWater, removeLogEntry } = useNutritionStore();
 
     const calorieTarget = user?.daily_calorie_target || 2200;
     const proteinTarget = user?.protein_target_g || 165;
@@ -64,6 +64,34 @@ export default function NutritionScreen() {
                         </TouchableOpacity>
                     </View>
                 </View>
+
+                {/* Quick Nav */}
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.quickNav} contentContainerStyle={styles.quickNavContent}>
+                    <TouchableOpacity style={styles.quickNavItem} onPress={() => router.push('/nutrition/diet-settings')}>
+                        <Ionicons name="options" size={18} color={Colors.primary} />
+                        <Text style={styles.quickNavText}>Diet Plan</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.quickNavItem} onPress={() => router.push('/nutrition/recipes')}>
+                        <Ionicons name="book" size={18} color={Colors.recipes} />
+                        <Text style={styles.quickNavText}>Recipes</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.quickNavItem} onPress={() => router.push('/nutrition/fasting')}>
+                        <Ionicons name="timer" size={18} color={Colors.secondary} />
+                        <Text style={styles.quickNavText}>Fasting</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.quickNavItem} onPress={() => router.push('/nutrition/grocery-list')}>
+                        <Ionicons name="cart" size={18} color={Colors.success} />
+                        <Text style={styles.quickNavText}>Grocery</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.quickNavItem} onPress={() => router.push('/nutrition/meal-plan')}>
+                        <Ionicons name="calendar" size={18} color={Colors.warning} />
+                        <Text style={styles.quickNavText}>Meal Plan</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.quickNavItem} onPress={() => router.push('/nutrition/micronutrients')}>
+                        <Ionicons name="flask" size={18} color={Colors.micros} />
+                        <Text style={styles.quickNavText}>Micros</Text>
+                    </TouchableOpacity>
+                </ScrollView>
 
                 {/* Daily Summary Card */}
                 <Card style={styles.summaryCard}>
@@ -163,7 +191,12 @@ export default function NutritionScreen() {
                                                 {entry.carbs_g}g • F: {entry.fat_g}g
                                             </Text>
                                         </View>
-                                        <Text style={styles.foodCalories}>{entry.calories}</Text>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                            <Text style={styles.foodCalories}>{entry.calories}</Text>
+                                            <TouchableOpacity onPress={() => removeLogEntry(entry.id)}>
+                                                <Ionicons name="close-circle" size={18} color={Colors.textTertiary} />
+                                            </TouchableOpacity>
+                                        </View>
                                     </View>
                                 ))
                             ) : (
@@ -232,6 +265,32 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         borderWidth: 1,
         borderColor: Colors.border,
+    },
+
+    // Quick nav
+    quickNav: {
+        marginBottom: Spacing.lg,
+        marginHorizontal: -Spacing.lg,
+    },
+    quickNavContent: {
+        paddingHorizontal: Spacing.lg,
+        gap: Spacing.sm,
+    },
+    quickNavItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: Colors.surface,
+        borderRadius: BorderRadius.full,
+        paddingHorizontal: Spacing.md,
+        paddingVertical: Spacing.sm,
+        borderWidth: 1,
+        borderColor: Colors.border,
+    },
+    quickNavText: {
+        color: Colors.textSecondary,
+        fontSize: FontSize.sm,
+        fontWeight: FontWeight.medium,
     },
 
     // Summary

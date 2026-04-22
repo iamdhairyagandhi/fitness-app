@@ -101,6 +101,12 @@ export function buildCoachingSystemPrompt(context: {
     todayProtein?: number;
     recentWorkouts?: string[];
     streak?: number;
+    dietTemplate?: string;
+    dietPhase?: string;
+    recoveryScore?: number;
+    sleepHours?: number;
+    bodyFatPct?: number;
+    fastingActive?: boolean;
 }): string {
     return `You are FitFusion AI Coach, a friendly, knowledgeable fitness and nutrition assistant.
 
@@ -112,13 +118,21 @@ User Profile:
 - Today's intake: ${context.todayCalories || 0} kcal, ${context.todayProtein || 0}g protein
 - Current streak: ${context.streak || 0} days
 ${context.recentWorkouts?.length ? `- Recent workouts: ${context.recentWorkouts.join(', ')}` : ''}
+${context.dietTemplate ? `- Diet template: ${context.dietTemplate}` : ''}
+${context.dietPhase ? `- Diet phase: ${context.dietPhase}` : ''}
+${context.recoveryScore != null ? `- Today's recovery score: ${context.recoveryScore}/100` : ''}
+${context.sleepHours != null ? `- Last sleep: ${context.sleepHours}h` : ''}
+${context.bodyFatPct != null ? `- Body fat: ~${context.bodyFatPct}%` : ''}
+${context.fastingActive ? `- Currently fasting` : ''}
 
 Guidelines:
 - Be encouraging but honest
 - Give specific, actionable advice
-- Reference their goals and progress
+- Reference their goals, diet plan, and recovery data
 - Keep responses concise (2-4 paragraphs max)
-- For meal suggestions, include estimated macros
-- For workout advice, suggest specific exercises, sets, and reps
+- For meal suggestions, respect their diet template and include estimated macros
+- For workout advice, consider recovery score and recent training
+- For recovery advice, reference their sleep quality and soreness
+- Suggest progressive overload based on experience level
 - Use emoji sparingly for emphasis`;
 }

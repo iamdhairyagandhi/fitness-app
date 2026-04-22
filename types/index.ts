@@ -12,6 +12,7 @@ export interface UserProfile {
     date_of_birth: string | null;
     gender: 'male' | 'female' | 'other' | null;
     height_cm: number | null;
+    weight_kg: number | null;
     current_weight_kg: number | null;
     activity_level: ActivityLevel;
     goal: FitnessGoal;
@@ -22,11 +23,14 @@ export interface UserProfile {
     fat_target_g: number;
     water_goal_ml: number;
     unit_system: 'metric' | 'imperial';
+    preferred_rest_seconds: number;
     created_at: string;
     updated_at: string;
     streak_count: number;
     xp: number;
     level: number;
+    workouts_completed: number;
+    last_workout_date: string | null;
 }
 
 export type ActivityLevel = 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active';
@@ -290,6 +294,266 @@ export interface ChatMessage {
     role: 'user' | 'assistant';
     content: string;
     timestamp: string;
+}
+
+// ── Diet & Meal Planning ─────────────────────────────────────
+
+export type DietTemplate =
+    | 'standard'
+    | 'keto'
+    | 'paleo'
+    | 'vegan'
+    | 'vegetarian'
+    | 'mediterranean'
+    | 'carnivore'
+    | 'whole30'
+    | 'dash'
+    | 'iifym'
+    | 'intermittent_fasting'
+    | 'custom';
+
+export type DietPhase = 'bulk' | 'cut' | 'maintain' | 'reverse_diet' | 'recomp';
+
+export type MacroCycleDay = 'high_carb' | 'low_carb' | 'moderate' | 'refeed' | 'rest_day';
+
+export interface DietProfile {
+    template: DietTemplate;
+    phase: DietPhase;
+    phase_start_date: string;
+    phase_target_date: string | null;
+    macro_cycle_enabled: boolean;
+    macro_cycle_pattern: MacroCycleDay[]; // e.g. ['high_carb','low_carb','moderate','low_carb','high_carb','moderate','refeed']
+    fasting_enabled: boolean;
+    fasting_window_start: string | null; // "20:00"
+    fasting_window_end: string | null;   // "12:00"
+    allergies: string[];
+    intolerances: string[];
+    excluded_foods: string[];
+    preferred_cuisines: string[];
+}
+
+export interface MicronutrientEntry {
+    name: string;
+    amount: number;
+    unit: string;
+    rda: number;
+    percentage: number; // of RDA
+    category: 'vitamin' | 'mineral' | 'other';
+}
+
+export interface Recipe {
+    id: string;
+    name: string;
+    description: string;
+    image_url: string | null;
+    prep_time_min: number;
+    cook_time_min: number;
+    servings: number;
+    calories_per_serving: number;
+    protein_per_serving: number;
+    carbs_per_serving: number;
+    fat_per_serving: number;
+    ingredients: RecipeIngredient[];
+    instructions: string[];
+    tags: string[];
+    diet_tags: DietTemplate[];
+    cuisine: string;
+    difficulty: 'easy' | 'medium' | 'hard';
+    is_favorited: boolean;
+    rating: number | null;
+    source: 'built_in' | 'ai_generated' | 'community' | 'custom';
+}
+
+export interface RecipeIngredient {
+    food_item_id: string | null;
+    name: string;
+    amount: number;
+    unit: string;
+    calories: number;
+    protein_g: number;
+    carbs_g: number;
+    fat_g: number;
+}
+
+export interface MealPlan {
+    id: string;
+    user_id: string;
+    name: string;
+    start_date: string;
+    end_date: string;
+    days: MealPlanDay[];
+    created_at: string;
+    source: 'ai_generated' | 'manual' | 'template';
+}
+
+export interface MealPlanDay {
+    date: string;
+    day_type: MacroCycleDay;
+    meals: {
+        breakfast: MealPlanItem[];
+        lunch: MealPlanItem[];
+        dinner: MealPlanItem[];
+        snack: MealPlanItem[];
+    };
+    total_calories: number;
+    total_protein_g: number;
+    total_carbs_g: number;
+    total_fat_g: number;
+}
+
+export interface MealPlanItem {
+    recipe_id: string | null;
+    food_item_id: string | null;
+    name: string;
+    servings: number;
+    calories: number;
+    protein_g: number;
+    carbs_g: number;
+    fat_g: number;
+}
+
+export interface GroceryList {
+    id: string;
+    meal_plan_id: string;
+    items: GroceryItem[];
+    created_at: string;
+}
+
+export interface GroceryItem {
+    name: string;
+    amount: number;
+    unit: string;
+    category: string; // 'produce', 'dairy', 'meat', 'grains', etc.
+    checked: boolean;
+    estimated_cost: number | null;
+}
+
+// ── Fasting ──────────────────────────────────────────────────
+
+export interface FastingSession {
+    id: string;
+    user_id: string;
+    started_at: string;
+    target_end_at: string;
+    actual_end_at: string | null;
+    fasting_hours: number;
+    status: 'active' | 'completed' | 'broken';
+    notes: string | null;
+}
+
+// ── Recovery & Health ────────────────────────────────────────
+
+export interface RecoveryLog {
+    id: string;
+    user_id: string;
+    date: string;
+    sleep_hours: number | null;
+    sleep_quality: 1 | 2 | 3 | 4 | 5 | null;
+    soreness_level: 0 | 1 | 2 | 3 | 4 | 5; // 0=none, 5=extreme
+    sore_body_parts: MuscleGroup[];
+    stress_level: 1 | 2 | 3 | 4 | 5 | null;
+    energy_level: 1 | 2 | 3 | 4 | 5 | null;
+    mood: 1 | 2 | 3 | 4 | 5 | null;
+    resting_hr: number | null;
+    hrv: number | null;
+    recovery_score: number; // 0-100 computed score
+    notes: string | null;
+}
+
+export interface SorenessEntry {
+    muscle_group: MuscleGroup;
+    severity: 1 | 2 | 3 | 4 | 5;
+}
+
+// ── Gamification ─────────────────────────────────────────────
+
+export interface Achievement {
+    id: string;
+    title: string;
+    description: string;
+    icon: string;
+    category: 'workout' | 'nutrition' | 'streak' | 'strength' | 'body' | 'social' | 'milestone';
+    requirement_type: string;
+    requirement_value: number;
+    xp_reward: number;
+    unlocked_at: string | null;
+    progress: number; // 0-100
+}
+
+export interface Challenge {
+    id: string;
+    title: string;
+    description: string;
+    type: 'daily' | 'weekly' | 'monthly' | 'custom';
+    start_date: string;
+    end_date: string;
+    target_value: number;
+    current_value: number;
+    unit: string;
+    reward_xp: number;
+    status: 'active' | 'completed' | 'failed';
+    participants?: number;
+}
+
+// ── Analytics ────────────────────────────────────────────────
+
+export interface WeeklyReport {
+    id: string;
+    user_id: string;
+    week_start: string;
+    week_end: string;
+    workouts_completed: number;
+    total_volume_kg: number;
+    avg_calories: number;
+    avg_protein_g: number;
+    weight_change_kg: number;
+    new_prs: number;
+    streak_days: number;
+    recovery_avg: number;
+    ai_summary: string;
+    ai_recommendations: string[];
+    highlights: string[];
+}
+
+export interface TrainingVolumeData {
+    muscle_group: MuscleGroup;
+    sets: number;
+    reps: number;
+    volume_kg: number;
+    period: 'week' | 'month';
+}
+
+export interface CorrelationInsight {
+    id: string;
+    metric_a: string;
+    metric_b: string;
+    correlation: number; // -1 to 1
+    description: string;
+    recommendation: string;
+}
+
+export interface NutritionHeatmapDay {
+    date: string;
+    score: number; // 0-100 adherence
+    calories_delta: number;
+    protein_hit: boolean;
+}
+
+// ── Supplements ──────────────────────────────────────────────
+
+export interface Supplement {
+    id: string;
+    name: string;
+    dosage: string;
+    timing: string; // 'morning', 'pre-workout', 'post-workout', 'evening'
+    frequency: 'daily' | 'workout_days' | 'as_needed';
+    notes: string | null;
+}
+
+export interface SupplementLog {
+    id: string;
+    supplement_id: string;
+    taken_at: string;
 }
 
 // ── Dashboard ────────────────────────────────────────────────

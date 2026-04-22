@@ -9,7 +9,7 @@ export default function WelcomeScreen() {
     return (
         <View style={styles.container}>
             <LinearGradient
-                colors={['#6C5CE7', '#0F0F0F']}
+                colors={[Colors.primary, Colors.background]}
                 start={{ x: 0.5, y: 0 }}
                 end={{ x: 0.5, y: 0.6 }}
                 style={styles.gradient}

@@ -46,12 +46,13 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: Spacing.xs,
+        marginBottom: 6,
     },
     label: {
         color: Colors.textSecondary,
         fontSize: FontSize.sm,
         fontWeight: FontWeight.medium,
+        letterSpacing: 0.1,
     },
     values: {
         color: Colors.text,
@@ -66,7 +67,7 @@ const styles = StyleSheet.create({
         fontWeight: FontWeight.regular,
     },
     barBg: {
-        height: 6,
+        height: 5,
         backgroundColor: Colors.border,
         borderRadius: BorderRadius.full,
         overflow: 'hidden',
