@@ -1,5 +1,7 @@
 import { Button, Input } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { upsertProfile } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 import { calculateBMR, calculateTDEE } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
 import type { ActivityLevel, ExperienceLevel, FitnessGoal } from '@/types';
@@ -59,7 +61,7 @@ export default function OnboardingScreen() {
         }
     };
 
-    const handleComplete = () => {
+    const handleComplete = async () => {
         // Calculate TDEE and macro targets from onboarding data
         const w = parseFloat(weightKg) || 75;
         const h = parseFloat(heightCm) || 175;
@@ -86,25 +88,28 @@ export default function OnboardingScreen() {
         const carbsTarget = Math.round((calorieTarget * carbsPct) / 4);
         const fatTarget = Math.round((calorieTarget * fatPct) / 9);
 
-        // Set user profile with calculated targets
-        setUser({
-            id: '',
-            email: '',
-            display_name: '',
+        // Get user ID from Supabase session (if real user)
+        const { data: sessionData } = await supabase.auth.getSession();
+        const userId = sessionData?.session?.user?.id || '';
+
+        const userProfile = {
+            id: userId,
+            email: sessionData?.session?.user?.email || '',
+            display_name: sessionData?.session?.user?.user_metadata?.display_name || '',
             avatar_url: null,
             date_of_birth: null,
             gender: g,
             height_cm: h,
             current_weight_kg: w,
-            activity_level: activity || 'moderate',
-            goal: goal || 'maintain',
-            experience_level: experience || 'intermediate',
+            activity_level: activity || 'moderate' as const,
+            goal: goal || 'maintain' as const,
+            experience_level: experience || 'intermediate' as const,
             daily_calorie_target: calorieTarget,
             protein_target_g: proteinTarget,
             carbs_target_g: carbsTarget,
             fat_target_g: fatTarget,
-            water_goal_ml: Math.round(w * 33), // ~33ml per kg bodyweight
-            unit_system: 'metric',
+            water_goal_ml: Math.round(w * 33),
+            unit_system: 'metric' as const,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
             streak_count: 0,
@@ -114,7 +119,15 @@ export default function OnboardingScreen() {
             preferred_rest_seconds: 90,
             workouts_completed: 0,
             last_workout_date: null,
-        });
+        };
+
+        // Set user profile in store
+        setUser(userProfile);
+
+        // Persist to Supabase (fire-and-forget for real users)
+        if (userId) {
+            upsertProfile(userProfile).catch(() => {});
+        }
 
         setOnboarded(true);
         router.replace('/(tabs)');

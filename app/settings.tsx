@@ -180,7 +180,7 @@ export default function SettingsScreen() {
                     ))}
                 </Card>
 
-                <Text style={styles.version}>FitFusion v2.0.0 (Phase 2)</Text>
+                <Text style={styles.version}>FitFusion v3.0.0 (Phase 3)</Text>
             </ScrollView>
         </View>
     );

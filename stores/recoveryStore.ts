@@ -1,3 +1,4 @@
+import { deleteSupplement, saveRecoveryLog, saveSupplement, saveSupplementLog, saveUserAchievement } from '@/lib/db';
 import { generateId } from '@/lib/utils';
 import type {
     Achievement,
@@ -146,6 +147,7 @@ export const useRecoveryStore = create<RecoveryState>((set, get) => ({
             todayRecovery: recovery,
             recoveryLogs: [recovery, ...get().recoveryLogs],
         });
+        saveRecoveryLog(recovery).catch(() => {});
     },
 
     checkAchievements: (stats) => {
@@ -172,6 +174,8 @@ export const useRecoveryStore = create<RecoveryState>((set, get) => ({
                 achievements: updated,
                 recentlyUnlocked: [...get().recentlyUnlocked, ...newlyUnlocked],
             });
+            // Persist each new achievement
+            newlyUnlocked.forEach((a) => saveUserAchievement(a.id).catch(() => {}));
         }
 
         return newlyUnlocked;
@@ -194,18 +198,21 @@ export const useRecoveryStore = create<RecoveryState>((set, get) => ({
         });
     },
 
-    addSupplement: (supplement) =>
-        set({ supplements: [...get().supplements, supplement] }),
+    addSupplement: (supplement) => {
+        set({ supplements: [...get().supplements, supplement] });
+        saveSupplement(supplement).catch(() => {});
+    },
 
-    removeSupplement: (id) =>
-        set({ supplements: get().supplements.filter((s) => s.id !== id) }),
+    removeSupplement: (id) => {
+        set({ supplements: get().supplements.filter((s) => s.id !== id) });
+        deleteSupplement(id).catch(() => {});
+    },
 
     logSupplement: (supplementId) => {
+        const log = { id: generateId(), supplement_id: supplementId, taken_at: new Date().toISOString() };
         set({
-            supplementLogs: [
-                ...get().supplementLogs,
-                { id: generateId(), supplement_id: supplementId, taken_at: new Date().toISOString() },
-            ],
+            supplementLogs: [...get().supplementLogs, log],
         });
+        saveSupplementLog(log).catch(() => {});
     },
 }));

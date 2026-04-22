@@ -21,6 +21,7 @@ export default function SignUpScreen() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    const [message, setMessage] = useState('');
     const { setSession } = useAuthStore();
 
     const handleSignUp = async () => {
@@ -45,6 +46,7 @@ export default function SignUpScreen() {
 
         if (error) {
             Alert.alert('Sign Up Failed', error.message);
+            setMessage(error.message);
             setLoading(false);
             return;
         }
@@ -53,10 +55,9 @@ export default function SignUpScreen() {
             setSession({ access_token: data.session.access_token });
             router.replace('/(auth)/onboarding');
         } else {
-            Alert.alert(
-                'Check your email',
-                'We sent you a confirmation link. Please verify your email to continue.'
-            );
+            const msg = 'Check your email for a confirmation link, then come back and log in.';
+            Alert.alert('Check your email', msg);
+            setMessage(msg);
         }
         setLoading(false);
     };
@@ -120,6 +121,18 @@ export default function SignUpScreen() {
                         loading={loading}
                         size="lg"
                     />
+
+                    {message ? (
+                        <View style={styles.messageContainer}>
+                            <Text style={styles.messageText}>{message}</Text>
+                            <Button
+                                title="Go to Login"
+                                onPress={() => router.replace('/(auth)/login')}
+                                variant="outline"
+                                size="md"
+                            />
+                        </View>
+                    ) : null}
 
                     <View style={styles.divider}>
                         <View style={styles.dividerLine} />
@@ -227,5 +240,15 @@ const styles = StyleSheet.create({
         color: Colors.primary,
         fontSize: FontSize.md,
         fontWeight: FontWeight.semibold,
+    },
+    messageText: {
+        color: Colors.secondary,
+        fontSize: FontSize.sm,
+        textAlign: 'center',
+        marginBottom: Spacing.md,
+    },
+    messageContainer: {
+        marginTop: Spacing.md,
+        gap: Spacing.md,
     },
 });

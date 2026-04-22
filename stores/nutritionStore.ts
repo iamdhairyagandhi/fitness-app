@@ -1,3 +1,4 @@
+import { deleteFoodLog, saveFoodLog, saveWaterLog } from '@/lib/db';
 import { applyXPReward } from '@/lib/gamification';
 import { generateId } from '@/lib/utils';
 import type {
@@ -85,10 +86,13 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
             },
         });
 
+        // Persist to Supabase
+        saveFoodLog(entry).catch(() => { });
+
         // Award XP
         const authState = useAuthStore.getState();
         if (authState.user) {
-            authState.setUser({ ...authState.user, ...applyXPReward(authState.user, 'LOG_FOOD') });
+            authState.updateUser(applyXPReward(authState.user, 'LOG_FOOD'));
         }
 
         // Check nutrition achievements
@@ -125,6 +129,8 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
                     meals,
                 },
             });
+            // Persist deletion
+            deleteFoodLog(entryId).catch(() => { });
         }
     },
 
@@ -145,10 +151,13 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
             },
         });
 
+        // Persist to Supabase
+        saveWaterLog(log).catch(() => { });
+
         // Award XP
         const authState = useAuthStore.getState();
         if (authState.user) {
-            authState.setUser({ ...authState.user, ...applyXPReward(authState.user, 'LOG_WATER') });
+            authState.updateUser(applyXPReward(authState.user, 'LOG_WATER'));
         }
     },
 

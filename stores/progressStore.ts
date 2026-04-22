@@ -1,3 +1,4 @@
+import { saveGoal, saveMeasurement, saveProgressPhoto, saveWeightEntry } from '@/lib/db';
 import { applyXPReward } from '@/lib/gamification';
 import type {
     BodyMeasurement,
@@ -11,7 +12,7 @@ import { useAuthStore } from './authStore';
 function awardXP(reward: 'LOG_WEIGHT' | 'LOG_MEASUREMENT' | 'TAKE_PROGRESS_PHOTO' | 'COMPLETE_GOAL') {
     const authState = useAuthStore.getState();
     if (authState.user) {
-        authState.setUser({ ...authState.user, ...applyXPReward(authState.user, reward) });
+        authState.updateUser(applyXPReward(authState.user, reward));
     }
 }
 
@@ -51,6 +52,7 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
     setWeightEntries: (weightEntries) => set({ weightEntries }),
     addWeightEntry: (entry) => {
         set({ weightEntries: [entry, ...get().weightEntries] });
+        saveWeightEntry(entry).catch(() => { });
         awardXP('LOG_WEIGHT');
         checkBodyAchievements();
     },
@@ -58,6 +60,7 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
     setMeasurements: (measurements) => set({ measurements }),
     addMeasurement: (measurement) => {
         set({ measurements: [measurement, ...get().measurements] });
+        saveMeasurement(measurement).catch(() => { });
         awardXP('LOG_MEASUREMENT');
         checkBodyAchievements();
     },
@@ -65,12 +68,16 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
     setProgressPhotos: (progressPhotos) => set({ progressPhotos }),
     addProgressPhoto: (photo) => {
         set({ progressPhotos: [photo, ...get().progressPhotos] });
+        saveProgressPhoto(photo).catch(() => { });
         awardXP('TAKE_PROGRESS_PHOTO');
         checkBodyAchievements();
     },
 
     setGoals: (goals) => set({ goals }),
-    addGoal: (goal) => set({ goals: [goal, ...get().goals] }),
+    addGoal: (goal) => {
+        set({ goals: [goal, ...get().goals] });
+        saveGoal(goal).catch(() => { });
+    },
     updateGoal: (goalId, updates) => {
         set({
             goals: get().goals.map((g) =>
@@ -83,5 +90,7 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
         if (updated?.status === 'completed' || (updates.current_value && updated && updated.current_value >= updated.target_value)) {
             awardXP('COMPLETE_GOAL');
         }
+        // Persist
+        if (updated) saveGoal(updated).catch(() => { });
     },
 }));

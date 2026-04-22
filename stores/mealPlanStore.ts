@@ -1,3 +1,4 @@
+import { saveDietProfile, saveFastingSession } from '@/lib/db';
 import { generateId } from '@/lib/utils';
 import type {
     DietPhase,
@@ -234,24 +235,30 @@ export const useMealPlanStore = create<MealPlanState>((set, get) => ({
     activeFast: null,
     fastHistory: [],
 
-    setDietProfile: (profile) =>
-        set({ dietProfile: { ...get().dietProfile, ...profile } }),
+    setDietProfile: (profile) => {
+        const updated = { ...get().dietProfile, ...profile };
+        set({ dietProfile: updated });
+        saveDietProfile(updated).catch(() => {});
+    },
 
     setDietTemplate: (template) => {
         const config = DIET_TEMPLATES[template];
-        set({
-            dietProfile: {
-                ...get().dietProfile,
-                template,
-            },
-        });
+        const updated = { ...get().dietProfile, template };
+        set({ dietProfile: updated });
+        saveDietProfile(updated).catch(() => {});
     },
 
-    setDietPhase: (phase) =>
-        set({ dietProfile: { ...get().dietProfile, phase, phase_start_date: new Date().toISOString() } }),
+    setDietPhase: (phase) => {
+        const updated = { ...get().dietProfile, phase, phase_start_date: new Date().toISOString() };
+        set({ dietProfile: updated });
+        saveDietProfile(updated).catch(() => {});
+    },
 
-    toggleMacroCycling: (enabled) =>
-        set({ dietProfile: { ...get().dietProfile, macro_cycle_enabled: enabled } }),
+    toggleMacroCycling: (enabled) => {
+        const updated = { ...get().dietProfile, macro_cycle_enabled: enabled };
+        set({ dietProfile: updated });
+        saveDietProfile(updated).catch(() => {});
+    },
 
     toggleFavorite: (recipeId) => {
         const { favoriteRecipes, recipes } = get();
@@ -323,18 +330,18 @@ export const useMealPlanStore = create<MealPlanState>((set, get) => ({
     startFast: (targetHours) => {
         const now = new Date();
         const target = new Date(now.getTime() + targetHours * 60 * 60 * 1000);
-        set({
-            activeFast: {
-                id: generateId(),
-                user_id: '',
-                started_at: now.toISOString(),
-                target_end_at: target.toISOString(),
-                actual_end_at: null,
-                fasting_hours: targetHours,
-                status: 'active',
-                notes: null,
-            },
-        });
+        const session: FastingSession = {
+            id: generateId(),
+            user_id: '',
+            started_at: now.toISOString(),
+            target_end_at: target.toISOString(),
+            actual_end_at: null,
+            fasting_hours: targetHours,
+            status: 'active',
+            notes: null,
+        };
+        set({ activeFast: session });
+        saveFastingSession(session).catch(() => {});
     },
 
     endFast: () => {
@@ -349,5 +356,6 @@ export const useMealPlanStore = create<MealPlanState>((set, get) => ({
             activeFast: null,
             fastHistory: [ended, ...fastHistory],
         });
+        saveFastingSession(ended).catch(() => {});
     },
 }));

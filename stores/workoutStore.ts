@@ -1,9 +1,11 @@
 import { DEFAULT_REST_SECONDS } from '@/constants/config';
+import { savePersonalRecords, saveWorkoutSession } from '@/lib/db';
 import { applyXPReward, calculateStreak } from '@/lib/gamification';
 import { generateId } from '@/lib/utils';
 import type {
     Exercise,
     PersonalRecord,
+    UserProfile,
     WorkoutSession,
     WorkoutSessionExercise,
     WorkoutSet,
@@ -160,6 +162,10 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
             personalRecords: updatedPRs,
         });
 
+        // Persist to Supabase (fire-and-forget)
+        saveWorkoutSession(finished).catch(() => { });
+        if (newPRs.length > 0) savePersonalRecords(newPRs).catch(() => { });
+
         // Award XP for completing workout
         const authState = useAuthStore.getState();
         if (authState.user) {
@@ -167,13 +173,13 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
             const isFirst = get().recentWorkouts.length === 1; // only the one we just added
             const xpUpdate = applyXPReward(user, isFirst ? 'FIRST_WORKOUT' : 'COMPLETE_WORKOUT');
             const newStreak = calculateStreak(user.last_workout_date || null, user.streak_count);
-            authState.setUser({
-                ...user,
+
+            let mergedUpdate: Partial<UserProfile> = {
                 ...xpUpdate,
                 streak_count: newStreak,
                 workouts_completed: (user.workouts_completed || 0) + 1,
                 last_workout_date: new Date().toISOString(),
-            });
+            };
 
             // Award streak bonus XP if streak > 1
             if (newStreak > 1) {
@@ -181,8 +187,10 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
                     { ...user, ...xpUpdate },
                     'MAINTAIN_STREAK',
                 );
-                authState.setUser({ ...user, ...xpUpdate, ...streakUpdate, streak_count: newStreak, workouts_completed: (user.workouts_completed || 0) + 1, last_workout_date: new Date().toISOString() });
+                mergedUpdate = { ...mergedUpdate, ...streakUpdate };
             }
+
+            authState.updateUser(mergedUpdate);
 
             // Check achievements
             const { useRecoveryStore } = require('./recoveryStore');
