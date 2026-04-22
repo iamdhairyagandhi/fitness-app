@@ -1,7 +1,7 @@
-import { FeedCard } from '@/components/social/FeedCard';
-import { UserCard } from '@/components/social/UserCard';
 import { ChallengeCard } from '@/components/social/ChallengeCard';
+import { FeedCard } from '@/components/social/FeedCard';
 import { LeaderboardRow } from '@/components/social/LeaderboardRow';
+import { UserCard } from '@/components/social/UserCard';
 import { Input } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { useAuthStore } from '@/stores/authStore';

@@ -1,4 +1,4 @@
-import { Colors, BorderRadius, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import type { ActivityFeedItem, ReactionType } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';

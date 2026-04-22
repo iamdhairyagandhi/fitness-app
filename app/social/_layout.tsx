@@ -1,5 +1,5 @@
-import { Stack } from 'expo-router';
 import { Colors } from '@/constants/theme';
+import { Stack } from 'expo-router';
 import React from 'react';
 
 export default function SocialLayout() {

@@ -1,7 +1,7 @@
 import { Input } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
-import { useSocialStore } from '@/stores/socialStore';
 import { useAuthStore } from '@/stores/authStore';
+import { useSocialStore } from '@/stores/socialStore';
 import type { Comment } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';

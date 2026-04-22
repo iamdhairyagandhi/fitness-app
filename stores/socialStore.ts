@@ -2,16 +2,6 @@
 // Social Store — Zustand store for social features
 // ============================================================
 
-import type {
-    ActivityFeedItem,
-    ChallengeParticipant,
-    Comment,
-    LeaderboardEntry,
-    PublicProfile,
-    ReactionType,
-    SocialChallenge,
-} from '@/types';
-import { create } from 'zustand';
 import {
     deleteComment,
     fetchActivityFeed,
@@ -28,7 +18,17 @@ import {
     toggleReaction,
     unfollowUser,
 } from '@/lib/socialDb';
-import type { ActivityType } from '@/types';
+import type {
+    ActivityFeedItem,
+    ActivityType,
+    ChallengeParticipant,
+    Comment,
+    LeaderboardEntry,
+    PublicProfile,
+    ReactionType,
+    SocialChallenge,
+} from '@/types';
+import { create } from 'zustand';
 
 interface SocialState {
     // Feed

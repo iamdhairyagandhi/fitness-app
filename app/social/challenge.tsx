@@ -1,9 +1,9 @@
 import { LeaderboardRow } from '@/components/social/LeaderboardRow';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { fetchChallengeLeaderboard } from '@/lib/socialDb';
-import { useSocialStore } from '@/stores/socialStore';
 import { useAuthStore } from '@/stores/authStore';
-import type { ChallengeParticipant, SocialChallenge } from '@/types';
+import { useSocialStore } from '@/stores/socialStore';
+import type { ChallengeParticipant } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';

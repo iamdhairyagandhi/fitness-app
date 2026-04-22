@@ -1,10 +1,9 @@
 import { FeedCard } from '@/components/social/FeedCard';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
-import { fetchFollowers, fetchFollowing, fetchPublicProfile, followUser, unfollowUser } from '@/lib/socialDb';
-import { fetchUserActivities } from '@/lib/socialDb';
+import { fetchPublicProfile, fetchUserActivities, followUser, unfollowUser } from '@/lib/socialDb';
 import { useAuthStore } from '@/stores/authStore';
 import { useSocialStore } from '@/stores/socialStore';
-import type { ActivityFeedItem, FollowRelation, PublicProfile } from '@/types';
+import type { ActivityFeedItem, PublicProfile } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -84,7 +83,7 @@ export default function UserProfileScreen() {
                         item={item}
                         onReact={react}
                         onComment={(id) => router.push({ pathname: '/social/comments', params: { activityId: id } })}
-                        onProfile={() => {}}
+                        onProfile={() => { }}
                     />
                 )}
                 contentContainerStyle={styles.listContent}
