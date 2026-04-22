@@ -1,15 +1,21 @@
+import { Button } from '@/components/ui';
+import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { generateId } from '@/lib/utils';
+import { useMealPlanStore } from '@/stores/mealPlanStore';
+import type { Recipe, RecipeIngredient } from '@/types';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert,
+    Alert,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
-import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors, Spacing, FontSize, FontWeight, BorderRadius } from '@/constants/theme';
-import { Button, Card } from '@/components/ui';
-import { useMealPlanStore } from '@/stores/mealPlanStore';
-import { generateId } from '@/lib/utils';
-import type { Recipe, RecipeIngredient } from '@/types';
 
 const DIFFICULTY_OPTIONS: Recipe['difficulty'][] = ['easy', 'medium', 'hard'];
 const TAG_OPTIONS = ['Breakfast', 'Lunch', 'Dinner', 'Snack', 'High-Protein', 'Low-Carb', 'Quick', 'Meal Prep'];

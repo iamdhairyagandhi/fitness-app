@@ -1,13 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import {
-    View, Text, StyleSheet, TouchableOpacity, Alert,
-} from 'react-native';
-import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors, Spacing, FontSize, FontWeight, BorderRadius } from '@/constants/theme';
-import { Card, Button } from '@/components/ui';
+import { Button, Card } from '@/components/ui';
+import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { useMealPlanStore } from '@/stores/mealPlanStore';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import {
+    Alert,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const FASTING_PRESETS = [
     { label: '16:8', hours: 16 },

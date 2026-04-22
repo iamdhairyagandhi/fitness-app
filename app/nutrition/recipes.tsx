@@ -1,14 +1,19 @@
-import React, { useState, useCallback } from 'react';
-import {
-    View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList,
-} from 'react-native';
-import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors, Spacing, FontSize, FontWeight, BorderRadius } from '@/constants/theme';
 import { Card } from '@/components/ui';
+import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { useMealPlanStore } from '@/stores/mealPlanStore';
 import type { Recipe } from '@/types';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import React, { useCallback, useState } from 'react';
+import {
+    FlatList,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const CATEGORIES = ['All', 'Breakfast', 'Lunch', 'Dinner', 'Snack', 'High-Protein', 'Low-Carb', 'Vegan', 'Quick'];
 
@@ -31,8 +36,8 @@ export default function RecipesScreen() {
             <View style={styles.recipeImagePlaceholder}>
                 <Text style={styles.recipeEmoji}>
                     {item.tags.includes('breakfast') ? '🥣' :
-                     item.tags.includes('lunch') ? '🥗' :
-                     item.tags.includes('dinner') ? '🍽️' : '🥙'}
+                        item.tags.includes('lunch') ? '🥗' :
+                            item.tags.includes('dinner') ? '🍽️' : '🥙'}
                 </Text>
                 <View style={styles.difficultyBadge}>
                     <Text style={styles.difficultyText}>{item.difficulty}</Text>

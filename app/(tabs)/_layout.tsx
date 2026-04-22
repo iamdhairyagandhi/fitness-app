@@ -1,4 +1,4 @@
-import { Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { Colors, FontSize, FontWeight } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import React from 'react';

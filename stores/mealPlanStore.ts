@@ -1,15 +1,13 @@
 import { generateId } from '@/lib/utils';
 import type {
+    DietPhase,
     DietProfile,
     DietTemplate,
-    DietPhase,
     FastingSession,
-    MealPlan,
-    MealPlanDay,
-    Recipe,
-    GroceryList,
     GroceryItem,
-    MacroCycleDay,
+    GroceryList,
+    MealPlan,
+    Recipe
 } from '@/types';
 import { create } from 'zustand';
 

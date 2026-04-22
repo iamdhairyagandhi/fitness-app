@@ -1,13 +1,18 @@
+import { Card } from '@/components/ui';
+import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { useAuthStore } from '@/stores/authStore';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput,
+    Alert,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
-import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors, Spacing, FontSize, FontWeight, BorderRadius } from '@/constants/theme';
-import { Card, Button } from '@/components/ui';
-import { useAuthStore } from '@/stores/authStore';
 
 type UnitSystem = 'metric' | 'imperial';
 type ThemeMode = 'dark' | 'light' | 'system';
@@ -160,8 +165,8 @@ export default function SettingsScreen() {
                     {[
                         { icon: 'download-outline' as const, label: 'Export My Data', action: () => Alert.alert('Export', 'Your data export will be ready shortly.') },
                         { icon: 'trash-outline' as const, label: 'Clear All Data', action: () => Alert.alert('Warning', 'This will delete all your local data.', [{ text: 'Cancel' }, { text: 'Delete', style: 'destructive' }]) },
-                        { icon: 'document-text-outline' as const, label: 'Privacy Policy', action: () => {} },
-                        { icon: 'shield-checkmark-outline' as const, label: 'Terms of Service', action: () => {} },
+                        { icon: 'document-text-outline' as const, label: 'Privacy Policy', action: () => { } },
+                        { icon: 'shield-checkmark-outline' as const, label: 'Terms of Service', action: () => { } },
                     ].map((item, idx) => (
                         <TouchableOpacity
                             key={item.label}

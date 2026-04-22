@@ -1,14 +1,18 @@
+import { Card, ProgressRing } from '@/components/ui';
+import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { useAuthStore } from '@/stores/authStore';
+import { useProgressStore } from '@/stores/progressStore';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    View, Text, StyleSheet, ScrollView, TouchableOpacity,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
-import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors, Spacing, FontSize, FontWeight, BorderRadius } from '@/constants/theme';
-import { Card, ProgressRing } from '@/components/ui';
-import { useProgressStore } from '@/stores/progressStore';
-import { useAuthStore } from '@/stores/authStore';
 
 // Navy BF% formula (circumference method estimate)
 function estimateBF(weight_kg: number, waist_cm: number, neck_cm: number, height_cm: number, gender: string): number {
@@ -177,10 +181,10 @@ export default function BodyCompositionScreen() {
                             <Text style={styles.ffmiTitle}>📊 FFMI Interpretation</Text>
                             <Text style={styles.ffmiText}>
                                 {ffmi < 18 ? 'Below average muscularity. Focus on progressive overload and caloric surplus for growth.'
-                                : ffmi < 20 ? 'Average muscularity. Consistent training and nutrition will push you higher.'
-                                : ffmi < 22 ? 'Above average. Your training is paying off! Keep progressing.'
-                                : ffmi < 25 ? 'Excellent muscularity. You\'re in elite natural territory.'
-                                : 'Exceptional. You\'ve built an impressive physique.'}
+                                    : ffmi < 20 ? 'Average muscularity. Consistent training and nutrition will push you higher.'
+                                        : ffmi < 22 ? 'Above average. Your training is paying off! Keep progressing.'
+                                            : ffmi < 25 ? 'Excellent muscularity. You\'re in elite natural territory.'
+                                                : 'Exceptional. You\'ve built an impressive physique.'}
                             </Text>
                             <View style={styles.ffmiScale}>
                                 {[16, 18, 20, 22, 25].map((threshold) => (

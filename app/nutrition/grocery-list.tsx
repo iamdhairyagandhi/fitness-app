@@ -1,13 +1,16 @@
-import React, { useState } from 'react';
-import {
-    View, Text, StyleSheet, ScrollView, TouchableOpacity,
-} from 'react-native';
-import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors, Spacing, FontSize, FontWeight, BorderRadius } from '@/constants/theme';
-import { Card } from '@/components/ui';
+import { Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { useMealPlanStore } from '@/stores/mealPlanStore';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import React from 'react';
+import {
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function GroceryListScreen() {
     const insets = useSafeAreaInsets();

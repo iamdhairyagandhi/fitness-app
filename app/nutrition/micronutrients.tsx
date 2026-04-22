@@ -1,15 +1,19 @@
+import { Card } from '@/components/ui';
+import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { useAuthStore } from '@/stores/authStore';
+import { useNutritionStore } from '@/stores/nutritionStore';
+import type { MicronutrientEntry } from '@/types';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import {
-    View, Text, StyleSheet, ScrollView, TouchableOpacity,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
-import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors, Spacing, FontSize, FontWeight, BorderRadius } from '@/constants/theme';
-import { Card } from '@/components/ui';
-import { useNutritionStore } from '@/stores/nutritionStore';
-import { useAuthStore } from '@/stores/authStore';
-import type { MicronutrientEntry } from '@/types';
 
 // RDA baselines (for a ~2200 kcal diet)
 const VITAMIN_RDAS = [
@@ -167,8 +171,8 @@ export default function MicronutrientsScreen() {
                         {tab === 'vitamins'
                             ? 'Your Vitamin D is low. Consider 15 min of morning sun exposure or a 2000-4000 IU supplement. Adding salmon or fortified milk can help naturally.'
                             : tab === 'minerals'
-                            ? 'Potassium is your biggest gap. Add a banana, avocado, or sweet potato to boost intake by 500-700mg per serving.'
-                            : 'Fiber intake is below target. Add 2 servings of vegetables or switch to whole grains to close the gap.'}
+                                ? 'Potassium is your biggest gap. Add a banana, avocado, or sweet potato to boost intake by 500-700mg per serving.'
+                                : 'Fiber intake is below target. Add 2 servings of vegetables or switch to whole grains to close the gap.'}
                     </Text>
                 </Card>
             </ScrollView>

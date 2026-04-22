@@ -1,14 +1,19 @@
+import { Card } from '@/components/ui';
+import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { generateId } from '@/lib/utils';
+import { useRecoveryStore } from '@/stores/recoveryStore';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, ViewStyle,
+    Alert,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
-import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors, Spacing, FontSize, FontWeight, BorderRadius } from '@/constants/theme';
-import { Card, Button } from '@/components/ui';
-import { useRecoveryStore } from '@/stores/recoveryStore';
-import { generateId } from '@/lib/utils';
 
 const COMMON_SUPPLEMENTS = [
     { name: 'Creatine Monohydrate', dosage: '5g', timing: 'anytime', icon: '💊' },

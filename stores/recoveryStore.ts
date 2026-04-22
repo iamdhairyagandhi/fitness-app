@@ -1,12 +1,10 @@
 import { generateId } from '@/lib/utils';
 import type {
-    RecoveryLog,
-    MuscleGroup,
     Achievement,
     Challenge,
-    WeeklyReport,
+    RecoveryLog,
     Supplement,
-    SupplementLog,
+    SupplementLog
 } from '@/types';
 import { create } from 'zustand';
 
