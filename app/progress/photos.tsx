@@ -1,3 +1,4 @@
+import { toast } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { generateId } from '@/lib/utils';
 import { useProgressStore } from '@/stores/progressStore';
@@ -13,7 +14,6 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { toast } from '@/components/ui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const POSES: { value: ProgressPhoto['pose']; label: string; icon: string }[] = [

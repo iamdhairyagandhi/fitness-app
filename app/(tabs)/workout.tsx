@@ -1,4 +1,4 @@
-import { Button, Card, FadeIn } from '@/components/ui';
+import { Button, Card } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { formatDurationLong, formatNumber } from '@/lib/utils';
 import { useWorkoutStore } from '@/stores/workoutStore';

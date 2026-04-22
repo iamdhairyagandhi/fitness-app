@@ -1,4 +1,4 @@
-import { Button, Input } from '@/components/ui';
+import { Button, Input, toast } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { signInWithApple, signInWithGoogle } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
@@ -15,7 +15,6 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { toast } from '@/components/ui';
 
 export default function SignUpScreen() {
     const [name, setName] = useState('');

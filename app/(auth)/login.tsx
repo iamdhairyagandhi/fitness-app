@@ -1,4 +1,4 @@
-import { Button, Input } from '@/components/ui';
+import { Button, Input, toast } from '@/components/ui';
 import { ADMIN_EMAIL, ADMIN_PASSWORD } from '@/constants/config';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { signInWithApple, signInWithGoogle } from '@/lib/auth';
@@ -23,7 +23,6 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { toast } from '@/components/ui';
 
 export default function LoginScreen() {
     const [email, setEmail] = useState('');

@@ -2,11 +2,11 @@
 // Shows a banner when the device is offline
 // ─────────────────────────────────────────────────────────────
 
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import NetInfo from '@react-native-community/netinfo';
 import { Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
+import NetInfo from '@react-native-community/netinfo';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, Text } from 'react-native';
 import Animated, { FadeInUp, FadeOutUp } from 'react-native-reanimated';
 
 export function OfflineBanner() {

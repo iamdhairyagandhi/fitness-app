@@ -4,5 +4,5 @@ export { Card } from './Card';
 export { Input } from './Input';
 export { MacroBar } from './MacroBar';
 export { ProgressRing } from './ProgressRing';
-export { ToastProvider, toast } from './Toast';
+export { toast, ToastProvider } from './Toast';
 

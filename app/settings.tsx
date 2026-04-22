@@ -1,10 +1,10 @@
-import { Card } from '@/components/ui';
+import { Card, toast } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
-import { useTheme, type ThemeMode } from '@/contexts/ThemeContext';
-import { exportData, buildWorkoutExport, buildNutritionExport, buildMeasurementsExport } from '@/lib/export';
+import { useTheme } from '@/contexts/ThemeContext';
+import { buildMeasurementsExport, buildWorkoutExport, exportData } from '@/lib/export';
 import { useAuthStore } from '@/stores/authStore';
-import { useWorkoutStore } from '@/stores/workoutStore';
 import { useProgressStore } from '@/stores/progressStore';
+import { useWorkoutStore } from '@/stores/workoutStore';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
@@ -15,7 +15,6 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { toast } from '@/components/ui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type UnitSystem = 'metric' | 'imperial';
@@ -168,17 +167,19 @@ export default function SettingsScreen() {
                 <Text style={styles.sectionTitle}>Data & Privacy</Text>
                 <Card padding={0}>
                     {[
-                        { icon: 'download-outline' as const, label: 'Export My Data', action: async () => {
-                            const today = new Date().toISOString().split('T')[0];
-                            const workouts = buildWorkoutExport(recentWorkouts);
-                            const measurements = buildMeasurementsExport(weightEntries);
-                            const allData = [...workouts.map((w) => ({ type: 'workout', ...w })), ...measurements.map((m) => ({ type: 'measurement', ...m }))];
-                            if (allData.length === 0) { toast.info('No Data', 'No data to export yet.'); return; }
-                            const ok = await exportData({ format: 'csv', filename: `fitfusion-export-${today}`, data: allData });
-                            if (ok) toast.success('Exported!', 'Your data has been exported.');
-                            else toast.error('Export Failed', 'Could not export data.');
-                        }},
-                        { icon: 'trash-outline' as const, label: 'Clear All Data', action: () => toast.confirm({ title: 'Warning', message: 'This will delete all your local data.', confirmLabel: 'Delete', destructive: true, onConfirm: () => {} }) },
+                        {
+                            icon: 'download-outline' as const, label: 'Export My Data', action: async () => {
+                                const today = new Date().toISOString().split('T')[0];
+                                const workouts = buildWorkoutExport(recentWorkouts);
+                                const measurements = buildMeasurementsExport(weightEntries);
+                                const allData = [...workouts.map((w) => ({ type: 'workout', ...w })), ...measurements.map((m) => ({ type: 'measurement', ...m }))];
+                                if (allData.length === 0) { toast.info('No Data', 'No data to export yet.'); return; }
+                                const ok = await exportData({ format: 'csv', filename: `fitfusion-export-${today}`, data: allData });
+                                if (ok) toast.success('Exported!', 'Your data has been exported.');
+                                else toast.error('Export Failed', 'Could not export data.');
+                            }
+                        },
+                        { icon: 'trash-outline' as const, label: 'Clear All Data', action: () => toast.confirm({ title: 'Warning', message: 'This will delete all your local data.', confirmLabel: 'Delete', destructive: true, onConfirm: () => { } }) },
                         { icon: 'document-text-outline' as const, label: 'Privacy Policy', action: () => { } },
                         { icon: 'shield-checkmark-outline' as const, label: 'Terms of Service', action: () => { } },
                     ].map((item, idx) => (

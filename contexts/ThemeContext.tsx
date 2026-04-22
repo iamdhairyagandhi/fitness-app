@@ -2,9 +2,9 @@
 // Provides light/dark/system theme switching across the app
 // ─────────────────────────────────────────────────────────────
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { useColorScheme } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export type ThemeMode = 'dark' | 'light' | 'system';
 
@@ -105,7 +105,7 @@ const ThemeContext = createContext<ThemeContextType>({
     mode: 'dark',
     isDark: true,
     colors: DarkColors,
-    setMode: () => {},
+    setMode: () => { },
 });
 
 const THEME_STORAGE_KEY = '@fitfusion_theme_mode';
@@ -119,12 +119,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
             if (stored === 'dark' || stored === 'light' || stored === 'system') {
                 setModeState(stored);
             }
-        }).catch(() => {});
+        }).catch(() => { });
     }, []);
 
     const setMode = useCallback((newMode: ThemeMode) => {
         setModeState(newMode);
-        AsyncStorage.setItem(THEME_STORAGE_KEY, newMode).catch(() => {});
+        AsyncStorage.setItem(THEME_STORAGE_KEY, newMode).catch(() => { });
     }, []);
 
     const isDark = mode === 'dark' || (mode === 'system' && systemScheme !== 'light');
@@ -142,3 +142,4 @@ export function useTheme() {
 }
 
 export { DarkColors, LightColors };
+

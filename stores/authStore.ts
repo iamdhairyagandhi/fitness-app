@@ -3,7 +3,7 @@ import { postActivity } from '@/lib/socialDb';
 import type { UserProfile } from '@/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import { createJSONStorage, persist } from 'zustand/middleware';
 
 interface AuthState {
     user: UserProfile | null;

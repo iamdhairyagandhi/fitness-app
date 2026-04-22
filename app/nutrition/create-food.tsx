@@ -1,4 +1,4 @@
-import { Button } from '@/components/ui';
+import { Button, toast } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { generateId } from '@/lib/utils';
 import { useNutritionStore } from '@/stores/nutritionStore';
@@ -16,7 +16,6 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { toast } from '@/components/ui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function CreateFoodScreen() {

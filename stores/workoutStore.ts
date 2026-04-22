@@ -14,7 +14,7 @@ import type {
 } from '@/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import { createJSONStorage, persist } from 'zustand/middleware';
 import { useAuthStore } from './authStore';
 
 interface WorkoutState {
@@ -56,320 +56,320 @@ interface WorkoutState {
 export const useWorkoutStore = create<WorkoutState>()(
     persist(
         (set, get) => ({
-    activeWorkout: null,
-    isWorkoutActive: false,
-    restTimerSeconds: 0,
-    isRestTimerRunning: false,
-    templates: [],
-    recentWorkouts: [],
-    personalRecords: [],
-    exercises: [],
-
-    startWorkout: (name, templateId) => {
-        const workout: WorkoutSession = {
-            id: generateId(),
-            user_id: '',
-            template_id: templateId || null,
-            name,
-            started_at: new Date().toISOString(),
-            completed_at: null,
-            duration_seconds: null,
-            total_volume_kg: 0,
-            notes: null,
-            mood: null,
+            activeWorkout: null,
+            isWorkoutActive: false,
+            restTimerSeconds: 0,
+            isRestTimerRunning: false,
+            templates: [],
+            recentWorkouts: [],
+            personalRecords: [],
             exercises: [],
-        };
-        set({ activeWorkout: workout, isWorkoutActive: true });
-    },
 
-    finishWorkout: () => {
-        const { activeWorkout, personalRecords } = get();
-        if (!activeWorkout) return null;
+            startWorkout: (name, templateId) => {
+                const workout: WorkoutSession = {
+                    id: generateId(),
+                    user_id: '',
+                    template_id: templateId || null,
+                    name,
+                    started_at: new Date().toISOString(),
+                    completed_at: null,
+                    duration_seconds: null,
+                    total_volume_kg: 0,
+                    notes: null,
+                    mood: null,
+                    exercises: [],
+                };
+                set({ activeWorkout: workout, isWorkoutActive: true });
+            },
 
-        const completedAt = new Date().toISOString();
-        const startedAt = new Date(activeWorkout.started_at).getTime();
-        const durationSeconds = Math.round((Date.now() - startedAt) / 1000);
+            finishWorkout: () => {
+                const { activeWorkout, personalRecords } = get();
+                if (!activeWorkout) return null;
 
-        let totalVolume = 0;
-        const newPRs: PersonalRecord[] = [];
+                const completedAt = new Date().toISOString();
+                const startedAt = new Date(activeWorkout.started_at).getTime();
+                const durationSeconds = Math.round((Date.now() - startedAt) / 1000);
 
-        for (const ex of activeWorkout.exercises) {
-            for (const s of ex.sets) {
-                if (s.completed && s.weight_kg && s.reps) {
-                    totalVolume += s.weight_kg * s.reps;
+                let totalVolume = 0;
+                const newPRs: PersonalRecord[] = [];
 
-                    // PR auto-detection: check if this set beats existing records
-                    const estimated1RM = s.reps === 1
-                        ? s.weight_kg
-                        : Math.round(s.weight_kg * (1 + s.reps / 30));
+                for (const ex of activeWorkout.exercises) {
+                    for (const s of ex.sets) {
+                        if (s.completed && s.weight_kg && s.reps) {
+                            totalVolume += s.weight_kg * s.reps;
 
-                    const existingPR = personalRecords.find(
-                        (pr) => pr.exercise_id === ex.exercise_id
-                    );
+                            // PR auto-detection: check if this set beats existing records
+                            const estimated1RM = s.reps === 1
+                                ? s.weight_kg
+                                : Math.round(s.weight_kg * (1 + s.reps / 30));
 
-                    if (!existingPR || estimated1RM > existingPR.estimated_1rm_kg) {
-                        // Mark the set as a PR
-                        s.is_pr = true;
+                            const existingPR = personalRecords.find(
+                                (pr) => pr.exercise_id === ex.exercise_id
+                            );
 
-                        // Remove old PR for this exercise from newPRs list (keep best)
-                        const existingNewPR = newPRs.findIndex(
-                            (pr) => pr.exercise_id === ex.exercise_id
-                        );
-                        if (existingNewPR !== -1) {
-                            if (estimated1RM > newPRs[existingNewPR].estimated_1rm_kg) {
-                                newPRs[existingNewPR] = {
-                                    id: generateId(),
-                                    user_id: '',
-                                    exercise_id: ex.exercise_id,
-                                    exercise_name: ex.exercise.name,
-                                    weight_kg: s.weight_kg,
-                                    reps: s.reps,
-                                    estimated_1rm_kg: estimated1RM,
-                                    achieved_at: completedAt,
-                                };
+                            if (!existingPR || estimated1RM > existingPR.estimated_1rm_kg) {
+                                // Mark the set as a PR
+                                s.is_pr = true;
+
+                                // Remove old PR for this exercise from newPRs list (keep best)
+                                const existingNewPR = newPRs.findIndex(
+                                    (pr) => pr.exercise_id === ex.exercise_id
+                                );
+                                if (existingNewPR !== -1) {
+                                    if (estimated1RM > newPRs[existingNewPR].estimated_1rm_kg) {
+                                        newPRs[existingNewPR] = {
+                                            id: generateId(),
+                                            user_id: '',
+                                            exercise_id: ex.exercise_id,
+                                            exercise_name: ex.exercise.name,
+                                            weight_kg: s.weight_kg,
+                                            reps: s.reps,
+                                            estimated_1rm_kg: estimated1RM,
+                                            achieved_at: completedAt,
+                                        };
+                                    }
+                                } else {
+                                    newPRs.push({
+                                        id: generateId(),
+                                        user_id: '',
+                                        exercise_id: ex.exercise_id,
+                                        exercise_name: ex.exercise.name,
+                                        weight_kg: s.weight_kg,
+                                        reps: s.reps,
+                                        estimated_1rm_kg: estimated1RM,
+                                        achieved_at: completedAt,
+                                    });
+                                }
                             }
-                        } else {
-                            newPRs.push({
-                                id: generateId(),
-                                user_id: '',
-                                exercise_id: ex.exercise_id,
-                                exercise_name: ex.exercise.name,
-                                weight_kg: s.weight_kg,
-                                reps: s.reps,
-                                estimated_1rm_kg: estimated1RM,
-                                achieved_at: completedAt,
-                            });
                         }
                     }
                 }
-            }
-        }
 
-        // Merge new PRs: replace existing exercise PRs, keep others
-        const updatedPRs = [
-            ...personalRecords.filter(
-                (pr) => !newPRs.some((npr) => npr.exercise_id === pr.exercise_id)
-            ),
-            ...newPRs,
-        ];
+                // Merge new PRs: replace existing exercise PRs, keep others
+                const updatedPRs = [
+                    ...personalRecords.filter(
+                        (pr) => !newPRs.some((npr) => npr.exercise_id === pr.exercise_id)
+                    ),
+                    ...newPRs,
+                ];
 
-        const finished: WorkoutSession = {
-            ...activeWorkout,
-            completed_at: completedAt,
-            duration_seconds: durationSeconds,
-            total_volume_kg: Math.round(totalVolume),
-        };
+                const finished: WorkoutSession = {
+                    ...activeWorkout,
+                    completed_at: completedAt,
+                    duration_seconds: durationSeconds,
+                    total_volume_kg: Math.round(totalVolume),
+                };
 
-        set({
-            activeWorkout: null,
-            isWorkoutActive: false,
-            recentWorkouts: [finished, ...get().recentWorkouts],
-            personalRecords: updatedPRs,
-        });
+                set({
+                    activeWorkout: null,
+                    isWorkoutActive: false,
+                    recentWorkouts: [finished, ...get().recentWorkouts],
+                    personalRecords: updatedPRs,
+                });
 
-        // Persist to Supabase (fire-and-forget)
-        saveWorkoutSession(finished).catch(() => { });
-        if (newPRs.length > 0) savePersonalRecords(newPRs).catch(() => { });
+                // Persist to Supabase (fire-and-forget)
+                saveWorkoutSession(finished).catch(() => { });
+                if (newPRs.length > 0) savePersonalRecords(newPRs).catch(() => { });
 
-        // Post to social feed
-        const durationMin = Math.round((finished.duration_seconds || 0) / 60);
-        postActivity(
-            'workout_completed',
-            `Completed ${finished.name}`,
-            `${finished.exercises.length} exercises · ${durationMin}min · ${Math.round(totalVolume)}kg volume`,
-            { duration_min: durationMin, volume_kg: Math.round(totalVolume), exercise_count: finished.exercises.length },
-        ).catch(() => { });
-
-        if (newPRs.length > 0) {
-            for (const pr of newPRs) {
+                // Post to social feed
+                const durationMin = Math.round((finished.duration_seconds || 0) / 60);
                 postActivity(
-                    'personal_record',
-                    `New PR: ${pr.exercise_name}`,
-                    `${pr.weight_kg}kg × ${pr.reps} (Est. 1RM: ${pr.estimated_1rm_kg}kg)`,
-                    { exercise_name: pr.exercise_name, weight_kg: pr.weight_kg, reps: pr.reps },
+                    'workout_completed',
+                    `Completed ${finished.name}`,
+                    `${finished.exercises.length} exercises · ${durationMin}min · ${Math.round(totalVolume)}kg volume`,
+                    { duration_min: durationMin, volume_kg: Math.round(totalVolume), exercise_count: finished.exercises.length },
                 ).catch(() => { });
-            }
-        }
 
-        // Award XP for completing workout
-        const authState = useAuthStore.getState();
-        if (authState.user) {
-            const user = authState.user;
-            const isFirst = get().recentWorkouts.length === 1; // only the one we just added
-            const xpUpdate = applyXPReward(user, isFirst ? 'FIRST_WORKOUT' : 'COMPLETE_WORKOUT');
-            const newStreak = calculateStreak(user.last_workout_date || null, user.streak_count);
+                if (newPRs.length > 0) {
+                    for (const pr of newPRs) {
+                        postActivity(
+                            'personal_record',
+                            `New PR: ${pr.exercise_name}`,
+                            `${pr.weight_kg}kg × ${pr.reps} (Est. 1RM: ${pr.estimated_1rm_kg}kg)`,
+                            { exercise_name: pr.exercise_name, weight_kg: pr.weight_kg, reps: pr.reps },
+                        ).catch(() => { });
+                    }
+                }
 
-            let mergedUpdate: Partial<UserProfile> = {
-                ...xpUpdate,
-                streak_count: newStreak,
-                workouts_completed: (user.workouts_completed || 0) + 1,
-                last_workout_date: new Date().toISOString(),
-            };
+                // Award XP for completing workout
+                const authState = useAuthStore.getState();
+                if (authState.user) {
+                    const user = authState.user;
+                    const isFirst = get().recentWorkouts.length === 1; // only the one we just added
+                    const xpUpdate = applyXPReward(user, isFirst ? 'FIRST_WORKOUT' : 'COMPLETE_WORKOUT');
+                    const newStreak = calculateStreak(user.last_workout_date || null, user.streak_count);
 
-            // Award streak bonus XP if streak > 1
-            if (newStreak > 1) {
-                const streakUpdate = applyXPReward(
-                    { ...user, ...xpUpdate },
-                    'MAINTAIN_STREAK',
-                );
-                mergedUpdate = { ...mergedUpdate, ...streakUpdate };
-            }
+                    let mergedUpdate: Partial<UserProfile> = {
+                        ...xpUpdate,
+                        streak_count: newStreak,
+                        workouts_completed: (user.workouts_completed || 0) + 1,
+                        last_workout_date: new Date().toISOString(),
+                    };
 
-            authState.updateUser(mergedUpdate);
+                    // Award streak bonus XP if streak > 1
+                    if (newStreak > 1) {
+                        const streakUpdate = applyXPReward(
+                            { ...user, ...xpUpdate },
+                            'MAINTAIN_STREAK',
+                        );
+                        mergedUpdate = { ...mergedUpdate, ...streakUpdate };
+                    }
 
-            // Check achievements
-            const { useRecoveryStore } = require('./recoveryStore');
-            const recoveryState = useRecoveryStore.getState();
-            recoveryState.checkAchievements({
-                workouts_completed: (user.workouts_completed || 0) + 1,
-                streak_days: newStreak,
-                prs_set: updatedPRs.length,
-                total_volume: Math.round(totalVolume) + get().recentWorkouts.reduce((s, w) => s + (w.total_volume_kg || 0), 0),
-                level: (xpUpdate.level || user.level || 1),
-            });
+                    authState.updateUser(mergedUpdate);
 
-            // Update weekly challenge progress
-            const challenges = recoveryState.challenges;
-            const activeChallenge = challenges.find((c: { status: string }) => c.status === 'active');
-            if (activeChallenge) {
-                recoveryState.updateChallengeProgress(activeChallenge.id, 1);
-            }
-        }
+                    // Check achievements
+                    const { useRecoveryStore } = require('./recoveryStore');
+                    const recoveryState = useRecoveryStore.getState();
+                    recoveryState.checkAchievements({
+                        workouts_completed: (user.workouts_completed || 0) + 1,
+                        streak_days: newStreak,
+                        prs_set: updatedPRs.length,
+                        total_volume: Math.round(totalVolume) + get().recentWorkouts.reduce((s, w) => s + (w.total_volume_kg || 0), 0),
+                        level: (xpUpdate.level || user.level || 1),
+                    });
 
-        return finished;
-    },
+                    // Update weekly challenge progress
+                    const challenges = recoveryState.challenges;
+                    const activeChallenge = challenges.find((c: { status: string }) => c.status === 'active');
+                    if (activeChallenge) {
+                        recoveryState.updateChallengeProgress(activeChallenge.id, 1);
+                    }
+                }
 
-    discardWorkout: () => {
-        set({ activeWorkout: null, isWorkoutActive: false });
-    },
+                return finished;
+            },
 
-    addExerciseToWorkout: (exercise) => {
-        const { activeWorkout } = get();
-        if (!activeWorkout) return;
+            discardWorkout: () => {
+                set({ activeWorkout: null, isWorkoutActive: false });
+            },
 
-        const newExercise: WorkoutSessionExercise = {
-            id: generateId(),
-            exercise_id: exercise.id,
-            exercise,
-            order: activeWorkout.exercises.length,
-            sets: [
-                {
+            addExerciseToWorkout: (exercise) => {
+                const { activeWorkout } = get();
+                if (!activeWorkout) return;
+
+                const newExercise: WorkoutSessionExercise = {
                     id: generateId(),
-                    set_number: 1,
-                    set_type: 'normal',
-                    reps: null,
-                    weight_kg: null,
-                    duration_seconds: null,
-                    distance_meters: null,
-                    rpe: null,
-                    is_pr: false,
-                    completed: false,
-                },
-            ],
-        };
+                    exercise_id: exercise.id,
+                    exercise,
+                    order: activeWorkout.exercises.length,
+                    sets: [
+                        {
+                            id: generateId(),
+                            set_number: 1,
+                            set_type: 'normal',
+                            reps: null,
+                            weight_kg: null,
+                            duration_seconds: null,
+                            distance_meters: null,
+                            rpe: null,
+                            is_pr: false,
+                            completed: false,
+                        },
+                    ],
+                };
 
-        set({
-            activeWorkout: {
-                ...activeWorkout,
-                exercises: [...activeWorkout.exercises, newExercise],
+                set({
+                    activeWorkout: {
+                        ...activeWorkout,
+                        exercises: [...activeWorkout.exercises, newExercise],
+                    },
+                });
             },
-        });
-    },
 
-    removeExerciseFromWorkout: (exerciseIndex) => {
-        const { activeWorkout } = get();
-        if (!activeWorkout) return;
-        const exercises = [...activeWorkout.exercises];
-        exercises.splice(exerciseIndex, 1);
-        set({ activeWorkout: { ...activeWorkout, exercises } });
-    },
-
-    addSet: (exerciseIndex) => {
-        const { activeWorkout } = get();
-        if (!activeWorkout) return;
-
-        const exercises = [...activeWorkout.exercises];
-        const exercise = { ...exercises[exerciseIndex] };
-        const lastSet = exercise.sets[exercise.sets.length - 1];
-
-        exercise.sets = [
-            ...exercise.sets,
-            {
-                id: generateId(),
-                set_number: exercise.sets.length + 1,
-                set_type: 'normal',
-                reps: lastSet?.reps || null,
-                weight_kg: lastSet?.weight_kg || null,
-                duration_seconds: null,
-                distance_meters: null,
-                rpe: null,
-                is_pr: false,
-                completed: false,
+            removeExerciseFromWorkout: (exerciseIndex) => {
+                const { activeWorkout } = get();
+                if (!activeWorkout) return;
+                const exercises = [...activeWorkout.exercises];
+                exercises.splice(exerciseIndex, 1);
+                set({ activeWorkout: { ...activeWorkout, exercises } });
             },
-        ];
-        exercises[exerciseIndex] = exercise;
-        set({ activeWorkout: { ...activeWorkout, exercises } });
-    },
 
-    updateSet: (exerciseIndex, setIndex, updates) => {
-        const { activeWorkout } = get();
-        if (!activeWorkout) return;
+            addSet: (exerciseIndex) => {
+                const { activeWorkout } = get();
+                if (!activeWorkout) return;
 
-        const exercises = [...activeWorkout.exercises];
-        const exercise = { ...exercises[exerciseIndex] };
-        const sets = [...exercise.sets];
-        sets[setIndex] = { ...sets[setIndex], ...updates };
-        exercise.sets = sets;
-        exercises[exerciseIndex] = exercise;
-        set({ activeWorkout: { ...activeWorkout, exercises } });
-    },
+                const exercises = [...activeWorkout.exercises];
+                const exercise = { ...exercises[exerciseIndex] };
+                const lastSet = exercise.sets[exercise.sets.length - 1];
 
-    removeSet: (exerciseIndex, setIndex) => {
-        const { activeWorkout } = get();
-        if (!activeWorkout) return;
+                exercise.sets = [
+                    ...exercise.sets,
+                    {
+                        id: generateId(),
+                        set_number: exercise.sets.length + 1,
+                        set_type: 'normal',
+                        reps: lastSet?.reps || null,
+                        weight_kg: lastSet?.weight_kg || null,
+                        duration_seconds: null,
+                        distance_meters: null,
+                        rpe: null,
+                        is_pr: false,
+                        completed: false,
+                    },
+                ];
+                exercises[exerciseIndex] = exercise;
+                set({ activeWorkout: { ...activeWorkout, exercises } });
+            },
 
-        const exercises = [...activeWorkout.exercises];
-        const exercise = { ...exercises[exerciseIndex] };
-        exercise.sets = exercise.sets.filter((_, i) => i !== setIndex);
-        exercises[exerciseIndex] = exercise;
-        set({ activeWorkout: { ...activeWorkout, exercises } });
-    },
+            updateSet: (exerciseIndex, setIndex, updates) => {
+                const { activeWorkout } = get();
+                if (!activeWorkout) return;
 
-    toggleSetComplete: (exerciseIndex, setIndex) => {
-        const { activeWorkout } = get();
-        if (!activeWorkout) return;
+                const exercises = [...activeWorkout.exercises];
+                const exercise = { ...exercises[exerciseIndex] };
+                const sets = [...exercise.sets];
+                sets[setIndex] = { ...sets[setIndex], ...updates };
+                exercise.sets = sets;
+                exercises[exerciseIndex] = exercise;
+                set({ activeWorkout: { ...activeWorkout, exercises } });
+            },
 
-        const exercises = [...activeWorkout.exercises];
-        const exercise = { ...exercises[exerciseIndex] };
-        const sets = [...exercise.sets];
-        sets[setIndex] = { ...sets[setIndex], completed: !sets[setIndex].completed };
-        exercise.sets = sets;
-        exercises[exerciseIndex] = exercise;
-        set({ activeWorkout: { ...activeWorkout, exercises } });
-    },
+            removeSet: (exerciseIndex, setIndex) => {
+                const { activeWorkout } = get();
+                if (!activeWorkout) return;
 
-    startRestTimer: (seconds = DEFAULT_REST_SECONDS) => {
-        set({ restTimerSeconds: seconds, isRestTimerRunning: true });
-    },
+                const exercises = [...activeWorkout.exercises];
+                const exercise = { ...exercises[exerciseIndex] };
+                exercise.sets = exercise.sets.filter((_, i) => i !== setIndex);
+                exercises[exerciseIndex] = exercise;
+                set({ activeWorkout: { ...activeWorkout, exercises } });
+            },
 
-    stopRestTimer: () => {
-        set({ restTimerSeconds: 0, isRestTimerRunning: false });
-    },
+            toggleSetComplete: (exerciseIndex, setIndex) => {
+                const { activeWorkout } = get();
+                if (!activeWorkout) return;
 
-    tickRestTimer: () => {
-        const { restTimerSeconds } = get();
-        if (restTimerSeconds <= 1) {
-            set({ restTimerSeconds: 0, isRestTimerRunning: false });
-        } else {
-            set({ restTimerSeconds: restTimerSeconds - 1 });
-        }
-    },
+                const exercises = [...activeWorkout.exercises];
+                const exercise = { ...exercises[exerciseIndex] };
+                const sets = [...exercise.sets];
+                sets[setIndex] = { ...sets[setIndex], completed: !sets[setIndex].completed };
+                exercise.sets = sets;
+                exercises[exerciseIndex] = exercise;
+                set({ activeWorkout: { ...activeWorkout, exercises } });
+            },
 
-    setTemplates: (templates) => set({ templates }),
-    setRecentWorkouts: (recentWorkouts) => set({ recentWorkouts }),
-    setPersonalRecords: (personalRecords) => set({ personalRecords }),
-    setExercises: (exercises) => set({ exercises }),
-}),
+            startRestTimer: (seconds = DEFAULT_REST_SECONDS) => {
+                set({ restTimerSeconds: seconds, isRestTimerRunning: true });
+            },
+
+            stopRestTimer: () => {
+                set({ restTimerSeconds: 0, isRestTimerRunning: false });
+            },
+
+            tickRestTimer: () => {
+                const { restTimerSeconds } = get();
+                if (restTimerSeconds <= 1) {
+                    set({ restTimerSeconds: 0, isRestTimerRunning: false });
+                } else {
+                    set({ restTimerSeconds: restTimerSeconds - 1 });
+                }
+            },
+
+            setTemplates: (templates) => set({ templates }),
+            setRecentWorkouts: (recentWorkouts) => set({ recentWorkouts }),
+            setPersonalRecords: (personalRecords) => set({ personalRecords }),
+            setExercises: (exercises) => set({ exercises }),
+        }),
         {
             name: 'fitfusion-workout',
             storage: createJSONStorage(() => AsyncStorage),

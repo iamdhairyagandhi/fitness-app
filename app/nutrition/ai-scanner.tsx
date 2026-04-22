@@ -1,8 +1,8 @@
-import { Button } from '@/components/ui';
+import { Button, toast } from '@/components/ui';
 import { OPENAI_API_KEY } from '@/constants/config';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
-import { generateId } from '@/lib/utils';
 import { analyzeFoodPhoto } from '@/lib/openai';
+import { generateId } from '@/lib/utils';
 import { useNutritionStore } from '@/stores/nutritionStore';
 import type { FoodItem, MealType } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,7 +18,6 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { toast } from '@/components/ui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Demo fallback when no API key

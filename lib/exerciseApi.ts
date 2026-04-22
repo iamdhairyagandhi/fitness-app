@@ -3,8 +3,7 @@
 // For images: ExerciseDB returns GIF URLs of animated exercise demos
 // ─────────────────────────────────────────────────────────────
 
-import type { Exercise, ExerciseCategory, Equipment, MuscleGroup } from '@/types';
-import { generateId } from '@/lib/utils';
+import type { Equipment, Exercise, ExerciseCategory, MuscleGroup } from '@/types';
 
 // ── ExerciseDB API (RapidAPI) ────────────────────────────────
 

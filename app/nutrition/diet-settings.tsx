@@ -1,4 +1,4 @@
-import { Button, Card } from '@/components/ui';
+import { Button, Card, toast } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { DIET_TEMPLATES, useMealPlanStore } from '@/stores/mealPlanStore';
 import type { DietPhase, DietTemplate } from '@/types';
@@ -12,7 +12,6 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { toast } from '@/components/ui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const PHASES: { value: DietPhase; label: string; icon: string; desc: string }[] = [

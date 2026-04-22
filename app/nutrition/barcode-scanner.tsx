@@ -1,3 +1,4 @@
+import { toast } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { lookupBarcode } from '@/lib/foodApi';
 import { useNutritionStore } from '@/stores/nutritionStore';
@@ -16,7 +17,6 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { toast } from '@/components/ui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function BarcodeScannerScreen() {

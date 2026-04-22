@@ -27,8 +27,8 @@ interface ConfirmOptions {
 
 // ── Global state ─────────────────────────────────────────────
 
-let _showToast: (t: Omit<ToastMessage, 'id'>) => void = () => {};
-let _showConfirm: (opts: ConfirmOptions) => void = () => {};
+let _showToast: (t: Omit<ToastMessage, 'id'>) => void = () => { };
+let _showConfirm: (opts: ConfirmOptions) => void = () => { };
 
 export const toast = {
     success: (title: string, message?: string) => _showToast({ type: 'success', title, message }),

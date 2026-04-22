@@ -2,7 +2,7 @@
 // Exports user data as CSV or JSON using expo-file-system + expo-sharing
 // ─────────────────────────────────────────────────────────────
 
-import { documentDirectory, writeAsStringAsync, EncodingType } from 'expo-file-system/legacy';
+import { documentDirectory, EncodingType, writeAsStringAsync } from 'expo-file-system/legacy';
 import { isAvailableAsync, shareAsync } from 'expo-sharing';
 import { Platform } from 'react-native';
 
@@ -82,7 +82,7 @@ export function buildWorkoutExport(sessions: any[]): Record<string, any>[] {
         total_sets: s.exercises?.reduce((sum: number, e: any) => sum + (e.sets?.length || 0), 0) || 0,
         total_volume: s.exercises?.reduce((sum: number, e: any) =>
             sum + (e.sets?.reduce((s2: number, set: any) => s2 + ((set.weight || 0) * (set.reps || 0)), 0) || 0)
-        , 0) || 0,
+            , 0) || 0,
     }));
 }
 

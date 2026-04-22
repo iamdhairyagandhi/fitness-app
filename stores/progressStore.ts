@@ -8,7 +8,7 @@ import type {
 } from '@/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import { createJSONStorage, persist } from 'zustand/middleware';
 import { useAuthStore } from './authStore';
 
 function awardXP(reward: 'LOG_WEIGHT' | 'LOG_MEASUREMENT' | 'TAKE_PROGRESS_PHOTO' | 'COMPLETE_GOAL') {
@@ -48,56 +48,56 @@ function checkBodyAchievements() {
 export const useProgressStore = create<ProgressState>()(
     persist(
         (set, get) => ({
-    weightEntries: [],
-    measurements: [],
-    progressPhotos: [],
-    goals: [],
+            weightEntries: [],
+            measurements: [],
+            progressPhotos: [],
+            goals: [],
 
-    setWeightEntries: (weightEntries) => set({ weightEntries }),
-    addWeightEntry: (entry) => {
-        set({ weightEntries: [entry, ...get().weightEntries] });
-        saveWeightEntry(entry).catch(() => { });
-        awardXP('LOG_WEIGHT');
-        checkBodyAchievements();
-    },
+            setWeightEntries: (weightEntries) => set({ weightEntries }),
+            addWeightEntry: (entry) => {
+                set({ weightEntries: [entry, ...get().weightEntries] });
+                saveWeightEntry(entry).catch(() => { });
+                awardXP('LOG_WEIGHT');
+                checkBodyAchievements();
+            },
 
-    setMeasurements: (measurements) => set({ measurements }),
-    addMeasurement: (measurement) => {
-        set({ measurements: [measurement, ...get().measurements] });
-        saveMeasurement(measurement).catch(() => { });
-        awardXP('LOG_MEASUREMENT');
-        checkBodyAchievements();
-    },
+            setMeasurements: (measurements) => set({ measurements }),
+            addMeasurement: (measurement) => {
+                set({ measurements: [measurement, ...get().measurements] });
+                saveMeasurement(measurement).catch(() => { });
+                awardXP('LOG_MEASUREMENT');
+                checkBodyAchievements();
+            },
 
-    setProgressPhotos: (progressPhotos) => set({ progressPhotos }),
-    addProgressPhoto: (photo) => {
-        set({ progressPhotos: [photo, ...get().progressPhotos] });
-        saveProgressPhoto(photo).catch(() => { });
-        awardXP('TAKE_PROGRESS_PHOTO');
-        checkBodyAchievements();
-    },
+            setProgressPhotos: (progressPhotos) => set({ progressPhotos }),
+            addProgressPhoto: (photo) => {
+                set({ progressPhotos: [photo, ...get().progressPhotos] });
+                saveProgressPhoto(photo).catch(() => { });
+                awardXP('TAKE_PROGRESS_PHOTO');
+                checkBodyAchievements();
+            },
 
-    setGoals: (goals) => set({ goals }),
-    addGoal: (goal) => {
-        set({ goals: [goal, ...get().goals] });
-        saveGoal(goal).catch(() => { });
-    },
-    updateGoal: (goalId, updates) => {
-        set({
-            goals: get().goals.map((g) =>
-                g.id === goalId ? { ...g, ...updates } : g
-            ),
-        });
+            setGoals: (goals) => set({ goals }),
+            addGoal: (goal) => {
+                set({ goals: [goal, ...get().goals] });
+                saveGoal(goal).catch(() => { });
+            },
+            updateGoal: (goalId, updates) => {
+                set({
+                    goals: get().goals.map((g) =>
+                        g.id === goalId ? { ...g, ...updates } : g
+                    ),
+                });
 
-        // Award XP when a goal is completed
-        const updated = get().goals.find((g) => g.id === goalId);
-        if (updated?.status === 'completed' || (updates.current_value && updated && updated.current_value >= updated.target_value)) {
-            awardXP('COMPLETE_GOAL');
-        }
-        // Persist
-        if (updated) saveGoal(updated).catch(() => { });
-    },
-}),
+                // Award XP when a goal is completed
+                const updated = get().goals.find((g) => g.id === goalId);
+                if (updated?.status === 'completed' || (updates.current_value && updated && updated.current_value >= updated.target_value)) {
+                    awardXP('COMPLETE_GOAL');
+                }
+                // Persist
+                if (updated) saveGoal(updated).catch(() => { });
+            },
+        }),
         {
             name: 'fitfusion-progress',
             storage: createJSONStorage(() => AsyncStorage),

@@ -1,4 +1,4 @@
-import { Button, Card } from '@/components/ui';
+import { Button, Card, toast } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { formatDuration } from '@/lib/utils';
 import { useWorkoutStore } from '@/stores/workoutStore';
@@ -15,7 +15,6 @@ import {
     Vibration,
     View,
 } from 'react-native';
-import { toast } from '@/components/ui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Sample exercises for the MVP

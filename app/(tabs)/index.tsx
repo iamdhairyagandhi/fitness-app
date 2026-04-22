@@ -94,104 +94,104 @@ export default function HomeScreen() {
 
                 {/* Calorie Ring Card */}
                 <FadeIn delay={100}>
-                <Card style={styles.calorieCard}>
-                    <View style={styles.calorieRow}>
-                        <ProgressRing
-                            progress={caloriesPct}
-                            size={130}
-                            strokeWidth={10}
-                            color={Colors.calories}
-                            value={formatNumber(caloriesRemaining)}
-                            label="remaining"
-                            sublabel="kcal"
-                        />
-                        <View style={styles.calorieDetails}>
-                            <View style={styles.calorieItem}>
-                                <Text style={styles.calorieItemLabel}>Eaten</Text>
-                                <Text style={styles.calorieItemValue}>
-                                    {formatNumber(todaySummary.total_calories)}
-                                </Text>
-                            </View>
-                            <View style={styles.calorieDivider} />
-                            <View style={styles.calorieItem}>
-                                <Text style={styles.calorieItemLabel}>Target</Text>
-                                <Text style={styles.calorieItemValue}>
-                                    {formatNumber(calorieTarget)}
-                                </Text>
-                            </View>
-                            <View style={styles.calorieDivider} />
-                            <View style={styles.calorieItem}>
-                                <Text style={styles.calorieItemLabel}>Burned</Text>
-                                <Text style={styles.calorieItemValue}>0</Text>
+                    <Card style={styles.calorieCard}>
+                        <View style={styles.calorieRow}>
+                            <ProgressRing
+                                progress={caloriesPct}
+                                size={130}
+                                strokeWidth={10}
+                                color={Colors.calories}
+                                value={formatNumber(caloriesRemaining)}
+                                label="remaining"
+                                sublabel="kcal"
+                            />
+                            <View style={styles.calorieDetails}>
+                                <View style={styles.calorieItem}>
+                                    <Text style={styles.calorieItemLabel}>Eaten</Text>
+                                    <Text style={styles.calorieItemValue}>
+                                        {formatNumber(todaySummary.total_calories)}
+                                    </Text>
+                                </View>
+                                <View style={styles.calorieDivider} />
+                                <View style={styles.calorieItem}>
+                                    <Text style={styles.calorieItemLabel}>Target</Text>
+                                    <Text style={styles.calorieItemValue}>
+                                        {formatNumber(calorieTarget)}
+                                    </Text>
+                                </View>
+                                <View style={styles.calorieDivider} />
+                                <View style={styles.calorieItem}>
+                                    <Text style={styles.calorieItemLabel}>Burned</Text>
+                                    <Text style={styles.calorieItemValue}>0</Text>
+                                </View>
                             </View>
                         </View>
-                    </View>
 
-                    {/* Macro bars */}
-                    <View style={styles.macros}>
-                        <MacroBar
-                            label="Protein"
-                            current={todaySummary.total_protein_g}
-                            target={proteinTarget}
-                            color={Colors.protein}
-                        />
-                        <MacroBar
-                            label="Carbs"
-                            current={todaySummary.total_carbs_g}
-                            target={carbsTarget}
-                            color={Colors.carbs}
-                        />
-                        <MacroBar
-                            label="Fat"
-                            current={todaySummary.total_fat_g}
-                            target={fatTarget}
-                            color={Colors.fat}
-                        />
-                    </View>
-                </Card>
+                        {/* Macro bars */}
+                        <View style={styles.macros}>
+                            <MacroBar
+                                label="Protein"
+                                current={todaySummary.total_protein_g}
+                                target={proteinTarget}
+                                color={Colors.protein}
+                            />
+                            <MacroBar
+                                label="Carbs"
+                                current={todaySummary.total_carbs_g}
+                                target={carbsTarget}
+                                color={Colors.carbs}
+                            />
+                            <MacroBar
+                                label="Fat"
+                                current={todaySummary.total_fat_g}
+                                target={fatTarget}
+                                color={Colors.fat}
+                            />
+                        </View>
+                    </Card>
                 </FadeIn>
 
                 {/* Quick Actions */}
                 <FadeIn delay={200}>
-                <Text style={styles.sectionTitle}>Quick Actions</Text>
-                <View style={styles.quickActions}>
-                    <TouchableOpacity
-                        style={styles.quickAction}
-                        onPress={() => router.push('/workout/active')}
-                    >
-                        <View style={[styles.quickActionIcon, { backgroundColor: Colors.primary + '15' }]}>
-                            <Ionicons name="barbell" size={24} color={Colors.primary} />
-                        </View>
-                        <Text style={styles.quickActionText}>Start{'\n'}Workout</Text>
-                    </TouchableOpacity>
+                    <Text style={styles.sectionTitle}>Quick Actions</Text>
+                    <View style={styles.quickActions}>
+                        <TouchableOpacity
+                            style={styles.quickAction}
+                            onPress={() => router.push('/workout/active')}
+                        >
+                            <View style={[styles.quickActionIcon, { backgroundColor: Colors.primary + '15' }]}>
+                                <Ionicons name="barbell" size={24} color={Colors.primary} />
+                            </View>
+                            <Text style={styles.quickActionText}>Start{'\n'}Workout</Text>
+                        </TouchableOpacity>
 
-                    <TouchableOpacity
-                        style={styles.quickAction}
-                        onPress={() => router.push('/(tabs)/nutrition')}
-                    >
-                        <View style={[styles.quickActionIcon, { backgroundColor: Colors.protein + '15' }]}>
-                            <Ionicons name="restaurant" size={24} color={Colors.protein} />
-                        </View>
-                        <Text style={styles.quickActionText}>Log{'\n'}Food</Text>
-                    </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.quickAction}
+                            onPress={() => router.push('/(tabs)/nutrition')}
+                        >
+                            <View style={[styles.quickActionIcon, { backgroundColor: Colors.protein + '15' }]}>
+                                <Ionicons name="restaurant" size={24} color={Colors.protein} />
+                            </View>
+                            <Text style={styles.quickActionText}>Log{'\n'}Food</Text>
+                        </TouchableOpacity>
 
-                    <TouchableOpacity
-                        style={styles.quickAction}
-                        onPress={() => router.push('/(tabs)/progress')}
-                    >
-                        <View style={[styles.quickActionIcon, { backgroundColor: Colors.success + '15' }]}>
-                            <Ionicons name="scale" size={24} color={Colors.success} />
-                        </View>
-                        <Text style={styles.quickActionText}>Log{'\n'}Weight</Text>
-                    </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.quickAction}
+                            onPress={() => router.push('/(tabs)/progress')}
+                        >
+                            <View style={[styles.quickActionIcon, { backgroundColor: Colors.success + '15' }]}>
+                                <Ionicons name="scale" size={24} color={Colors.success} />
+                            </View>
+                            <Text style={styles.quickActionText}>Log{'\n'}Weight</Text>
+                        </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.quickAction} onPress={() => logWater(250)}>
-                        <View style={[styles.quickActionIcon, { backgroundColor: Colors.secondary + '15' }]}>
-                            <Ionicons name="water" size={24} color={Colors.secondary} />
-                        </View>
-                        <Text style={styles.quickActionText}>Log{'\n'}Water</Text>
-                    </TouchableOpacity>
-                </View>
+                        <TouchableOpacity style={styles.quickAction} onPress={() => logWater(250)}>
+                            <View style={[styles.quickActionIcon, { backgroundColor: Colors.secondary + '15' }]}>
+                                <Ionicons name="water" size={24} color={Colors.secondary} />
+                            </View>
+                            <Text style={styles.quickActionText}>Log{'\n'}Water</Text>
+                        </TouchableOpacity>
+                    </View>
                 </FadeIn>
 
                 {/* Water Tracker Mini */}

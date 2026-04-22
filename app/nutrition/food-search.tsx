@@ -1,4 +1,4 @@
-import { Button } from '@/components/ui';
+import { Button, toast } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { searchFoodsCombined } from '@/lib/foodApi';
 import { useNutritionStore } from '@/stores/nutritionStore';
@@ -15,7 +15,6 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { toast } from '@/components/ui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Built-in food database for offline fallback

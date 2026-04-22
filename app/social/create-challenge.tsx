@@ -1,4 +1,4 @@
-import { Button, Input } from '@/components/ui';
+import { Button, Input, toast } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { createChallenge } from '@/lib/socialDb';
 import { useSocialStore } from '@/stores/socialStore';
@@ -15,7 +15,6 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { toast } from '@/components/ui';
 
 const CHALLENGE_TYPES: { key: ChallengeType; label: string; icon: string; defaultUnit: string }[] = [
     { key: 'workout_count', label: 'Workout Count', icon: 'barbell', defaultUnit: 'workouts' },
