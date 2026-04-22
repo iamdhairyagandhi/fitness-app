@@ -6,7 +6,9 @@ import type {
     ProgressPhoto,
     WeightEntry,
 } from '@/types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { useAuthStore } from './authStore';
 
 function awardXP(reward: 'LOG_WEIGHT' | 'LOG_MEASUREMENT' | 'TAKE_PROGRESS_PHOTO' | 'COMPLETE_GOAL') {
@@ -43,7 +45,9 @@ function checkBodyAchievements() {
     });
 }
 
-export const useProgressStore = create<ProgressState>((set, get) => ({
+export const useProgressStore = create<ProgressState>()(
+    persist(
+        (set, get) => ({
     weightEntries: [],
     measurements: [],
     progressPhotos: [],
@@ -93,4 +97,15 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
         // Persist
         if (updated) saveGoal(updated).catch(() => { });
     },
-}));
+}),
+        {
+            name: 'fitfusion-progress',
+            storage: createJSONStorage(() => AsyncStorage),
+            partialize: (state) => ({
+                weightEntries: state.weightEntries,
+                measurements: state.measurements,
+                goals: state.goals,
+            }),
+        }
+    )
+);

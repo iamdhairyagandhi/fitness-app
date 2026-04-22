@@ -6,13 +6,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    Alert,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from 'react-native';
+import { toast } from '@/components/ui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const SORENESS_MUSCLES: { id: MuscleGroup; label: string }[] = [
@@ -80,7 +80,8 @@ export default function RecoveryLogScreen() {
             hrv: null,
             notes: null,
         });
-        Alert.alert('Logged!', 'Recovery check-in saved.', [{ text: 'OK', onPress: () => router.back() }]);
+        toast.success('Logged!', 'Recovery check-in saved.');
+        router.back();
     };
 
     const RatingRow = ({

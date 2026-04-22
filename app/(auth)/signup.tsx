@@ -7,7 +7,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    Alert,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -16,6 +15,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { toast } from '@/components/ui';
 
 export default function SignUpScreen() {
     const [name, setName] = useState('');
@@ -27,12 +27,12 @@ export default function SignUpScreen() {
 
     const handleSignUp = async () => {
         if (!name.trim() || !email.trim() || !password.trim()) {
-            Alert.alert('Error', 'Please fill in all fields');
+            toast.error('Error', 'Please fill in all fields');
             return;
         }
 
         if (password.length < 6) {
-            Alert.alert('Error', 'Password must be at least 6 characters');
+            toast.error('Error', 'Password must be at least 6 characters');
             return;
         }
 
@@ -46,7 +46,7 @@ export default function SignUpScreen() {
         });
 
         if (error) {
-            Alert.alert('Sign Up Failed', error.message);
+            toast.error('Sign Up Failed', error.message);
             setMessage(error.message);
             setLoading(false);
             return;
@@ -57,7 +57,7 @@ export default function SignUpScreen() {
             router.replace('/(auth)/onboarding');
         } else {
             const msg = 'Check your email for a confirmation link, then come back and log in.';
-            Alert.alert('Check your email', msg);
+            toast.info('Check your email', msg);
             setMessage(msg);
         }
         setLoading(false);

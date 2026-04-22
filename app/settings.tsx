@@ -1,28 +1,33 @@
 import { Card } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { useTheme, type ThemeMode } from '@/contexts/ThemeContext';
+import { exportData, buildWorkoutExport, buildNutritionExport, buildMeasurementsExport } from '@/lib/export';
 import { useAuthStore } from '@/stores/authStore';
+import { useWorkoutStore } from '@/stores/workoutStore';
+import { useProgressStore } from '@/stores/progressStore';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    Alert,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View
 } from 'react-native';
+import { toast } from '@/components/ui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type UnitSystem = 'metric' | 'imperial';
-type ThemeMode = 'dark' | 'light' | 'system';
 
 export default function SettingsScreen() {
     const insets = useSafeAreaInsets();
     const { user, setUser } = useAuthStore();
+    const { mode: theme, setMode: setTheme } = useTheme();
+    const recentWorkouts = useWorkoutStore((s) => s.recentWorkouts);
+    const weightEntries = useProgressStore((s) => s.weightEntries);
 
     const [units, setUnits] = useState<UnitSystem>('metric');
-    const [theme, setTheme] = useState<ThemeMode>('dark');
     const [restTimer, setRestTimer] = useState(user?.preferred_rest_seconds || 90);
     const [notifications, setNotifications] = useState({
         workoutReminder: true,
@@ -39,7 +44,7 @@ export default function SettingsScreen() {
 
     const handleSave = () => {
         setUser({ preferred_rest_seconds: restTimer } as any);
-        Alert.alert('Saved', 'Your settings have been updated.');
+        toast.success('Saved', 'Your settings have been updated.');
         router.back();
     };
 
@@ -163,8 +168,17 @@ export default function SettingsScreen() {
                 <Text style={styles.sectionTitle}>Data & Privacy</Text>
                 <Card padding={0}>
                     {[
-                        { icon: 'download-outline' as const, label: 'Export My Data', action: () => Alert.alert('Export', 'Your data export will be ready shortly.') },
-                        { icon: 'trash-outline' as const, label: 'Clear All Data', action: () => Alert.alert('Warning', 'This will delete all your local data.', [{ text: 'Cancel' }, { text: 'Delete', style: 'destructive' }]) },
+                        { icon: 'download-outline' as const, label: 'Export My Data', action: async () => {
+                            const today = new Date().toISOString().split('T')[0];
+                            const workouts = buildWorkoutExport(recentWorkouts);
+                            const measurements = buildMeasurementsExport(weightEntries);
+                            const allData = [...workouts.map((w) => ({ type: 'workout', ...w })), ...measurements.map((m) => ({ type: 'measurement', ...m }))];
+                            if (allData.length === 0) { toast.info('No Data', 'No data to export yet.'); return; }
+                            const ok = await exportData({ format: 'csv', filename: `fitfusion-export-${today}`, data: allData });
+                            if (ok) toast.success('Exported!', 'Your data has been exported.');
+                            else toast.error('Export Failed', 'Could not export data.');
+                        }},
+                        { icon: 'trash-outline' as const, label: 'Clear All Data', action: () => toast.confirm({ title: 'Warning', message: 'This will delete all your local data.', confirmLabel: 'Delete', destructive: true, onConfirm: () => {} }) },
                         { icon: 'document-text-outline' as const, label: 'Privacy Policy', action: () => { } },
                         { icon: 'shield-checkmark-outline' as const, label: 'Terms of Service', action: () => { } },
                     ].map((item, idx) => (
@@ -180,7 +194,7 @@ export default function SettingsScreen() {
                     ))}
                 </Card>
 
-                <Text style={styles.version}>FitFusion v5.0.0 (Phase 5)</Text>
+                <Text style={styles.version}>FitFusion v6.0.0 (Phase A)</Text>
             </ScrollView>
         </View>
     );

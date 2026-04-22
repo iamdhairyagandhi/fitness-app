@@ -2,22 +2,26 @@ import { Button } from '@/components/ui';
 import { OPENAI_API_KEY } from '@/constants/config';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { generateId } from '@/lib/utils';
+import { analyzeFoodPhoto } from '@/lib/openai';
 import { useNutritionStore } from '@/stores/nutritionStore';
 import type { FoodItem, MealType } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
     ActivityIndicator,
-    Alert,
+    Image,
+    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View
 } from 'react-native';
+import { toast } from '@/components/ui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-// Simulated AI food recognition results for demo
+// Demo fallback when no API key
 const DEMO_RESULTS: FoodItem[] = [
     {
         id: generateId(), name: 'Grilled Chicken Salad', brand: 'AI Detected', barcode: null,
@@ -33,6 +37,37 @@ const DEMO_RESULTS: FoodItem[] = [
     },
 ];
 
+function parseAIResponse(response: string): FoodItem[] {
+    try {
+        // Try to extract JSON array from the response
+        const jsonMatch = response.match(/\[[\s\S]*\]/);
+        if (!jsonMatch) return [];
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (!Array.isArray(parsed)) return [];
+
+        return parsed.map((item: any) => ({
+            id: generateId(),
+            name: item.name || 'Unknown Food',
+            brand: 'AI Detected',
+            barcode: null,
+            serving_size_g: item.serving_size_g || item.serving_grams || 100,
+            serving_unit: item.serving_unit || 'g',
+            calories: Math.round(item.calories || 0),
+            protein_g: Math.round((item.protein_g || item.protein || 0) * 10) / 10,
+            carbs_g: Math.round((item.carbs_g || item.carbs || 0) * 10) / 10,
+            fat_g: Math.round((item.fat_g || item.fat || 0) * 10) / 10,
+            fiber_g: Math.round((item.fiber_g || item.fiber || 0) * 10) / 10,
+            sugar_g: Math.round((item.sugar_g || item.sugar || 0) * 10) / 10,
+            sodium_mg: Math.round(item.sodium_mg || 0),
+            is_custom: false,
+            user_id: null,
+            image_url: null,
+        }));
+    } catch {
+        return [];
+    }
+}
+
 export default function AIScannerScreen() {
     const insets = useSafeAreaInsets();
     const { logFood } = useNutritionStore();
@@ -41,33 +76,73 @@ export default function AIScannerScreen() {
     const [results, setResults] = useState<FoodItem[]>([]);
     const [selectedMeal, setSelectedMeal] = useState<MealType>('lunch');
 
-    const handleTakePhoto = async () => {
-        // In production: use expo-image-picker
-        // For MVP: simulate with demo data
-        simulateAIScan();
-    };
+    const pickImage = async (useCamera: boolean) => {
+        try {
+            const options: ImagePicker.ImagePickerOptions = {
+                mediaTypes: ['images'],
+                quality: 0.7,
+                base64: true,
+                allowsEditing: true,
+                aspect: [4, 3],
+            };
 
-    const handlePickImage = async () => {
-        simulateAIScan();
-    };
+            let result;
+            if (useCamera) {
+                const perm = await ImagePicker.requestCameraPermissionsAsync();
+                if (!perm.granted) {
+                    toast.warning('Permission', 'Camera permission is required');
+                    return;
+                }
+                result = await ImagePicker.launchCameraAsync(options);
+            } else {
+                const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                if (!perm.granted) {
+                    toast.warning('Permission', 'Gallery permission is required');
+                    return;
+                }
+                result = await ImagePicker.launchImageLibraryAsync(options);
+            }
 
-    const simulateAIScan = () => {
-        setIsAnalyzing(true);
-        setImageUri('demo');
-        // Simulate API call delay
-        setTimeout(() => {
-            setResults(DEMO_RESULTS);
+            if (result.canceled || !result.assets?.[0]) return;
+
+            const asset = result.assets[0];
+            setImageUri(asset.uri);
+            setIsAnalyzing(true);
+            setResults([]);
+
+            if (OPENAI_API_KEY && asset.base64) {
+                // Real AI analysis
+                try {
+                    const aiResponse = await analyzeFoodPhoto(asset.base64);
+                    const parsed = parseAIResponse(aiResponse);
+                    if (parsed.length > 0) {
+                        setResults(parsed);
+                    } else {
+                        toast.warning('AI Result', 'Could not identify foods clearly. Try a clearer photo.');
+                        setResults(DEMO_RESULTS);
+                    }
+                } catch (err) {
+                    console.warn('AI analysis failed:', err);
+                    toast.error('AI Error', 'Analysis failed. Showing demo results.');
+                    setResults(DEMO_RESULTS);
+                }
+            } else {
+                // Demo mode
+                await new Promise((r) => setTimeout(r, 1500));
+                setResults(DEMO_RESULTS);
+            }
             setIsAnalyzing(false);
-        }, 2000);
+        } catch (err) {
+            console.warn('Image pick error:', err);
+            setIsAnalyzing(false);
+            toast.error('Error', 'Failed to capture image');
+        }
     };
 
     const handleLogFood = (food: FoodItem) => {
         logFood(food, 1, selectedMeal);
-        Alert.alert(
-            'Logged!',
-            `${food.name} added to ${selectedMeal}`,
-            [{ text: 'OK', onPress: () => router.back() }]
-        );
+        toast.success('Logged!', `${food.name} added to ${selectedMeal}`);
+        router.back();
     };
 
     return (
@@ -88,16 +163,18 @@ export default function AIScannerScreen() {
                         <Ionicons name="restaurant-outline" size={60} color={Colors.primary} />
                         <Text style={styles.captureTitle}>Snap your meal</Text>
                         <Text style={styles.captureSubtext}>
-                            AI will identify the food and estimate nutrition values
+                            {OPENAI_API_KEY
+                                ? 'AI will identify the food and estimate nutrition values'
+                                : 'Demo mode — set EXPO_PUBLIC_OPENAI_API_KEY for real analysis'}
                         </Text>
                     </View>
 
                     <View style={styles.captureButtons}>
-                        <TouchableOpacity style={styles.captureBtn} onPress={handleTakePhoto}>
+                        <TouchableOpacity style={styles.captureBtn} onPress={() => pickImage(true)}>
                             <Ionicons name="camera" size={28} color={Colors.text} />
                             <Text style={styles.captureBtnText}>Take Photo</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.captureBtn} onPress={handlePickImage}>
+                        <TouchableOpacity style={styles.captureBtn} onPress={() => pickImage(false)}>
                             <Ionicons name="images" size={28} color={Colors.text} />
                             <Text style={styles.captureBtnText}>Gallery</Text>
                         </TouchableOpacity>
@@ -115,7 +192,10 @@ export default function AIScannerScreen() {
                 </View>
             ) : (
                 /* Results Area */
-                <View style={styles.resultsArea}>
+                <ScrollView style={styles.resultsArea} contentContainerStyle={{ paddingBottom: Spacing.xxl }}>
+                    {imageUri && imageUri !== 'demo' && (
+                        <Image source={{ uri: imageUri }} style={styles.capturedImage} resizeMode="cover" />
+                    )}
                     {isAnalyzing ? (
                         <View style={styles.analyzing}>
                             <ActivityIndicator size="large" color={Colors.primary} />
@@ -185,7 +265,7 @@ export default function AIScannerScreen() {
                             </View>
                         </>
                     )}
-                </View>
+                </ScrollView>
             )}
         </View>
     );
@@ -226,7 +306,11 @@ const styles = StyleSheet.create({
 
     // Results
     resultsArea: { flex: 1, paddingHorizontal: Spacing.lg },
-    analyzing: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.lg },
+    capturedImage: {
+        width: '100%', height: 200, borderRadius: BorderRadius.lg,
+        marginBottom: Spacing.lg, backgroundColor: Colors.surface,
+    },
+    analyzing: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.lg, paddingTop: Spacing.huge },
     analyzingText: { color: Colors.text, fontSize: FontSize.lg, fontWeight: FontWeight.semibold },
     analyzingSubtext: { color: Colors.textTertiary, fontSize: FontSize.sm },
 

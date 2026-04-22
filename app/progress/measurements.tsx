@@ -7,7 +7,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    Alert,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -17,6 +16,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { toast } from '@/components/ui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const MEASUREMENT_FIELDS: { key: keyof BodyMeasurement; label: string; icon: string }[] = [
@@ -50,7 +50,7 @@ export default function MeasurementsScreen() {
     const handleSave = () => {
         const hasAnyValue = Object.values(values).some((v) => v.trim() !== '');
         if (!hasAnyValue) {
-            Alert.alert('No Data', 'Enter at least one measurement');
+            toast.error('No Data', 'Enter at least one measurement');
             return;
         }
 
@@ -72,9 +72,8 @@ export default function MeasurementsScreen() {
         };
 
         addMeasurement(measurement);
-        Alert.alert('Saved!', 'Measurements recorded', [
-            { text: 'OK', onPress: () => router.back() },
-        ]);
+        toast.success('Saved!', 'Measurements recorded');
+        router.back();
     };
 
     const getDelta = (key: string, currentVal: string): string | null => {

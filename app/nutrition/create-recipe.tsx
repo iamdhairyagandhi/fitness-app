@@ -7,7 +7,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    Alert,
     ScrollView,
     StyleSheet,
     Text,
@@ -15,6 +14,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { toast } from '@/components/ui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const DIFFICULTY_OPTIONS: Recipe['difficulty'][] = ['easy', 'medium', 'hard'];
@@ -72,11 +72,11 @@ export default function CreateRecipeScreen() {
 
     const handleSave = () => {
         if (!name.trim()) {
-            Alert.alert('Required', 'Please enter a recipe name.');
+            toast.error('Required', 'Please enter a recipe name.');
             return;
         }
         if (!calories || !protein || !carbs || !fat) {
-            Alert.alert('Required', 'Please enter macros per serving.');
+            toast.error('Required', 'Please enter macros per serving.');
             return;
         }
 
@@ -122,9 +122,8 @@ export default function CreateRecipeScreen() {
         };
 
         addCustomRecipe(recipe);
-        Alert.alert('Saved!', `${recipe.name} has been added to your recipes.`, [
-            { text: 'OK', onPress: () => router.back() },
-        ]);
+        toast.success('Saved!', `${recipe.name} has been added to your recipes.`);
+        router.back();
     };
 
     return (

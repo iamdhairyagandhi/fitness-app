@@ -8,7 +8,9 @@ import type {
     MealType,
     WaterLog,
 } from '@/types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { useAuthStore } from './authStore';
 
 interface NutritionState {
@@ -48,7 +50,9 @@ const emptyDay = (): DailyNutritionSummary => ({
     },
 });
 
-export const useNutritionStore = create<NutritionState>((set, get) => ({
+export const useNutritionStore = create<NutritionState>()(
+    persist(
+        (set, get) => ({
     todaySummary: emptyDay(),
     waterLogs: [],
     searchResults: [],
@@ -166,4 +170,15 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
     setRecentFoods: (foods) => set({ recentFoods: foods }),
     setIsSearching: (isSearching) => set({ isSearching }),
     resetDaily: () => set({ todaySummary: emptyDay(), waterLogs: [] }),
-}));
+}),
+        {
+            name: 'fitfusion-nutrition',
+            storage: createJSONStorage(() => AsyncStorage),
+            partialize: (state) => ({
+                todaySummary: state.todaySummary,
+                waterLogs: state.waterLogs,
+                recentFoods: state.recentFoods,
+            }),
+        }
+    )
+);

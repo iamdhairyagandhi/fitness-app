@@ -7,7 +7,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    Alert,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -16,6 +15,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { toast } from '@/components/ui';
 
 const CHALLENGE_TYPES: { key: ChallengeType; label: string; icon: string; defaultUnit: string }[] = [
     { key: 'workout_count', label: 'Workout Count', icon: 'barbell', defaultUnit: 'workouts' },
@@ -38,7 +38,7 @@ export default function CreateChallengeScreen() {
 
     const handleCreate = async () => {
         if (!title.trim() || !targetValue.trim()) {
-            Alert.alert('Error', 'Title and target value are required');
+            toast.error('Error', 'Title and target value are required');
             return;
         }
 
@@ -61,7 +61,7 @@ export default function CreateChallengeScreen() {
             await loadChallenges();
             router.back();
         } else {
-            Alert.alert('Error', 'Failed to create challenge');
+            toast.error('Error', 'Failed to create challenge');
         }
     };
 

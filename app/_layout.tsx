@@ -1,4 +1,5 @@
 import { Colors } from '@/constants/theme';
+import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { hydrateAllStores } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
@@ -8,6 +9,8 @@ import { useProgressStore } from '@/stores/progressStore';
 import { useRecoveryStore } from '@/stores/recoveryStore';
 import { useWorkoutStore } from '@/stores/workoutStore';
 import type { FoodLogEntry, MealType } from '@/types';
+import { ToastProvider } from '@/components/ui';
+import { OfflineBanner } from '@/components/ui/OfflineBanner';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -157,7 +160,8 @@ function RootLayoutContent() {
 
     return (
         <>
-            <StatusBar style="light" />
+            <ThemedStatusBar />
+            <OfflineBanner />
             <Stack
                 screenOptions={{
                     headerShown: false,
@@ -193,11 +197,20 @@ function RootLayoutContent() {
     );
 }
 
+function ThemedStatusBar() {
+    const { isDark } = useTheme();
+    return <StatusBar style={isDark ? 'light' : 'dark'} />;
+}
+
 export default function RootLayout() {
     return (
-        <QueryClientProvider client={queryClient}>
-            <RootLayoutContent />
-        </QueryClientProvider>
+        <ThemeProvider>
+            <QueryClientProvider client={queryClient}>
+                <ToastProvider>
+                    <RootLayoutContent />
+                </ToastProvider>
+            </QueryClientProvider>
+        </ThemeProvider>
     );
 }
 

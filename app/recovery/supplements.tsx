@@ -6,13 +6,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    Alert,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View
 } from 'react-native';
+import { toast } from '@/components/ui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const COMMON_SUPPLEMENTS = [
@@ -49,10 +49,13 @@ export default function SupplementsScreen() {
     };
 
     const handleRemove = (id: string, name: string) => {
-        Alert.alert('Remove', `Remove ${name} from your stack?`, [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Remove', style: 'destructive', onPress: () => removeSupplement(id) },
-        ]);
+        toast.confirm({
+            title: 'Remove',
+            message: `Remove ${name} from your stack?`,
+            confirmLabel: 'Remove',
+            destructive: true,
+            onConfirm: () => removeSupplement(id),
+        });
     };
 
     return (

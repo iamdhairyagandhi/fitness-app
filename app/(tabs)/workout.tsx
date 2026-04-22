@@ -1,11 +1,12 @@
-import { Button, Card } from '@/components/ui';
+import { Button, Card, FadeIn } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { formatDurationLong, formatNumber } from '@/lib/utils';
 import { useWorkoutStore } from '@/stores/workoutStore';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
+    RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
@@ -61,6 +62,8 @@ export default function WorkoutScreen() {
     const insets = useSafeAreaInsets();
     const [activeTab, setActiveTab] = useState<'templates' | 'history' | 'exercises'>('templates');
     const recentWorkouts = useWorkoutStore((s) => s.recentWorkouts);
+    const [refreshing, setRefreshing] = useState(false);
+    const onRefresh = useCallback(() => { setRefreshing(true); setTimeout(() => setRefreshing(false), 1000); }, []);
 
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -99,6 +102,9 @@ export default function WorkoutScreen() {
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} colors={[Colors.primary]} />
+                }
             >
                 {/* Templates Tab */}
                 {activeTab === 'templates' && (

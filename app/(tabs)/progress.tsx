@@ -8,7 +8,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    Alert,
     Dimensions,
     ScrollView,
     StyleSheet,
@@ -16,6 +15,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { toast } from '@/components/ui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
@@ -41,7 +41,7 @@ export default function ProgressScreen() {
     const handleLogWeight = () => {
         const weight = parseFloat(weightInput);
         if (isNaN(weight) || weight <= 0 || weight > 500) {
-            Alert.alert('Invalid weight', 'Please enter a valid weight');
+            toast.error('Invalid weight', 'Please enter a valid weight');
             return;
         }
 

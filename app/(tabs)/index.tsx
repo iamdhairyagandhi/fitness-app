@@ -1,4 +1,4 @@
-import { Card, MacroBar, ProgressRing } from '@/components/ui';
+import { Card, FadeIn, MacroBar, ProgressRing } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { generateDailyInsight } from '@/lib/aiEngine';
 import { formatNumber, getGreeting, getPercentage } from '@/lib/utils';
@@ -8,9 +8,10 @@ import { useRecoveryStore } from '@/stores/recoveryStore';
 import { useWorkoutStore } from '@/stores/workoutStore';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     Dimensions,
+    RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
@@ -30,6 +31,12 @@ export default function HomeScreen() {
     const recoveryLogs = useRecoveryStore((s) => s.recoveryLogs);
 
     const [aiInsight, setAiInsight] = useState<{ text: string; type: string } | null>(null);
+    const [refreshing, setRefreshing] = useState(false);
+
+    const onRefresh = useCallback(() => {
+        setRefreshing(true);
+        setTimeout(() => setRefreshing(false), 1000);
+    }, []);
 
     // Defaults for demo
     const calorieTarget = user?.daily_calorie_target || 2200;
@@ -64,6 +71,9 @@ export default function HomeScreen() {
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} colors={[Colors.primary]} />
+                }
             >
                 {/* Header */}
                 <View style={styles.header}>
@@ -83,6 +93,7 @@ export default function HomeScreen() {
                 </View>
 
                 {/* Calorie Ring Card */}
+                <FadeIn delay={100}>
                 <Card style={styles.calorieCard}>
                     <View style={styles.calorieRow}>
                         <ProgressRing
@@ -138,8 +149,10 @@ export default function HomeScreen() {
                         />
                     </View>
                 </Card>
+                </FadeIn>
 
                 {/* Quick Actions */}
+                <FadeIn delay={200}>
                 <Text style={styles.sectionTitle}>Quick Actions</Text>
                 <View style={styles.quickActions}>
                     <TouchableOpacity
@@ -179,6 +192,7 @@ export default function HomeScreen() {
                         <Text style={styles.quickActionText}>Log{'\n'}Water</Text>
                     </TouchableOpacity>
                 </View>
+                </FadeIn>
 
                 {/* Water Tracker Mini */}
                 <Card title="Water Intake" style={styles.waterCard}>

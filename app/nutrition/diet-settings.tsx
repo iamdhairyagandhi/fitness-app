@@ -6,13 +6,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    Alert,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from 'react-native';
+import { toast } from '@/components/ui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const PHASES: { value: DietPhase; label: string; icon: string; desc: string }[] = [
@@ -165,7 +165,7 @@ export default function DietSettingsScreen() {
 
                 <Button
                     title="Save Diet Settings"
-                    onPress={() => { Alert.alert('Saved', 'Diet preferences updated!'); router.back(); }}
+                    onPress={() => { toast.success('Saved', 'Diet preferences updated!'); router.back(); }}
                     size="lg"
                     style={{ marginTop: Spacing.xxl }}
                 />

@@ -5,12 +5,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from 'react-native';
+import { toast } from '@/components/ui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const FASTING_PRESETS = [
@@ -53,10 +53,13 @@ export default function FastingScreen() {
     const elapsed = getElapsed();
 
     const handleEndFast = () => {
-        Alert.alert('End Fast', 'Are you sure you want to end this fast?', [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'End Fast', style: 'destructive', onPress: endFast },
-        ]);
+        toast.confirm({
+            title: 'End Fast',
+            message: 'Are you sure you want to end this fast?',
+            confirmLabel: 'End Fast',
+            destructive: true,
+            onConfirm: endFast,
+        });
     };
 
     return (

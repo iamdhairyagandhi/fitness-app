@@ -7,7 +7,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    Alert,
     ScrollView,
     StyleSheet,
     Text,
@@ -16,6 +15,7 @@ import {
     Vibration,
     View,
 } from 'react-native';
+import { toast } from '@/components/ui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Sample exercises for the MVP
@@ -93,30 +93,28 @@ export default function ActiveWorkoutScreen() {
     }, [isRestTimerRunning, tickRestTimer, restTimerSeconds]);
 
     const handleFinish = () => {
-        Alert.alert('Finish Workout', 'Save this workout?', [
-            { text: 'Cancel', style: 'cancel' },
-            {
-                text: 'Save',
-                onPress: () => {
-                    finishWorkout();
-                    router.back();
-                },
+        toast.confirm({
+            title: 'Finish Workout',
+            message: 'Save this workout?',
+            confirmLabel: 'Save',
+            onConfirm: () => {
+                finishWorkout();
+                router.back();
             },
-        ]);
+        });
     };
 
     const handleDiscard = () => {
-        Alert.alert('Discard Workout', 'Are you sure? All progress will be lost.', [
-            { text: 'Cancel', style: 'cancel' },
-            {
-                text: 'Discard',
-                style: 'destructive',
-                onPress: () => {
-                    discardWorkout();
-                    router.back();
-                },
+        toast.confirm({
+            title: 'Discard Workout',
+            message: 'Are you sure? All progress will be lost.',
+            confirmLabel: 'Discard',
+            destructive: true,
+            onConfirm: () => {
+                discardWorkout();
+                router.back();
             },
-        ]);
+        });
     };
 
     const filteredExercises = EXERCISES.filter((e) =>

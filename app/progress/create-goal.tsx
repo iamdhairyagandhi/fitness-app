@@ -7,7 +7,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    Alert,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -17,6 +16,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { toast } from '@/components/ui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const GOAL_TYPES: { value: GoalType; label: string; icon: string; defaultUnit: string }[] = [
@@ -52,11 +52,11 @@ export default function CreateGoalScreen() {
 
     const handleSave = () => {
         if (!title.trim()) {
-            Alert.alert('Missing Title', 'Enter a goal title');
+            toast.error('Missing Title', 'Enter a goal title');
             return;
         }
         if (!targetValue) {
-            Alert.alert('Missing Target', 'Enter your target value');
+            toast.error('Missing Target', 'Enter your target value');
             return;
         }
 
@@ -75,9 +75,8 @@ export default function CreateGoalScreen() {
             status: 'active',
         });
 
-        Alert.alert('Goal Created!', `"${title}" has been added to your goals.`, [
-            { text: 'OK', onPress: () => router.back() },
-        ]);
+        toast.success('Goal Created!', `"${title}" has been added to your goals.`);
+        router.back();
     };
 
     return (

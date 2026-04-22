@@ -1,12 +1,13 @@
 import { Button } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { searchFoodsCombined } from '@/lib/foodApi';
 import { useNutritionStore } from '@/stores/nutritionStore';
 import type { FoodItem, MealType } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-    Alert,
+    ActivityIndicator,
     FlatList,
     StyleSheet,
     Text,
@@ -14,10 +15,11 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { toast } from '@/components/ui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-// Built-in food database for MVP (offline-first)
-const FOOD_DATABASE: FoodItem[] = [
+// Built-in food database for offline fallback
+const OFFLINE_FOODS: FoodItem[] = [
     { id: 'f1', name: 'Chicken Breast (grilled)', brand: null, barcode: null, serving_size_g: 100, serving_unit: 'g', calories: 165, protein_g: 31, carbs_g: 0, fat_g: 3.6, fiber_g: 0, sugar_g: 0, sodium_mg: 74, is_custom: false, user_id: null, image_url: null },
     { id: 'f2', name: 'White Rice (cooked)', brand: null, barcode: null, serving_size_g: 100, serving_unit: 'g', calories: 130, protein_g: 2.7, carbs_g: 28, fat_g: 0.3, fiber_g: 0.4, sugar_g: 0, sodium_mg: 1, is_custom: false, user_id: null, image_url: null },
     { id: 'f3', name: 'Brown Rice (cooked)', brand: null, barcode: null, serving_size_g: 100, serving_unit: 'g', calories: 112, protein_g: 2.6, carbs_g: 24, fat_g: 0.9, fiber_g: 1.8, sugar_g: 0.4, sodium_mg: 1, is_custom: false, user_id: null, image_url: null },
@@ -59,26 +61,50 @@ export default function FoodSearchScreen() {
     const [query, setQuery] = useState('');
     const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
     const [servings, setServings] = useState('1');
+    const [apiResults, setApiResults] = useState<FoodItem[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const results = query.length > 0
-        ? FOOD_DATABASE.filter((f) =>
-            f.name.toLowerCase().includes(query.toLowerCase())
-        )
-        : FOOD_DATABASE;
+    // Debounced API search
+    useEffect(() => {
+        if (query.length < 2) {
+            setApiResults([]);
+            setIsSearching(false);
+            return;
+        }
+
+        setIsSearching(true);
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(async () => {
+            try {
+                const results = await searchFoodsCombined(query);
+                setApiResults(results);
+            } catch {
+                setApiResults([]);
+            } finally {
+                setIsSearching(false);
+            }
+        }, 500);
+
+        return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+    }, [query]);
+
+    // Show API results when available, fallback to offline
+    const offlineFiltered = query.length > 0
+        ? OFFLINE_FOODS.filter((f) => f.name.toLowerCase().includes(query.toLowerCase()))
+        : OFFLINE_FOODS;
+    const displayResults = apiResults.length > 0 ? apiResults : offlineFiltered;
 
     const handleLog = () => {
         if (!selectedFood) return;
         const s = parseFloat(servings);
         if (isNaN(s) || s <= 0) {
-            Alert.alert('Invalid servings', 'Enter a valid number of servings');
+            toast.error('Invalid servings', 'Enter a valid number of servings');
             return;
         }
         logFood(selectedFood, s, mealType);
-        Alert.alert(
-            'Logged!',
-            `${selectedFood.name} added to ${mealType}`,
-            [{ text: 'OK', onPress: () => router.back() }]
-        );
+        toast.success('Logged!', `${selectedFood.name} added to ${mealType}`);
+        router.back();
     };
 
     const renderFoodItem = useCallback(({ item }: { item: FoodItem }) => (
@@ -160,11 +186,21 @@ export default function FoodSearchScreen() {
 
             {/* Results */}
             <FlatList
-                data={results}
+                data={displayResults}
                 keyExtractor={(item) => item.id}
                 renderItem={renderFoodItem}
                 contentContainerStyle={styles.list}
                 showsVerticalScrollIndicator={false}
+                ListHeaderComponent={isSearching ? (
+                    <View style={styles.searchingRow}>
+                        <ActivityIndicator size="small" color={Colors.primary} />
+                        <Text style={styles.searchingText}>Searching online...</Text>
+                    </View>
+                ) : apiResults.length > 0 ? (
+                    <Text style={styles.sourceHint}>Results from OpenFoodFacts & USDA</Text>
+                ) : query.length >= 2 ? (
+                    <Text style={styles.sourceHint}>Showing offline results</Text>
+                ) : null}
                 ListEmptyComponent={
                     <View style={styles.emptyState}>
                         <Ionicons name="search-outline" size={40} color={Colors.textTertiary} />
@@ -289,6 +325,9 @@ const styles = StyleSheet.create({
     emptyState: { alignItems: 'center', paddingTop: Spacing.huge, gap: Spacing.md },
     emptyText: { color: Colors.textSecondary, fontSize: FontSize.md },
     createLink: { color: Colors.primary, fontSize: FontSize.md, fontWeight: FontWeight.semibold },
+    searchingRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.md },
+    searchingText: { color: Colors.textSecondary, fontSize: FontSize.sm },
+    sourceHint: { color: Colors.textTertiary, fontSize: FontSize.xs, paddingVertical: Spacing.sm },
 
     // Bottom sheet
     bottomSheet: {

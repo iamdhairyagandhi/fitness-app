@@ -15,7 +15,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    Alert,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -24,6 +23,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { toast } from '@/components/ui';
 
 export default function LoginScreen() {
     const [email, setEmail] = useState('');
@@ -55,7 +55,7 @@ export default function LoginScreen() {
         });
 
         if (error) {
-            Alert.alert('Login Failed', error.message);
+            toast.error('Login Failed', error.message);
             setErrorMsg(error.message);
             setLoading(false);
             return;

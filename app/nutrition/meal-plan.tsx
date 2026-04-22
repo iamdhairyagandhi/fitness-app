@@ -8,13 +8,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    Alert,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from 'react-native';
+import { toast } from '@/components/ui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -95,7 +95,7 @@ export default function MealPlanScreen() {
 
         addMealPlan(plan);
         setActiveMealPlan(plan);
-        Alert.alert('Plan Created!', '7-day meal plan generated from your recipes.');
+        toast.success('Plan Created!', '7-day meal plan generated from your recipes.');
     };
 
     const plan = activeMealPlan;
@@ -207,7 +207,7 @@ export default function MealPlanScreen() {
                                 title="Regenerate This Day"
                                 variant="outline"
                                 onPress={() => {
-                                    Alert.alert('Coming Soon', 'AI-powered day regeneration will be available in Phase 3.');
+                                    toast.info('Coming Soon', 'AI-powered day regeneration will be available soon.');
                                 }}
                                 style={{ marginTop: Spacing.lg }}
                             />

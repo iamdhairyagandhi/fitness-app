@@ -8,13 +8,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React from 'react';
 import {
-    Alert,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from 'react-native';
+import { toast } from '@/components/ui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function ProfileScreen() {
@@ -33,18 +33,17 @@ export default function ProfileScreen() {
     const prCount = personalRecords.length;
 
     const handleLogout = () => {
-        Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-            { text: 'Cancel', style: 'cancel' },
-            {
-                text: 'Sign Out',
-                style: 'destructive',
-                onPress: async () => {
-                    await supabase.auth.signOut();
-                    logout();
-                    router.replace('/(auth)');
-                },
+        toast.confirm({
+            title: 'Sign Out',
+            message: 'Are you sure you want to sign out?',
+            confirmLabel: 'Sign Out',
+            destructive: true,
+            onConfirm: async () => {
+                await supabase.auth.signOut();
+                logout();
+                router.replace('/(auth)');
             },
-        ]);
+        });
     };
 
     const settingsGroups = [

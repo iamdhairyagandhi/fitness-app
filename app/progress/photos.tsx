@@ -6,7 +6,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    Alert,
     Platform,
     ScrollView,
     StyleSheet,
@@ -14,6 +13,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { toast } from '@/components/ui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const POSES: { value: ProgressPhoto['pose']; label: string; icon: string }[] = [
@@ -29,7 +29,7 @@ export default function ProgressPhotosScreen() {
 
     const handleTakePhoto = async () => {
         if (Platform.OS === 'web') {
-            Alert.alert('Camera', 'Camera access requires a mobile device. Adding demo photo.');
+            toast.info('Camera', 'Camera access requires a mobile device. Adding demo photo.');
         }
 
         // In production: use expo-image-picker
@@ -45,7 +45,7 @@ export default function ProgressPhotosScreen() {
         };
 
         addProgressPhoto(photo);
-        Alert.alert('Photo Added', `${selectedPose} pose photo saved to your progress gallery.`);
+        toast.success('Photo Added', `${selectedPose} pose photo saved to your progress gallery.`);
     };
 
     const handlePickImage = async () => {

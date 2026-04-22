@@ -12,7 +12,9 @@ import type {
     WorkoutSet,
     WorkoutTemplate,
 } from '@/types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { useAuthStore } from './authStore';
 
 interface WorkoutState {
@@ -51,7 +53,9 @@ interface WorkoutState {
     setExercises: (exercises: Exercise[]) => void;
 }
 
-export const useWorkoutStore = create<WorkoutState>((set, get) => ({
+export const useWorkoutStore = create<WorkoutState>()(
+    persist(
+        (set, get) => ({
     activeWorkout: null,
     isWorkoutActive: false,
     restTimerSeconds: 0,
@@ -365,4 +369,16 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
     setRecentWorkouts: (recentWorkouts) => set({ recentWorkouts }),
     setPersonalRecords: (personalRecords) => set({ personalRecords }),
     setExercises: (exercises) => set({ exercises }),
-}));
+}),
+        {
+            name: 'fitfusion-workout',
+            storage: createJSONStorage(() => AsyncStorage),
+            partialize: (state) => ({
+                templates: state.templates,
+                recentWorkouts: state.recentWorkouts,
+                personalRecords: state.personalRecords,
+                exercises: state.exercises,
+            }),
+        }
+    )
+);

@@ -7,7 +7,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    Alert,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -17,6 +16,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { toast } from '@/components/ui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function CreateFoodScreen() {
@@ -35,11 +35,11 @@ export default function CreateFoodScreen() {
 
     const handleSave = () => {
         if (!name.trim()) {
-            Alert.alert('Missing Name', 'Enter a food name');
+            toast.error('Missing Name', 'Enter a food name');
             return;
         }
         if (!calories) {
-            Alert.alert('Missing Calories', 'Enter calorie amount');
+            toast.error('Missing Calories', 'Enter calorie amount');
             return;
         }
 
@@ -63,9 +63,8 @@ export default function CreateFoodScreen() {
         };
 
         setRecentFoods([food, ...recentFoods]);
-        Alert.alert('Saved!', `${food.name} added to your foods`, [
-            { text: 'OK', onPress: () => router.back() },
-        ]);
+        toast.success('Saved!', `${food.name} added to your foods`);
+        router.back();
     };
 
     const renderField = (label: string, value: string, setter: (v: string) => void, placeholder: string, numeric = false) => (
