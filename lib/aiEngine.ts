@@ -12,14 +12,12 @@
 
 import { OPENAI_API_KEY } from '@/constants/config';
 import type { OpenAIMessage } from '@/lib/openai';
-import { buildCoachingSystemPrompt } from '@/lib/openai';
 import type {
     AIGeneratedMealPlan,
     AIGeneratedWorkout,
     CorrelationInsight,
     RecoveryLog,
-    WeeklyReport,
-    WorkoutSession,
+    WorkoutSession
 } from '@/types';
 
 const OPENAI_ENDPOINT = 'https://api.openai.com/v1/chat/completions';

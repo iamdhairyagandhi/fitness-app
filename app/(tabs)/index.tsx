@@ -56,7 +56,7 @@ export default function HomeScreen() {
             lastWorkout: recentWorkouts[0]?.name,
             recoveryScore: lastRecovery?.recovery_score,
             goal: user?.goal || 'maintain',
-        }).then(setAiInsight).catch(() => {});
+        }).then(setAiInsight).catch(() => { });
     }, [todaySummary.total_calories, todaySummary.total_protein_g, streak]);
 
     return (
