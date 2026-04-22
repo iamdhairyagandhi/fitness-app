@@ -176,6 +176,7 @@ function RootLayoutContent() {
                 />
                 <Stack.Screen name="nutrition" />
                 <Stack.Screen name="progress" />
+                <Stack.Screen name="social" />
                 <Stack.Screen
                     name="chat"
                     options={{

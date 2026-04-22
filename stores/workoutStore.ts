@@ -1,6 +1,7 @@
 import { DEFAULT_REST_SECONDS } from '@/constants/config';
 import { savePersonalRecords, saveWorkoutSession } from '@/lib/db';
 import { applyXPReward, calculateStreak } from '@/lib/gamification';
+import { postActivity } from '@/lib/socialDb';
 import { generateId } from '@/lib/utils';
 import type {
     Exercise,
@@ -165,6 +166,26 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
         // Persist to Supabase (fire-and-forget)
         saveWorkoutSession(finished).catch(() => { });
         if (newPRs.length > 0) savePersonalRecords(newPRs).catch(() => { });
+
+        // Post to social feed
+        const durationMin = Math.round((finished.duration_seconds || 0) / 60);
+        postActivity(
+            'workout_completed',
+            `Completed ${finished.name}`,
+            `${finished.exercises.length} exercises · ${durationMin}min · ${Math.round(totalVolume)}kg volume`,
+            { duration_min: durationMin, volume_kg: Math.round(totalVolume), exercise_count: finished.exercises.length },
+        ).catch(() => { });
+
+        if (newPRs.length > 0) {
+            for (const pr of newPRs) {
+                postActivity(
+                    'personal_record',
+                    `New PR: ${pr.exercise_name}`,
+                    `${pr.weight_kg}kg × ${pr.reps} (Est. 1RM: ${pr.estimated_1rm_kg}kg)`,
+                    { exercise_name: pr.exercise_name, weight_kg: pr.weight_kg, reps: pr.reps },
+                ).catch(() => { });
+            }
+        }
 
         // Award XP for completing workout
         const authState = useAuthStore.getState();

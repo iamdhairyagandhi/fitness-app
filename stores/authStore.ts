@@ -1,4 +1,5 @@
 import { upsertProfile } from '@/lib/db';
+import { postActivity } from '@/lib/socialDb';
 import type { UserProfile } from '@/types';
 import { create } from 'zustand';
 
@@ -32,6 +33,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // Fire-and-forget persist to Supabase (only for real users)
         if (updated.id && !get().isAdmin) {
             upsertProfile(updated).catch(() => { });
+        }
+        // Post social activity for milestones
+        if (updates.level && current.level && updates.level > current.level) {
+            postActivity('level_up', `Reached Level ${updates.level}!`, undefined, { level: updates.level }).catch(() => { });
+        }
+        if (updates.streak_count && current.streak_count && updates.streak_count > current.streak_count && updates.streak_count % 7 === 0) {
+            postActivity('streak_milestone', `${updates.streak_count}-day streak!`, `Staying consistent for ${updates.streak_count} days`, { streak: updates.streak_count }).catch(() => { });
         }
     },
     setSession: (session) => set({ session }),

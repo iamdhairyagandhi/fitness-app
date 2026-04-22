@@ -572,3 +572,142 @@ export interface DailyStats {
     steps: number;
     streak_count: number;
 }
+
+// ── Social ───────────────────────────────────────────────────
+
+export interface PublicProfile {
+    id: string;
+    display_name: string;
+    username: string | null;
+    avatar_url: string | null;
+    bio: string;
+    is_public: boolean;
+    level: number;
+    xp: number;
+    streak_count: number;
+    workouts_completed: number;
+    followers_count: number;
+    following_count: number;
+    is_following?: boolean;
+    follow_status?: 'none' | 'pending' | 'accepted';
+}
+
+export type FollowStatus = 'pending' | 'accepted' | 'rejected';
+
+export interface FollowRelation {
+    id: string;
+    follower_id: string;
+    following_id: string;
+    status: FollowStatus;
+    created_at: string;
+    profile?: PublicProfile;
+}
+
+export type ActivityType =
+    | 'workout_completed'
+    | 'personal_record'
+    | 'achievement_unlocked'
+    | 'streak_milestone'
+    | 'challenge_joined'
+    | 'challenge_completed'
+    | 'weight_milestone'
+    | 'level_up';
+
+export type ReactionType = 'like' | 'fire' | 'muscle' | 'clap';
+
+export interface ActivityFeedItem {
+    id: string;
+    user_id: string;
+    activity_type: ActivityType;
+    title: string;
+    description: string | null;
+    metadata: Record<string, unknown>;
+    is_public: boolean;
+    created_at: string;
+    profile?: {
+        display_name: string;
+        username: string | null;
+        avatar_url: string | null;
+        level: number;
+    };
+    reactions_count: number;
+    comments_count: number;
+    user_reaction?: ReactionType | null;
+}
+
+export interface Reaction {
+    id: string;
+    user_id: string;
+    activity_id: string;
+    reaction_type: ReactionType;
+    created_at: string;
+}
+
+export interface Comment {
+    id: string;
+    user_id: string;
+    activity_id: string;
+    content: string;
+    created_at: string;
+    updated_at: string;
+    profile?: {
+        display_name: string;
+        username: string | null;
+        avatar_url: string | null;
+    };
+}
+
+export type ChallengeType = 'workout_count' | 'total_volume' | 'streak' | 'steps' | 'calories_burned' | 'custom';
+
+export interface SocialChallenge {
+    id: string;
+    creator_id: string;
+    title: string;
+    description: string | null;
+    challenge_type: ChallengeType;
+    target_value: number;
+    unit: string;
+    start_date: string;
+    end_date: string;
+    reward_xp: number;
+    is_public: boolean;
+    max_participants: number;
+    created_at: string;
+    creator?: {
+        display_name: string;
+        username: string | null;
+        avatar_url: string | null;
+    };
+    participant_count: number;
+    user_participation?: ChallengeParticipant | null;
+}
+
+export interface ChallengeParticipant {
+    id: string;
+    challenge_id: string;
+    user_id: string;
+    current_value: number;
+    status: 'active' | 'completed' | 'dropped';
+    joined_at: string;
+    completed_at: string | null;
+    profile?: {
+        display_name: string;
+        username: string | null;
+        avatar_url: string | null;
+        level: number;
+    };
+}
+
+export interface LeaderboardEntry {
+    id: string;
+    display_name: string;
+    username: string | null;
+    avatar_url: string | null;
+    xp: number;
+    level: number;
+    streak_count: number;
+    workouts_completed: number;
+    weekly_volume: number;
+    weekly_workouts: number;
+    rank?: number;
+}

@@ -1,4 +1,5 @@
 import { deleteSupplement, saveRecoveryLog, saveSupplement, saveSupplementLog, saveUserAchievement } from '@/lib/db';
+import { postActivity } from '@/lib/socialDb';
 import { generateId } from '@/lib/utils';
 import type {
     Achievement,
@@ -175,7 +176,15 @@ export const useRecoveryStore = create<RecoveryState>((set, get) => ({
                 recentlyUnlocked: [...get().recentlyUnlocked, ...newlyUnlocked],
             });
             // Persist each new achievement
-            newlyUnlocked.forEach((a) => saveUserAchievement(a.id).catch(() => { }));
+            newlyUnlocked.forEach((a) => {
+                saveUserAchievement(a.id).catch(() => { });
+                postActivity(
+                    'achievement_unlocked',
+                    `Unlocked: ${a.title}`,
+                    a.description,
+                    { achievement_id: a.id },
+                ).catch(() => { });
+            });
         }
 
         return newlyUnlocked;
