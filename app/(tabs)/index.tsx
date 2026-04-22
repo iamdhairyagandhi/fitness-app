@@ -1,12 +1,14 @@
 import { Card, MacroBar, ProgressRing } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { generateDailyInsight } from '@/lib/aiEngine';
 import { formatNumber, getGreeting, getPercentage } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
 import { useNutritionStore } from '@/stores/nutritionStore';
+import { useRecoveryStore } from '@/stores/recoveryStore';
 import { useWorkoutStore } from '@/stores/workoutStore';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Dimensions,
     ScrollView,
@@ -25,6 +27,9 @@ export default function HomeScreen() {
     const todaySummary = useNutritionStore((s) => s.todaySummary);
     const logWater = useNutritionStore((s) => s.logWater);
     const recentWorkouts = useWorkoutStore((s) => s.recentWorkouts);
+    const recoveryLogs = useRecoveryStore((s) => s.recoveryLogs);
+
+    const [aiInsight, setAiInsight] = useState<{ text: string; type: string } | null>(null);
 
     // Defaults for demo
     const calorieTarget = user?.daily_calorie_target || 2200;
@@ -37,6 +42,22 @@ export default function HomeScreen() {
 
     const caloriesPct = getPercentage(todaySummary.total_calories, calorieTarget);
     const caloriesRemaining = Math.max(calorieTarget - todaySummary.total_calories, 0);
+
+    // Generate AI insight
+    useEffect(() => {
+        const lastRecovery = recoveryLogs[recoveryLogs.length - 1];
+        generateDailyInsight({
+            name: displayName,
+            calorieTarget,
+            todayCalories: todaySummary.total_calories,
+            proteinTarget,
+            todayProtein: todaySummary.total_protein_g,
+            streak,
+            lastWorkout: recentWorkouts[0]?.name,
+            recoveryScore: lastRecovery?.recovery_score,
+            goal: user?.goal || 'maintain',
+        }).then(setAiInsight).catch(() => {});
+    }, [todaySummary.total_calories, todaySummary.total_protein_g, streak]);
 
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -290,13 +311,26 @@ export default function HomeScreen() {
                         <Text style={styles.aiTitle}>Daily Insight</Text>
                     </View>
                     <Text style={styles.aiContent}>
-                        Start logging your meals and workouts to get personalized AI insights
-                        about your nutrition timing, recovery, and performance patterns.
+                        {aiInsight?.text || 'Start logging your meals and workouts to get personalized AI insights about your nutrition, recovery, and performance.'}
                     </Text>
-                    <TouchableOpacity style={styles.aiCta} onPress={() => router.push('/chat')}>
-                        <Text style={styles.aiCtaText}>Chat with AI Coach</Text>
-                        <Ionicons name="arrow-forward" size={16} color={Colors.primary} />
-                    </TouchableOpacity>
+                    <View style={styles.aiActions}>
+                        <TouchableOpacity style={styles.aiCta} onPress={() => router.push('/chat')}>
+                            <Ionicons name="chatbubble-outline" size={14} color={Colors.primary} />
+                            <Text style={styles.aiCtaText}>AI Coach</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.aiCta} onPress={() => router.push('/ai-workout' as any)}>
+                            <Ionicons name="barbell-outline" size={14} color={Colors.primary} />
+                            <Text style={styles.aiCtaText}>AI Workout</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.aiCta} onPress={() => router.push('/ai-meal-plan' as any)}>
+                            <Ionicons name="restaurant-outline" size={14} color={Colors.primary} />
+                            <Text style={styles.aiCtaText}>AI Meals</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.aiCta} onPress={() => router.push('/weekly-report' as any)}>
+                            <Ionicons name="analytics-outline" size={14} color={Colors.primary} />
+                            <Text style={styles.aiCtaText}>Report</Text>
+                        </TouchableOpacity>
+                    </View>
                 </Card>
             </ScrollView>
         </View>
@@ -575,11 +609,20 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: Spacing.xs,
+        backgroundColor: Colors.primary + '10',
+        paddingHorizontal: Spacing.md,
+        paddingVertical: Spacing.sm,
+        borderRadius: BorderRadius.sm,
     },
     aiCtaText: {
         color: Colors.primary,
-        fontSize: FontSize.sm,
+        fontSize: FontSize.xxs,
         fontWeight: FontWeight.semibold,
+    },
+    aiActions: {
+        flexDirection: 'row',
+        gap: Spacing.sm,
+        flexWrap: 'wrap',
     },
 
     // Explore grid

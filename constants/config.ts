@@ -29,3 +29,8 @@ export const DEFAULT_REST_SECONDS = 90;
 export const MAX_SETS = 20;
 export const MAX_REPS = 999;
 export const MAX_WEIGHT = 2000;
+
+// OAuth — set these in your .env file
+export const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '';
+export const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '';
+export const GOOGLE_ANDROID_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || '';

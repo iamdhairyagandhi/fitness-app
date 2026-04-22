@@ -1,6 +1,7 @@
 import { Button, Input } from '@/components/ui';
 import { ADMIN_EMAIL, ADMIN_PASSWORD } from '@/constants/config';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { signInWithApple, signInWithGoogle } from '@/lib/auth';
 import { hydrateAllStores } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
@@ -211,10 +212,30 @@ export default function LoginScreen() {
 
                     {/* Social buttons */}
                     <View style={styles.socialButtons}>
-                        <TouchableOpacity style={styles.socialButton}>
+                        <TouchableOpacity
+                            style={styles.socialButton}
+                            onPress={async () => {
+                                setErrorMsg('');
+                                try {
+                                    await signInWithGoogle();
+                                } catch (e: any) {
+                                    setErrorMsg(e.message || 'Google sign-in failed');
+                                }
+                            }}
+                        >
                             <Ionicons name="logo-google" size={22} color={Colors.text} />
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.socialButton}>
+                        <TouchableOpacity
+                            style={styles.socialButton}
+                            onPress={async () => {
+                                setErrorMsg('');
+                                try {
+                                    await signInWithApple();
+                                } catch (e: any) {
+                                    setErrorMsg(e.message || 'Apple sign-in failed');
+                                }
+                            }}
+                        >
                             <Ionicons name="logo-apple" size={22} color={Colors.text} />
                         </TouchableOpacity>
                     </View>

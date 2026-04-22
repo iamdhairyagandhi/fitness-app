@@ -1,16 +1,18 @@
 import { OPENAI_API_KEY } from '@/constants/config';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
-import { buildCoachingSystemPrompt, chatCompletion, type OpenAIMessage } from '@/lib/openai';
+import { chatWithFunctions, type AIResponse } from '@/lib/aiEngine';
+import { buildCoachingSystemPrompt, type OpenAIMessage } from '@/lib/openai';
 import { generateId } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
+import { useChatStore } from '@/stores/chatStore';
 import { useMealPlanStore } from '@/stores/mealPlanStore';
 import { useNutritionStore } from '@/stores/nutritionStore';
 import { useRecoveryStore } from '@/stores/recoveryStore';
 import { useWorkoutStore } from '@/stores/workoutStore';
-import type { ChatMessage } from '@/types';
+import type { AIGeneratedMealPlan, AIGeneratedWorkout, ChatMessage } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     FlatList,
@@ -24,40 +26,96 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+// ── Quick prompts ────────────────────────────────────────────
+
 const QUICK_PROMPTS = [
     { icon: '🥗', text: 'Suggest a meal for my remaining macros' },
     { icon: '💪', text: 'Create a workout for today' },
     { icon: '📊', text: 'Analyze my progress this week' },
     { icon: '💤', text: 'Tips for better recovery' },
-    { icon: '🍽️', text: 'Generate a meal plan for this week' },
+    { icon: '🍽️', text: 'Generate a 3-day meal plan' },
     { icon: '🔥', text: 'How should I adjust my diet phase?' },
 ];
 
-// Fallback responses when no API key is set
+// ── Demo fallback responses ──────────────────────────────────
+
 const DEMO_RESPONSES: Record<string, string> = {
     default: "I'm your FitFusion AI Coach! 💪\n\nTo enable live AI responses, add your OpenAI API key to the .env file (EXPO_PUBLIC_OPENAI_API_KEY).\n\nIn the meantime, I can still help you navigate the app. Try logging a workout, tracking your meals, or checking your progress!",
-    meal: "Here's a balanced meal suggestion for your remaining macros:\n\n🍗 **Grilled Chicken Breast** (150g) — 248 kcal, 46g protein, 0g carbs, 5g fat\n🍚 **Brown Rice** (150g cooked) — 168 kcal, 4g protein, 36g carbs, 1g fat\n🥦 **Steamed Broccoli** (100g) — 35 kcal, 2g protein, 7g carbs, 0g fat\n\n**Total: ~451 kcal | 52g protein | 43g carbs | 6g fat**\n\nThis hits your protein target nicely while keeping fats low!",
-    workout: "Here's a solid workout for today:\n\n**Upper Body Push (45 min)**\n\n1. Bench Press — 4×8 @ moderate weight\n2. Overhead Press — 3×10\n3. Incline DB Press — 3×12\n4. Lateral Raises — 3×15\n5. Tricep Pushdowns — 3×12\n6. Face Pulls — 3×15\n\n💡 **Tip:** Rest 90-120s between compound sets, 60s for isolation. Focus on controlled eccentrics!",
-    progress: "Based on your activity:\n\n📈 **This Week's Summary:**\n- Workouts completed: Track more to see trends!\n- Average calorie adherence: Keep logging to build data\n- Protein goal hit: Aim for 4+ days this week\n\n🎯 **Focus Areas:**\n1. Consistency is key — try to log every meal\n2. Hit your protein target daily for optimal results\n3. Progressive overload — try to add weight or reps each week\n\nKeep pushing! Every workout counts. 🔥",
-    recovery: "Here are my top recovery tips:\n\n😴 **Sleep:** Aim for 7-9 hours. This is when most muscle repair happens.\n\n💧 **Hydration:** Hit your water goal daily. Dehydration impairs recovery by 20-30%.\n\n🍗 **Post-Workout Nutrition:** Eat 20-40g protein within 2 hours of training.\n\n🧘 **Active Recovery:** Light walking, stretching, or yoga on rest days.\n\n🔄 **Deload Week:** Every 4-6 weeks, reduce volume by 40-50% to let your body catch up.\n\n📱 **Track Everything:** Use FitFusion to log sleep quality, soreness, and energy levels!",
-    mealplan: "Here's a sample day from a high-protein meal plan:\n\n🌅 **Breakfast (420 kcal)**\nProtein Overnight Oats — 35g protein, 48g carbs, 10g fat\n\n☀️ **Lunch (480 kcal)**\nGreek Protein Bowl — 42g protein, 35g carbs, 18g fat\n\n🌙 **Dinner (380 kcal)**\nChicken Stir Fry — 38g protein, 20g carbs, 14g fat\n\n🍿 **Snack (160 kcal)**\nGreek Yogurt + Berries — 15g protein, 18g carbs, 3g fat\n\n**Daily Total: ~1,440 kcal | 130g protein | 121g carbs | 45g fat**\n\nGo to the Meal Planner to auto-generate a full 7-day plan! 📅",
-    diet: "Here's how to think about your diet phase:\n\n📈 **Bulking:** +10-20% above maintenance. Focus on strength gains. Aim for 0.5-1kg/month gain.\n\n📉 **Cutting:** -20-25% below maintenance. High protein (2g/kg) to preserve muscle. Target 0.5-1% body weight loss per week.\n\n⚖️ **Maintenance:** Great for recomp. Train hard, eat at maintenance, high protein.\n\n🔁 **Reverse Diet:** After a long cut, slowly add 50-100 kcal/week back to prevent fat regain.\n\nGo to Diet Settings to switch your phase — I'll adjust your macro suggestions accordingly!",
-    fasting: "Intermittent fasting can be a great tool:\n\n⏰ **16:8** (Most popular): Eat noon–8pm. Easy to maintain.\n⏰ **18:6**: Slightly more aggressive. Eat 1pm–7pm.\n⏰ **20:4**: Warrior diet. 1-2 big meals.\n\n**Tips:**\n- Black coffee/tea during the fast is fine\n- Break your fast with protein-rich food\n- Time your workouts 1-2 hours before breaking fast for max fat burn\n- Stay hydrated!\n\nStart a fast timer in the Fasting screen! ⏱️",
-    supplement: "Here are evidence-backed supplements:\n\n💊 **Creatine Monohydrate** (5g/day) — Most researched, proven strength + muscle gains\n☀️ **Vitamin D3** (2000-4000 IU) — Most people are deficient. Supports hormones, immunity\n🐟 **Omega-3 Fish Oil** (1-2g EPA+DHA) — Anti-inflammatory, heart health\n🧲 **Magnesium** (400mg before bed) — Sleep quality, muscle recovery\n🥤 **Whey Protein** — Convenient way to hit protein targets\n\nTrack your supplement stack in the Supplements screen! 💊",
+    meal: "Here's a balanced meal suggestion for your remaining macros:\n\n🍗 **Grilled Chicken Breast** (150g) — 248 kcal, 46g protein, 0g carbs, 5g fat\n🍚 **Brown Rice** (150g cooked) — 168 kcal, 4g protein, 36g carbs, 1g fat\n🥦 **Steamed Broccoli** (100g) — 35 kcal, 2g protein, 7g carbs, 0g fat\n\n**Total: ~451 kcal | 52g protein | 43g carbs | 6g fat**",
+    workout: "Here's a solid workout for today:\n\n**Upper Body Push (45 min)**\n\n1. Bench Press — 4×8 @ moderate weight\n2. Overhead Press — 3×10\n3. Incline DB Press — 3×12\n4. Lateral Raises — 3×15\n5. Tricep Pushdowns — 3×12\n6. Face Pulls — 3×15\n\n💡 Rest 90-120s between compounds, 60s for isolation.",
+    progress: "📈 **This Week's Summary:**\n- Track more workouts to see trends!\n- Protein goal: aim for 4+ days this week\n\n🎯 **Focus Areas:**\n1. Log every meal for complete data\n2. Hit protein target daily\n3. Add weight or reps each week\n\nKeep pushing! 🔥",
+    recovery: "😴 **Sleep:** 7-9 hours for muscle repair\n💧 **Hydration:** Hit your water goal daily\n🍗 **Post-Workout:** 20-40g protein within 2 hours\n🧘 **Active Recovery:** Light movement on rest days\n🔄 **Deload:** Every 4-6 weeks, reduce volume by 40-50%",
+    mealplan: "Here's a sample day:\n\n🌅 **Breakfast** — Protein Oats (420 kcal, 35g protein)\n☀️ **Lunch** — Greek Protein Bowl (480 kcal, 42g protein)\n🌙 **Dinner** — Chicken Stir Fry (380 kcal, 38g protein)\n🍿 **Snack** — Greek Yogurt + Berries (160 kcal, 15g protein)\n\n**Total: ~1,440 kcal | 130g protein**",
+    diet: "📈 **Bulking:** +10-20% above maintenance, focus strength gains\n📉 **Cutting:** -20-25%, high protein to preserve muscle\n⚖️ **Maintenance:** Great for recomp, train hard, eat at maintenance\n🔁 **Reverse Diet:** After a long cut, +50-100 kcal/week",
 };
 
 function getDemoResponse(message: string): string {
     const lower = message.toLowerCase();
-    if (lower.includes('meal plan') || lower.includes('weekly') || lower.includes('generate')) return DEMO_RESPONSES.mealplan;
+    if (lower.includes('meal plan') || lower.includes('generate')) return DEMO_RESPONSES.mealplan;
     if (lower.includes('meal') || lower.includes('food') || lower.includes('eat') || lower.includes('macro')) return DEMO_RESPONSES.meal;
-    if (lower.includes('workout') || lower.includes('exercise') || lower.includes('train')) return DEMO_RESPONSES.workout;
+    if (lower.includes('workout') || lower.includes('exercise') || lower.includes('train') || lower.includes('create')) return DEMO_RESPONSES.workout;
     if (lower.includes('progress') || lower.includes('week') || lower.includes('analyze')) return DEMO_RESPONSES.progress;
     if (lower.includes('recovery') || lower.includes('sleep') || lower.includes('rest') || lower.includes('tip')) return DEMO_RESPONSES.recovery;
     if (lower.includes('diet') || lower.includes('phase') || lower.includes('bulk') || lower.includes('cut')) return DEMO_RESPONSES.diet;
-    if (lower.includes('fast')) return DEMO_RESPONSES.fasting;
-    if (lower.includes('supplement') || lower.includes('creatine') || lower.includes('vitamin')) return DEMO_RESPONSES.supplement;
     return DEMO_RESPONSES.default;
 }
+
+// ── AI Generated Content Cards ───────────────────────────────
+
+function WorkoutCard({ workout }: { workout: AIGeneratedWorkout }) {
+    return (
+        <View style={cardStyles.container}>
+            <View style={cardStyles.header}>
+                <Text style={cardStyles.icon}>💪</Text>
+                <Text style={cardStyles.title}>{workout.name}</Text>
+            </View>
+            {workout.description ? (
+                <Text style={cardStyles.desc}>{workout.description}</Text>
+            ) : null}
+            <Text style={cardStyles.meta}>{workout.estimated_duration_min} min • {workout.exercises.length} exercises</Text>
+            {workout.exercises.map((ex, i) => (
+                <View key={i} style={cardStyles.row}>
+                    <Text style={cardStyles.rowNum}>{i + 1}.</Text>
+                    <View style={cardStyles.rowContent}>
+                        <Text style={cardStyles.rowTitle}>{ex.exercise_name}</Text>
+                        <Text style={cardStyles.rowMeta}>{ex.sets} × {ex.reps} • {ex.rest_seconds}s rest</Text>
+                        {ex.notes ? <Text style={cardStyles.rowNotes}>{ex.notes}</Text> : null}
+                    </View>
+                </View>
+            ))}
+        </View>
+    );
+}
+
+function MealPlanCard({ plan }: { plan: AIGeneratedMealPlan }) {
+    return (
+        <View style={cardStyles.container}>
+            <View style={cardStyles.header}>
+                <Text style={cardStyles.icon}>🍽️</Text>
+                <Text style={cardStyles.title}>{plan.name}</Text>
+            </View>
+            {plan.days.map((day, di) => (
+                <View key={di} style={cardStyles.daySection}>
+                    <Text style={cardStyles.dayTitle}>{day.day}</Text>
+                    {day.meals.map((meal, mi) => (
+                        <View key={mi} style={cardStyles.mealRow}>
+                            <Text style={cardStyles.mealType}>{meal.meal_type}</Text>
+                            <Text style={cardStyles.mealName}>{meal.name}</Text>
+                            <Text style={cardStyles.mealMacros}>
+                                {meal.calories} kcal • {meal.protein_g}P / {meal.carbs_g}C / {meal.fat_g}F
+                            </Text>
+                        </View>
+                    ))}
+                    <Text style={cardStyles.dayTotal}>
+                        Day total: {day.total_calories} kcal | {day.total_protein_g}P / {day.total_carbs_g}C / {day.total_fat_g}F
+                    </Text>
+                </View>
+            ))}
+        </View>
+    );
+}
+
+// ── Main Screen ──────────────────────────────────────────────
 
 export default function AIChatScreen() {
     const insets = useSafeAreaInsets();
@@ -67,17 +125,65 @@ export default function AIChatScreen() {
     const { dietProfile, activeFast } = useMealPlanStore();
     const { recoveryLogs } = useRecoveryStore();
     const flatListRef = useRef<FlatList>(null);
+    const {
+        activeConversationId,
+        messages: storedMessages,
+        addLocalMessage,
+        sendMessage: persistMessage,
+        startNewConversation,
+    } = useChatStore();
 
-    const [messages, setMessages] = useState<ChatMessage[]>([
-        {
-            id: 'welcome',
-            role: 'assistant',
-            content: `Hey${user?.display_name ? ` ${user.display_name}` : ''}! 👋 I'm your FitFusion AI Coach.\n\nI can help with:\n• Meal suggestions based on your remaining macros\n• Workout programming and exercise tips\n• Progress analysis and goal setting\n• Recovery and lifestyle advice\n\nWhat would you like help with?`,
-            timestamp: new Date().toISOString(),
-        },
-    ]);
+    // Merge stored messages with welcome message
+    const welcomeMsg: ChatMessage = {
+        id: 'welcome',
+        role: 'assistant',
+        content: `Hey${user?.display_name ? ` ${user.display_name}` : ''}! 👋 I'm your FitFusion AI Coach.\n\nI can help with:\n• **Workout plans** — I'll create structured programs you can follow\n• **Meal plans** — Custom plans fitted to your exact macros\n• **Progress analysis** — Data-driven insights on your trends\n• **Recovery advice** — Based on your sleep and stress data\n\nWhat would you like help with?`,
+        timestamp: new Date().toISOString(),
+    };
+
+    const [messages, setMessages] = useState<ChatMessage[]>([welcomeMsg]);
+    const [generatedWorkouts, setGeneratedWorkouts] = useState<Record<string, AIGeneratedWorkout>>({});
+    const [generatedMealPlans, setGeneratedMealPlans] = useState<Record<string, AIGeneratedMealPlan>>({});
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [showHistory, setShowHistory] = useState(false);
+
+    // Load stored messages when conversation is opened
+    useEffect(() => {
+        if (storedMessages.length > 0) {
+            setMessages([welcomeMsg, ...storedMessages]);
+        }
+    }, [storedMessages]);
+
+    // Auto-create conversation if none active
+    const ensureConversation = useCallback(async () => {
+        if (!activeConversationId && user?.id) {
+            return await startNewConversation(user.id, 'AI Coach Chat');
+        }
+        return activeConversationId;
+    }, [activeConversationId, user?.id, startNewConversation]);
+
+    const buildSystemPrompt = useCallback(() => {
+        const lastRecovery = recoveryLogs[recoveryLogs.length - 1];
+        return buildCoachingSystemPrompt({
+            name: user?.display_name,
+            goal: user?.goal,
+            experience: user?.experience_level,
+            calorieTarget: user?.daily_calorie_target,
+            proteinTarget: user?.protein_target_g,
+            carbsTarget: user?.carbs_target_g,
+            fatTarget: user?.fat_target_g,
+            todayCalories: todaySummary.total_calories,
+            todayProtein: todaySummary.total_protein_g,
+            recentWorkouts: recentWorkouts.slice(0, 5).map((w) => w.name),
+            streak: user?.streak_count,
+            dietTemplate: dietProfile?.template,
+            dietPhase: dietProfile?.phase,
+            recoveryScore: lastRecovery?.recovery_score ?? undefined,
+            sleepHours: lastRecovery?.sleep_hours ?? undefined,
+            fastingActive: !!activeFast,
+        });
+    }, [user, todaySummary, recentWorkouts, dietProfile, activeFast, recoveryLogs]);
 
     const sendMessage = useCallback(async (text: string) => {
         if (!text.trim() || isLoading) return;
@@ -94,44 +200,31 @@ export default function AIChatScreen() {
         setIsLoading(true);
 
         try {
+            // Ensure we have a conversation for persistence
+            const convId = await ensureConversation();
+            if (convId) {
+                persistMessage('user', text.trim()).catch(() => { });
+            }
+
             let responseText: string;
+            let functionCall: AIResponse['functionCall'] | undefined;
 
             if (OPENAI_API_KEY) {
-                // Build conversation history for API
-                const lastRecovery = recoveryLogs[recoveryLogs.length - 1];
-                const systemPrompt = buildCoachingSystemPrompt({
-                    name: user?.display_name,
-                    goal: user?.goal,
-                    experience: user?.experience_level,
-                    calorieTarget: user?.daily_calorie_target,
-                    proteinTarget: user?.protein_target_g,
-                    carbsTarget: user?.carbs_target_g,
-                    fatTarget: user?.fat_target_g,
-                    todayCalories: todaySummary.total_calories,
-                    todayProtein: todaySummary.total_protein_g,
-                    recentWorkouts: recentWorkouts.slice(0, 5).map((w) => w.name),
-                    streak: user?.streak_count,
-                    dietTemplate: dietProfile?.template,
-                    dietPhase: dietProfile?.phase,
-                    recoveryScore: lastRecovery?.recovery_score ?? undefined,
-                    sleepHours: lastRecovery?.sleep_hours ?? undefined,
-                    bodyFatPct: undefined,
-                    fastingActive: !!activeFast,
-                });
-
+                const systemPrompt = buildSystemPrompt();
                 const apiMessages: OpenAIMessage[] = [
                     { role: 'system', content: systemPrompt },
-                    ...messages.slice(-10).map((m) => ({
+                    ...messages.filter((m) => m.id !== 'welcome').slice(-12).map((m) => ({
                         role: m.role as 'user' | 'assistant',
                         content: m.content,
                     })),
                     { role: 'user' as const, content: text.trim() },
                 ];
 
-                responseText = await chatCompletion(apiMessages);
+                const result = await chatWithFunctions(apiMessages, { maxTokens: 2000 });
+                responseText = result.text;
+                functionCall = result.functionCall;
             } else {
-                // Demo mode
-                await new Promise((resolve) => setTimeout(resolve, 1000));
+                await new Promise((resolve) => setTimeout(resolve, 800));
                 responseText = getDemoResponse(text);
             }
 
@@ -140,10 +233,33 @@ export default function AIChatScreen() {
                 role: 'assistant',
                 content: responseText,
                 timestamp: new Date().toISOString(),
+                metadata: functionCall
+                    ? { functionName: functionCall.functionName, args: functionCall.args }
+                    : undefined,
             };
 
             setMessages((prev) => [...prev, assistantMessage]);
-        } catch (error) {
+
+            // Store structured data for rendering cards
+            if (functionCall?.functionName === 'create_workout') {
+                setGeneratedWorkouts((prev) => ({
+                    ...prev,
+                    [assistantMessage.id]: functionCall!.args as unknown as AIGeneratedWorkout,
+                }));
+            } else if (functionCall?.functionName === 'generate_meal_plan') {
+                setGeneratedMealPlans((prev) => ({
+                    ...prev,
+                    [assistantMessage.id]: functionCall!.args as unknown as AIGeneratedMealPlan,
+                }));
+            }
+
+            // Persist assistant message
+            if (convId) {
+                persistMessage('assistant', responseText, functionCall
+                    ? { functionName: functionCall.functionName, args: functionCall.args }
+                    : undefined).catch(() => { });
+            }
+        } catch {
             const errorMessage: ChatMessage = {
                 id: generateId(),
                 role: 'assistant',
@@ -154,10 +270,22 @@ export default function AIChatScreen() {
         } finally {
             setIsLoading(false);
         }
-    }, [isLoading, messages, user, todaySummary, recentWorkouts]);
+    }, [isLoading, messages, buildSystemPrompt, ensureConversation, persistMessage]);
+
+    const handleNewChat = useCallback(() => {
+        setMessages([welcomeMsg]);
+        setGeneratedWorkouts({});
+        setGeneratedMealPlans({});
+        if (user?.id) {
+            startNewConversation(user.id, 'AI Coach Chat');
+        }
+    }, [user?.id, startNewConversation]);
 
     const renderMessage = useCallback(({ item }: { item: ChatMessage }) => {
         const isUser = item.role === 'user';
+        const workout = generatedWorkouts[item.id];
+        const mealPlan = generatedMealPlans[item.id];
+
         return (
             <View style={[styles.messageBubble, isUser ? styles.userBubble : styles.assistantBubble]}>
                 {!isUser && (
@@ -166,11 +294,15 @@ export default function AIChatScreen() {
                     </View>
                 )}
                 <View style={[styles.messageContent, isUser ? styles.userContent : styles.assistantContent]}>
-                    <Text style={[styles.messageText, isUser && styles.userMessageText]}>{item.content}</Text>
+                    <Text style={[styles.messageText, isUser && styles.userMessageText]}>
+                        {item.content}
+                    </Text>
+                    {workout ? <WorkoutCard workout={workout} /> : null}
+                    {mealPlan ? <MealPlanCard plan={mealPlan} /> : null}
                 </View>
             </View>
         );
-    }, []);
+    }, [generatedWorkouts, generatedMealPlans]);
 
     return (
         <KeyboardAvoidingView
@@ -186,13 +318,45 @@ export default function AIChatScreen() {
                 <View style={styles.headerCenter}>
                     <Text style={styles.headerTitle}>AI Coach</Text>
                     <Text style={styles.headerSubtitle}>
-                        {OPENAI_API_KEY ? 'Powered by GPT-4o' : 'Demo Mode'}
+                        {OPENAI_API_KEY ? '✨ Powered by GPT-4o' : '📋 Demo Mode'}
                     </Text>
                 </View>
-                <TouchableOpacity onPress={() => setMessages([messages[0]])}>
-                    <Ionicons name="refresh-outline" size={22} color={Colors.textSecondary} />
-                </TouchableOpacity>
+                <View style={styles.headerActions}>
+                    <TouchableOpacity onPress={handleNewChat} style={styles.headerBtn}>
+                        <Ionicons name="add-circle-outline" size={22} color={Colors.textSecondary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => setShowHistory(!showHistory)} style={styles.headerBtn}>
+                        <Ionicons name="time-outline" size={22} color={Colors.textSecondary} />
+                    </TouchableOpacity>
+                </View>
             </View>
+
+            {/* Chat history sidebar (simple inline for now) */}
+            {showHistory && (
+                <View style={styles.historyPanel}>
+                    <Text style={styles.historyTitle}>Chat History</Text>
+                    {useChatStore.getState().conversations.length === 0 ? (
+                        <Text style={styles.historyEmpty}>No saved conversations yet</Text>
+                    ) : (
+                        useChatStore.getState().conversations.slice(0, 10).map((conv) => (
+                            <TouchableOpacity
+                                key={conv.id}
+                                style={[
+                                    styles.historyItem,
+                                    conv.id === activeConversationId && styles.historyItemActive,
+                                ]}
+                                onPress={() => {
+                                    useChatStore.getState().openConversation(conv.id);
+                                    setShowHistory(false);
+                                }}
+                            >
+                                <Ionicons name="chatbubble-outline" size={16} color={Colors.textSecondary} />
+                                <Text style={styles.historyItemText} numberOfLines={1}>{conv.title}</Text>
+                            </TouchableOpacity>
+                        ))
+                    )}
+                </View>
+            )}
 
             {/* Messages */}
             <FlatList
@@ -205,7 +369,7 @@ export default function AIChatScreen() {
                 onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
             />
 
-            {/* Quick prompts (show when conversation is fresh) */}
+            {/* Quick prompts */}
             {messages.length <= 1 && (
                 <View style={styles.quickPrompts}>
                     {QUICK_PROMPTS.map((prompt) => (
@@ -221,7 +385,7 @@ export default function AIChatScreen() {
                 </View>
             )}
 
-            {/* Loading indicator */}
+            {/* Loading */}
             {isLoading && (
                 <View style={styles.loadingRow}>
                     <View style={styles.avatarContainer}>
@@ -261,6 +425,8 @@ export default function AIChatScreen() {
     );
 }
 
+// ── Styles ───────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.background },
     header: {
@@ -268,9 +434,25 @@ const styles = StyleSheet.create({
         paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md,
         borderBottomWidth: 1, borderBottomColor: Colors.border,
     },
-    headerCenter: { alignItems: 'center' },
+    headerCenter: { alignItems: 'center', flex: 1 },
     headerTitle: { color: Colors.text, fontSize: FontSize.lg, fontWeight: FontWeight.bold },
     headerSubtitle: { color: Colors.textTertiary, fontSize: FontSize.xs },
+    headerActions: { flexDirection: 'row', gap: Spacing.sm },
+    headerBtn: { padding: 4 },
+
+    historyPanel: {
+        backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.border,
+        paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, maxHeight: 200,
+    },
+    historyTitle: { color: Colors.text, fontSize: FontSize.sm, fontWeight: FontWeight.bold, marginBottom: Spacing.sm },
+    historyEmpty: { color: Colors.textTertiary, fontSize: FontSize.sm },
+    historyItem: {
+        flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
+        paddingVertical: Spacing.sm, paddingHorizontal: Spacing.sm,
+        borderRadius: BorderRadius.sm,
+    },
+    historyItemActive: { backgroundColor: Colors.primary + '15' },
+    historyItemText: { color: Colors.textSecondary, fontSize: FontSize.sm, flex: 1 },
 
     messageList: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md },
     messageBubble: { flexDirection: 'row', marginBottom: Spacing.md, gap: Spacing.sm },
@@ -320,4 +502,32 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center',
     },
     sendBtnDisabled: { backgroundColor: Colors.surfaceLight },
+});
+
+// ── Card Styles ──────────────────────────────────────────────
+
+const cardStyles = StyleSheet.create({
+    container: {
+        marginTop: Spacing.md, backgroundColor: Colors.surfaceLight,
+        borderRadius: BorderRadius.md, padding: Spacing.md,
+        borderWidth: 1, borderColor: Colors.border,
+    },
+    header: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.sm },
+    icon: { fontSize: 20 },
+    title: { color: Colors.text, fontSize: FontSize.md, fontWeight: FontWeight.bold, flex: 1 },
+    desc: { color: Colors.textSecondary, fontSize: FontSize.sm, marginBottom: Spacing.sm },
+    meta: { color: Colors.textTertiary, fontSize: FontSize.xs, marginBottom: Spacing.md },
+    row: { flexDirection: 'row', gap: Spacing.sm, marginBottom: Spacing.sm },
+    rowNum: { color: Colors.textTertiary, fontSize: FontSize.sm, width: 20 },
+    rowContent: { flex: 1 },
+    rowTitle: { color: Colors.text, fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
+    rowMeta: { color: Colors.textTertiary, fontSize: FontSize.xs },
+    rowNotes: { color: Colors.textSecondary, fontSize: FontSize.xs, fontStyle: 'italic', marginTop: 2 },
+    daySection: { marginTop: Spacing.md, borderTopWidth: 1, borderTopColor: Colors.border, paddingTop: Spacing.sm },
+    dayTitle: { color: Colors.primary, fontSize: FontSize.sm, fontWeight: FontWeight.bold, marginBottom: Spacing.sm },
+    mealRow: { marginBottom: Spacing.sm },
+    mealType: { color: Colors.textTertiary, fontSize: FontSize.xxs, textTransform: 'uppercase', letterSpacing: 0.5 },
+    mealName: { color: Colors.text, fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
+    mealMacros: { color: Colors.textSecondary, fontSize: FontSize.xs },
+    dayTotal: { color: Colors.textTertiary, fontSize: FontSize.xs, fontWeight: FontWeight.medium, marginTop: Spacing.xs },
 });

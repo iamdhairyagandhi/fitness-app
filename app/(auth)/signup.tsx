@@ -1,5 +1,6 @@
 import { Button, Input } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { signInWithApple, signInWithGoogle } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
 import { Ionicons } from '@expo/vector-icons';
@@ -141,10 +142,30 @@ export default function SignUpScreen() {
                     </View>
 
                     <View style={styles.socialButtons}>
-                        <TouchableOpacity style={styles.socialButton}>
+                        <TouchableOpacity
+                            style={styles.socialButton}
+                            onPress={async () => {
+                                setMessage('');
+                                try {
+                                    await signInWithGoogle();
+                                } catch (e: any) {
+                                    setMessage(e.message || 'Google sign-in failed');
+                                }
+                            }}
+                        >
                             <Ionicons name="logo-google" size={22} color={Colors.text} />
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.socialButton}>
+                        <TouchableOpacity
+                            style={styles.socialButton}
+                            onPress={async () => {
+                                setMessage('');
+                                try {
+                                    await signInWithApple();
+                                } catch (e: any) {
+                                    setMessage(e.message || 'Apple sign-in failed');
+                                }
+                            }}
+                        >
                             <Ionicons name="logo-apple" size={22} color={Colors.text} />
                         </TouchableOpacity>
                     </View>

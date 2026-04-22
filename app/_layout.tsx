@@ -177,6 +177,10 @@ function RootLayoutContent() {
                 <Stack.Screen name="nutrition" />
                 <Stack.Screen name="progress" />
                 <Stack.Screen name="social" />
+                <Stack.Screen name="account-settings" />
+                <Stack.Screen name="ai-workout" />
+                <Stack.Screen name="ai-meal-plan" />
+                <Stack.Screen name="weekly-report" />
                 <Stack.Screen
                     name="chat"
                     options={{

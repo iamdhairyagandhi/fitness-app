@@ -24,6 +24,7 @@ export default function ProfileScreen() {
 
     const displayName = user?.display_name || 'Athlete';
     const email = user?.email || 'user@fitfusion.app';
+    const usernameDisplay = user?.username ? `@${user.username}` : null;
     const level = user?.level || 1;
     const xp = user?.xp || 0;
     const levelProgress = getLevelProgress(xp);
@@ -51,6 +52,7 @@ export default function ProfileScreen() {
             title: 'Account',
             items: [
                 { icon: 'person-outline' as const, label: 'Edit Profile', onPress: () => router.push('/settings') },
+                { icon: 'key-outline' as const, label: 'Account Settings', onPress: () => router.push('/account-settings' as any) },
                 { icon: 'fitness-outline' as const, label: 'Fitness Goals', onPress: () => router.push('/progress/create-goal') },
                 { icon: 'nutrition-outline' as const, label: 'Nutrition Targets', onPress: () => router.push('/nutrition/diet-settings') },
                 { icon: 'body-outline' as const, label: 'Body Measurements', onPress: () => router.push('/progress/measurements') },
@@ -99,6 +101,9 @@ export default function ProfileScreen() {
                         </Text>
                     </View>
                     <Text style={styles.userName}>{displayName}</Text>
+                    {usernameDisplay ? (
+                        <Text style={styles.usernameText}>{usernameDisplay}</Text>
+                    ) : null}
                     <Text style={styles.userEmail}>{email}</Text>
 
                     {/* Level & XP */}
@@ -228,6 +233,11 @@ const styles = StyleSheet.create({
         color: Colors.textTertiary,
         fontSize: FontSize.sm,
         marginTop: 4,
+    },
+    usernameText: {
+        color: Colors.primary,
+        fontSize: FontSize.sm,
+        marginTop: 2,
     },
     levelContainer: {
         flexDirection: 'row',

@@ -8,7 +8,10 @@ export interface UserProfile {
     id: string;
     email: string;
     display_name: string;
+    username: string | null;
     avatar_url: string | null;
+    bio: string | null;
+    phone_number: string | null;
     date_of_birth: string | null;
     gender: 'male' | 'female' | 'other' | null;
     height_cm: number | null;
@@ -294,6 +297,76 @@ export interface ChatMessage {
     role: 'user' | 'assistant';
     content: string;
     timestamp: string;
+    metadata?: Record<string, unknown>;
+}
+
+export interface ChatConversation {
+    id: string;
+    user_id: string;
+    title: string;
+    created_at: string;
+    updated_at: string;
+    messages?: ChatMessage[];
+    last_message?: string;
+}
+
+// ── AI Types ─────────────────────────────────────────────────
+
+export type AIFunctionName =
+    | 'create_workout'
+    | 'generate_meal_plan'
+    | 'log_food'
+    | 'set_goal'
+    | 'analyze_progress'
+    | 'get_weekly_report';
+
+export interface AIFunctionCall {
+    name: AIFunctionName;
+    arguments: Record<string, unknown>;
+}
+
+export interface AIDailyInsight {
+    id: string;
+    user_id: string;
+    date: string;
+    insight_text: string;
+    insight_type: 'nutrition' | 'workout' | 'recovery' | 'general' | 'motivation';
+    metadata: Record<string, unknown>;
+    created_at: string;
+}
+
+export interface AIGeneratedWorkout {
+    name: string;
+    description: string;
+    estimated_duration_min: number;
+    exercises: {
+        exercise_name: string;
+        sets: number;
+        reps: string;
+        rest_seconds: number;
+        notes?: string;
+    }[];
+}
+
+export interface AIGeneratedMealPlan {
+    name: string;
+    days: {
+        day: string;
+        meals: {
+            meal_type: MealType;
+            name: string;
+            calories: number;
+            protein_g: number;
+            carbs_g: number;
+            fat_g: number;
+            ingredients?: string[];
+            instructions?: string;
+        }[];
+        total_calories: number;
+        total_protein_g: number;
+        total_carbs_g: number;
+        total_fat_g: number;
+    }[];
 }
 
 // ── Diet & Meal Planning ─────────────────────────────────────
