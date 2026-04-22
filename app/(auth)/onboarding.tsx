@@ -126,7 +126,7 @@ export default function OnboardingScreen() {
 
         // Persist to Supabase (fire-and-forget for real users)
         if (userId) {
-            upsertProfile(userProfile).catch(() => {});
+            upsertProfile(userProfile).catch(() => { });
         }
 
         setOnboarded(true);

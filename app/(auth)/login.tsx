@@ -4,11 +4,11 @@ import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants
 import { hydrateAllStores } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
-import { useWorkoutStore } from '@/stores/workoutStore';
+import { useMealPlanStore } from '@/stores/mealPlanStore';
 import { useNutritionStore } from '@/stores/nutritionStore';
 import { useProgressStore } from '@/stores/progressStore';
 import { useRecoveryStore } from '@/stores/recoveryStore';
-import { useMealPlanStore } from '@/stores/mealPlanStore';
+import { useWorkoutStore } from '@/stores/workoutStore';
 import type { FoodLogEntry, MealType } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';

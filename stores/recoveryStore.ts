@@ -147,7 +147,7 @@ export const useRecoveryStore = create<RecoveryState>((set, get) => ({
             todayRecovery: recovery,
             recoveryLogs: [recovery, ...get().recoveryLogs],
         });
-        saveRecoveryLog(recovery).catch(() => {});
+        saveRecoveryLog(recovery).catch(() => { });
     },
 
     checkAchievements: (stats) => {
@@ -175,7 +175,7 @@ export const useRecoveryStore = create<RecoveryState>((set, get) => ({
                 recentlyUnlocked: [...get().recentlyUnlocked, ...newlyUnlocked],
             });
             // Persist each new achievement
-            newlyUnlocked.forEach((a) => saveUserAchievement(a.id).catch(() => {}));
+            newlyUnlocked.forEach((a) => saveUserAchievement(a.id).catch(() => { }));
         }
 
         return newlyUnlocked;
@@ -200,12 +200,12 @@ export const useRecoveryStore = create<RecoveryState>((set, get) => ({
 
     addSupplement: (supplement) => {
         set({ supplements: [...get().supplements, supplement] });
-        saveSupplement(supplement).catch(() => {});
+        saveSupplement(supplement).catch(() => { });
     },
 
     removeSupplement: (id) => {
         set({ supplements: get().supplements.filter((s) => s.id !== id) });
-        deleteSupplement(id).catch(() => {});
+        deleteSupplement(id).catch(() => { });
     },
 
     logSupplement: (supplementId) => {
@@ -213,6 +213,6 @@ export const useRecoveryStore = create<RecoveryState>((set, get) => ({
         set({
             supplementLogs: [...get().supplementLogs, log],
         });
-        saveSupplementLog(log).catch(() => {});
+        saveSupplementLog(log).catch(() => { });
     },
 }));

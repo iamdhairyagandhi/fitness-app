@@ -3,7 +3,6 @@
 // Bridges Zustand stores ↔ Supabase persistence
 // ============================================================
 
-import { supabase } from './supabase';
 import type {
     BodyMeasurement,
     DietProfile,
@@ -23,6 +22,7 @@ import type {
     WorkoutSession,
     WorkoutTemplate,
 } from '@/types';
+import { supabase } from './supabase';
 
 // ── Helpers ──────────────────────────────────────────────────
 

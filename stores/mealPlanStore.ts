@@ -238,26 +238,26 @@ export const useMealPlanStore = create<MealPlanState>((set, get) => ({
     setDietProfile: (profile) => {
         const updated = { ...get().dietProfile, ...profile };
         set({ dietProfile: updated });
-        saveDietProfile(updated).catch(() => {});
+        saveDietProfile(updated).catch(() => { });
     },
 
     setDietTemplate: (template) => {
         const config = DIET_TEMPLATES[template];
         const updated = { ...get().dietProfile, template };
         set({ dietProfile: updated });
-        saveDietProfile(updated).catch(() => {});
+        saveDietProfile(updated).catch(() => { });
     },
 
     setDietPhase: (phase) => {
         const updated = { ...get().dietProfile, phase, phase_start_date: new Date().toISOString() };
         set({ dietProfile: updated });
-        saveDietProfile(updated).catch(() => {});
+        saveDietProfile(updated).catch(() => { });
     },
 
     toggleMacroCycling: (enabled) => {
         const updated = { ...get().dietProfile, macro_cycle_enabled: enabled };
         set({ dietProfile: updated });
-        saveDietProfile(updated).catch(() => {});
+        saveDietProfile(updated).catch(() => { });
     },
 
     toggleFavorite: (recipeId) => {
@@ -341,7 +341,7 @@ export const useMealPlanStore = create<MealPlanState>((set, get) => ({
             notes: null,
         };
         set({ activeFast: session });
-        saveFastingSession(session).catch(() => {});
+        saveFastingSession(session).catch(() => { });
     },
 
     endFast: () => {
@@ -356,6 +356,6 @@ export const useMealPlanStore = create<MealPlanState>((set, get) => ({
             activeFast: null,
             fastHistory: [ended, ...fastHistory],
         });
-        saveFastingSession(ended).catch(() => {});
+        saveFastingSession(ended).catch(() => { });
     },
 }));
