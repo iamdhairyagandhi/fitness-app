@@ -1,26 +1,26 @@
-import React, { useState, useRef, useCallback } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    TextInput,
-    FlatList,
-    TouchableOpacity,
-    KeyboardAvoidingView,
-    Platform,
-    ActivityIndicator,
-} from 'react-native';
-import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors, Spacing, FontSize, FontWeight, BorderRadius } from '@/constants/theme';
+import { OPENAI_API_KEY } from '@/constants/config';
+import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { buildCoachingSystemPrompt, chatCompletion, type OpenAIMessage } from '@/lib/openai';
+import { generateId } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
 import { useNutritionStore } from '@/stores/nutritionStore';
 import { useWorkoutStore } from '@/stores/workoutStore';
-import { chatCompletion, buildCoachingSystemPrompt, type OpenAIMessage } from '@/lib/openai';
-import { OPENAI_API_KEY } from '@/constants/config';
-import { generateId } from '@/lib/utils';
 import type { ChatMessage } from '@/types';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import React, { useCallback, useRef, useState } from 'react';
+import {
+    ActivityIndicator,
+    FlatList,
+    KeyboardAvoidingView,
+    Platform,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const QUICK_PROMPTS = [
     { icon: '🥗', text: 'Suggest a meal for my remaining macros' },

@@ -1,22 +1,20 @@
+import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { generateId } from '@/lib/utils';
+import { useProgressStore } from '@/stores/progressStore';
+import type { ProgressPhoto } from '@/types';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    View,
-    Text,
-    StyleSheet,
-    ScrollView,
-    TouchableOpacity,
     Alert,
-    Image,
     Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
-import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors, Spacing, FontSize, FontWeight, BorderRadius } from '@/constants/theme';
-import { Button } from '@/components/ui';
-import { useProgressStore } from '@/stores/progressStore';
-import { generateId } from '@/lib/utils';
-import type { ProgressPhoto } from '@/types';
 
 const POSES: { value: ProgressPhoto['pose']; label: string; icon: string }[] = [
     { value: 'front', label: 'Front', icon: '🧍' },

@@ -1,23 +1,23 @@
+import { Button } from '@/components/ui';
+import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { generateId } from '@/lib/utils';
+import { useProgressStore } from '@/stores/progressStore';
+import type { GoalType } from '@/types';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    View,
-    Text,
-    StyleSheet,
-    ScrollView,
-    TextInput,
-    TouchableOpacity,
     Alert,
     KeyboardAvoidingView,
     Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
-import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors, Spacing, FontSize, FontWeight, BorderRadius } from '@/constants/theme';
-import { Button } from '@/components/ui';
-import { useProgressStore } from '@/stores/progressStore';
-import { generateId } from '@/lib/utils';
-import type { GoalType } from '@/types';
 
 const GOAL_TYPES: { value: GoalType; label: string; icon: string; defaultUnit: string }[] = [
     { value: 'weight', label: 'Target Weight', icon: '⚖️', defaultUnit: 'kg' },

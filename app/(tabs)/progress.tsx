@@ -3,7 +3,7 @@ import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants
 import { generateId } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
 import { useProgressStore } from '@/stores/progressStore';
-import type { Goal, WeightEntry } from '@/types';
+import type { WeightEntry } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';

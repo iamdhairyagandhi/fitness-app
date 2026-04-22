@@ -1,23 +1,21 @@
+import { Button } from '@/components/ui';
+import { OPENAI_API_KEY } from '@/constants/config';
+import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { generateId } from '@/lib/utils';
+import { useNutritionStore } from '@/stores/nutritionStore';
+import type { FoodItem, MealType } from '@/types';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    View,
-    Text,
-    StyleSheet,
-    TouchableOpacity,
-    Alert,
-    Image,
     ActivityIndicator,
-    Platform,
+    Alert,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
-import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors, Spacing, FontSize, FontWeight, BorderRadius } from '@/constants/theme';
-import { Button } from '@/components/ui';
-import { useNutritionStore } from '@/stores/nutritionStore';
-import { generateId } from '@/lib/utils';
-import { OPENAI_API_KEY } from '@/constants/config';
-import type { FoodItem, MealType } from '@/types';
 
 // Simulated AI food recognition results for demo
 const DEMO_RESULTS: FoodItem[] = [

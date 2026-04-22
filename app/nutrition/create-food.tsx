@@ -1,23 +1,23 @@
+import { Button } from '@/components/ui';
+import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { generateId } from '@/lib/utils';
+import { useNutritionStore } from '@/stores/nutritionStore';
+import type { FoodItem } from '@/types';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    View,
-    Text,
-    StyleSheet,
-    TextInput,
-    ScrollView,
-    TouchableOpacity,
     Alert,
     KeyboardAvoidingView,
     Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
-import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors, Spacing, FontSize, FontWeight, BorderRadius } from '@/constants/theme';
-import { Button } from '@/components/ui';
-import { useNutritionStore } from '@/stores/nutritionStore';
-import { generateId } from '@/lib/utils';
-import type { FoodItem } from '@/types';
 
 export default function CreateFoodScreen() {
     const insets = useSafeAreaInsets();
