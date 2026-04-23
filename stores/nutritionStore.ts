@@ -73,6 +73,7 @@ export const useNutritionStore = create<NutritionState>()(
                     carbs_g: Math.round(foodItem.carbs_g * servings * 10) / 10,
                     fat_g: Math.round(foodItem.fat_g * servings * 10) / 10,
                     notes: null,
+                    photo_uri: null,
                 };
 
                 const { todaySummary } = get();

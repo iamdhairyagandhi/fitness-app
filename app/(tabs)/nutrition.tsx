@@ -67,6 +67,30 @@ export default function NutritionScreen() {
 
                 {/* Quick Nav */}
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.quickNav} contentContainerStyle={styles.quickNavContent}>
+                    <TouchableOpacity style={styles.quickNavItem} onPress={() => router.push('/nutrition/nlp-food-log')}>
+                        <Ionicons name="chatbubble-ellipses" size={18} color={Colors.primary} />
+                        <Text style={styles.quickNavText}>Quick Log</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.quickNavItem} onPress={() => router.push('/nutrition/iifym')}>
+                        <Ionicons name="calculator" size={18} color={Colors.secondary} />
+                        <Text style={styles.quickNavText}>IIFYM</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.quickNavItem} onPress={() => router.push('/nutrition/receipt-scanner')}>
+                        <Ionicons name="receipt" size={18} color={Colors.accent} />
+                        <Text style={styles.quickNavText}>Receipt</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.quickNavItem} onPress={() => router.push('/nutrition/meal-photos')}>
+                        <Ionicons name="images" size={18} color={Colors.success} />
+                        <Text style={styles.quickNavText}>Photos</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.quickNavItem} onPress={() => router.push('/nutrition/nutrition-insights')}>
+                        <Ionicons name="analytics" size={18} color={Colors.analytics} />
+                        <Text style={styles.quickNavText}>Insights</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.quickNavItem} onPress={() => router.push('/nutrition/recipe-adjuster')}>
+                        <Ionicons name="color-wand" size={18} color={Colors.fat} />
+                        <Text style={styles.quickNavText}>Adjuster</Text>
+                    </TouchableOpacity>
                     <TouchableOpacity style={styles.quickNavItem} onPress={() => router.push('/nutrition/diet-settings')}>
                         <Ionicons name="options" size={18} color={Colors.primary} />
                         <Text style={styles.quickNavText}>Diet Plan</Text>

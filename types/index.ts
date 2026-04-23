@@ -209,6 +209,7 @@ export interface FoodLogEntry {
     carbs_g: number;
     fat_g: number;
     notes: string | null;
+    photo_uri: string | null;
 }
 
 export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
@@ -794,4 +795,137 @@ export interface LeaderboardEntry {
     weekly_volume: number;
     weekly_workouts: number;
     rank?: number;
+}
+
+// ── Phase C: Nutrition Intelligence ──────────────────────────
+
+export interface WeightLog {
+    date: string;
+    weight_kg: number;
+}
+
+export interface AdaptiveCalorieData {
+    currentTDEE: number;
+    adjustedCalories: number;
+    adjustment: number;
+    weeklyWeightTrend: number;
+    expectedWeeklyChange: number;
+    tdeeConfidence: number;
+    reason: string;
+}
+
+export interface MetabolicAdaptation {
+    detected: boolean;
+    severity: 'none' | 'mild' | 'moderate' | 'severe';
+    stallWeeks: number;
+    expectedLoss: number;
+    actualLoss: number;
+    avgDeficit: number;
+    recommendation: 'continue' | 'refeed' | 'diet_break' | 'reverse_diet';
+    recommendationText: string;
+}
+
+export interface GutHealthScore {
+    overall: number;
+    fiberDiversity: number;
+    fermentedFoodScore: number;
+    prebioticScore: number;
+    uniqueFiberSources: string[];
+    fermentedFoods: string[];
+    prebioticFoods: string[];
+    suggestions: string[];
+}
+
+export interface NLPFoodParseResult {
+    items: {
+        name: string;
+        quantity: number;
+        unit: string;
+        calories: number;
+        protein_g: number;
+        carbs_g: number;
+        fat_g: number;
+        fiber_g: number;
+        confidence: number;
+    }[];
+    rawText: string;
+}
+
+export interface ReceiptScanResult {
+    items: {
+        name: string;
+        quantity: number;
+        calories: number;
+        protein_g: number;
+        carbs_g: number;
+        fat_g: number;
+        price: number | null;
+    }[];
+    storeName: string | null;
+    totalPrice: number | null;
+}
+
+export interface MealPhotoEntry {
+    id: string;
+    food_log_id: string;
+    photo_uri: string;
+    meal_type: MealType;
+    caption: string | null;
+    logged_at: string;
+}
+
+export interface IIFYMBudget {
+    remaining: {
+        calories: number;
+        protein_g: number;
+        carbs_g: number;
+        fat_g: number;
+    };
+    consumed: {
+        calories: number;
+        protein_g: number;
+        carbs_g: number;
+        fat_g: number;
+    };
+    target: {
+        calories: number;
+        protein_g: number;
+        carbs_g: number;
+        fat_g: number;
+    };
+    suggestions: IIFYMSuggestion[];
+}
+
+export interface IIFYMSuggestion {
+    name: string;
+    servings: number;
+    calories: number;
+    protein_g: number;
+    carbs_g: number;
+    fat_g: number;
+    reason: string;
+}
+
+export interface RecipeAdjustment {
+    originalRecipe: Recipe;
+    targetMacros: {
+        calories: number;
+        protein_g: number;
+        carbs_g: number;
+        fat_g: number;
+    };
+    adjustedIngredients: {
+        name: string;
+        originalAmount: number;
+        adjustedAmount: number;
+        unit: string;
+        swapSuggestion: string | null;
+    }[];
+    adjustedMacros: {
+        calories: number;
+        protein_g: number;
+        carbs_g: number;
+        fat_g: number;
+    };
+    notes: string[];
 }

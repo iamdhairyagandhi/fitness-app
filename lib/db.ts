@@ -344,6 +344,7 @@ export async function fetchFoodLogs(userId: string, date: string): Promise<FoodL
         carbs_g: fl.carbs_g,
         fat_g: fl.fat_g,
         notes: fl.notes,
+        photo_uri: fl.photo_uri || null,
     }));
 }
 
