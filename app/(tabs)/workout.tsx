@@ -1,10 +1,12 @@
 import { Button, Card } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { formatDurationLong, formatNumber } from '@/lib/utils';
+import { detectDeload } from '@/lib/workoutIntelligence';
+import { useRecoveryStore } from '@/stores/recoveryStore';
 import { useWorkoutStore } from '@/stores/workoutStore';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
     RefreshControl,
     ScrollView,
@@ -62,8 +64,11 @@ export default function WorkoutScreen() {
     const insets = useSafeAreaInsets();
     const [activeTab, setActiveTab] = useState<'templates' | 'history' | 'exercises'>('templates');
     const recentWorkouts = useWorkoutStore((s) => s.recentWorkouts);
+    const recoveryLogs = useRecoveryStore((s) => s.recoveryLogs);
     const [refreshing, setRefreshing] = useState(false);
     const onRefresh = useCallback(() => { setRefreshing(true); setTimeout(() => setRefreshing(false), 1000); }, []);
+
+    const deload = useMemo(() => detectDeload(recentWorkouts, recoveryLogs), [recentWorkouts, recoveryLogs]);
 
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -75,6 +80,23 @@ export default function WorkoutScreen() {
                 </TouchableOpacity>
             </View>
 
+            {/* Deload Alert */}
+            {deload.shouldDeload && (
+                <TouchableOpacity
+                    style={styles.deloadBanner}
+                    onPress={() => router.push('/workout/insights')}
+                >
+                    <Ionicons name="warning" size={20} color="#92400E" />
+                    <View style={styles.deloadBannerText}>
+                        <Text style={styles.deloadBannerTitle}>Deload Recommended</Text>
+                        <Text style={styles.deloadBannerSubtext}>
+                            Reduce volume by {deload.suggestedReduction}% this week
+                        </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color="#92400E" />
+                </TouchableOpacity>
+            )}
+
             {/* Start Workout CTA */}
             <View style={styles.ctaContainer}>
                 <Button
@@ -82,6 +104,24 @@ export default function WorkoutScreen() {
                     onPress={() => router.push('/workout/active')}
                     size="lg"
                 />
+                <View style={styles.quickActions}>
+                    <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/workout/warmup')}>
+                        <Ionicons name="flame" size={20} color="#F59E0B" />
+                        <Text style={styles.quickActionText}>Warm-Up</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/workout/cardio')}>
+                        <Ionicons name="fitness" size={20} color="#EF4444" />
+                        <Text style={styles.quickActionText}>Cardio</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/workout/insights')}>
+                        <Ionicons name="analytics" size={20} color="#8B5CF6" />
+                        <Text style={styles.quickActionText}>Insights</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/workout/strength-standards')}>
+                        <Ionicons name="trophy" size={20} color="#10B981" />
+                        <Text style={styles.quickActionText}>Standards</Text>
+                    </TouchableOpacity>
+                </View>
             </View>
 
             {/* Tab Switcher */}
@@ -502,5 +542,53 @@ const styles = StyleSheet.create({
     emptySubtext: {
         color: Colors.textTertiary,
         fontSize: FontSize.sm,
+    },
+
+    // Quick actions
+    quickActions: {
+        flexDirection: 'row',
+        gap: Spacing.sm,
+        marginTop: Spacing.sm,
+    },
+    quickAction: {
+        flex: 1,
+        alignItems: 'center',
+        paddingVertical: Spacing.sm,
+        backgroundColor: Colors.surface,
+        borderRadius: BorderRadius.md,
+        borderWidth: 1,
+        borderColor: Colors.border,
+        gap: 4,
+    },
+    quickActionText: {
+        fontSize: FontSize.xs,
+        color: Colors.textSecondary,
+        fontWeight: FontWeight.semibold,
+    },
+
+    // Deload banner
+    deloadBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.sm,
+        marginHorizontal: Spacing.lg,
+        marginBottom: Spacing.sm,
+        paddingHorizontal: Spacing.md,
+        paddingVertical: Spacing.sm,
+        backgroundColor: '#FEF3C7',
+        borderRadius: BorderRadius.md,
+        borderWidth: 1,
+        borderColor: '#F59E0B',
+    },
+    deloadBannerText: { flex: 1 },
+    deloadBannerTitle: {
+        fontSize: FontSize.sm,
+        fontWeight: FontWeight.bold,
+        color: '#92400E',
+    },
+    deloadBannerSubtext: {
+        fontSize: FontSize.xs,
+        color: '#A16207',
+        marginTop: 1,
     },
 });

@@ -37,6 +37,11 @@
       "expo-camera",
       "expo-image-picker",
       "expo-secure-store"
-    ]
+    ],
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/icon.png"
+    }
   }
 }

@@ -4,32 +4,46 @@
 
 import { Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
-import NetInfo from '@react-native-community/netinfo';
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text } from 'react-native';
-import Animated, { FadeInUp, FadeOutUp } from 'react-native-reanimated';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 
 export function OfflineBanner() {
     const [isOffline, setIsOffline] = useState(false);
 
     useEffect(() => {
-        const unsubscribe = NetInfo.addEventListener((state) => {
-            setIsOffline(!state.isConnected);
-        });
-        return () => unsubscribe();
+        // On web, use the browser's navigator.onLine API
+        if (Platform.OS === 'web') {
+            const update = () => setIsOffline(!navigator.onLine);
+            update();
+            window.addEventListener('online', update);
+            window.addEventListener('offline', update);
+            return () => {
+                window.removeEventListener('online', update);
+                window.removeEventListener('offline', update);
+            };
+        }
+        // On native, use NetInfo
+        let unsubscribe: (() => void) | undefined;
+        (async () => {
+            try {
+                const NetInfo = (await import('@react-native-community/netinfo')).default;
+                unsubscribe = NetInfo.addEventListener((state) => {
+                    setIsOffline(!state.isConnected);
+                });
+            } catch {
+                // NetInfo unavailable — ignore
+            }
+        })();
+        return () => unsubscribe?.();
     }, []);
 
     if (!isOffline) return null;
 
     return (
-        <Animated.View
-            entering={FadeInUp.duration(300)}
-            exiting={FadeOutUp.duration(300)}
-            style={styles.banner}
-        >
+        <View style={styles.banner}>
             <Ionicons name="cloud-offline-outline" size={16} color="#fff" />
             <Text style={styles.text}>You're offline — data will sync when connected</Text>
-        </Animated.View>
+        </View>
     );
 }
 

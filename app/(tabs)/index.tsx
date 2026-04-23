@@ -1,4 +1,4 @@
-import { Card, FadeIn, MacroBar, ProgressRing } from '@/components/ui';
+import { Card, MacroBar, ProgressRing } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { generateDailyInsight } from '@/lib/aiEngine';
 import { formatNumber, getGreeting, getPercentage } from '@/lib/utils';
@@ -93,7 +93,7 @@ export default function HomeScreen() {
                 </View>
 
                 {/* Calorie Ring Card */}
-                <FadeIn delay={100}>
+                <View>
                     <Card style={styles.calorieCard}>
                         <View style={styles.calorieRow}>
                             <ProgressRing
@@ -149,10 +149,10 @@ export default function HomeScreen() {
                             />
                         </View>
                     </Card>
-                </FadeIn>
+                </View>
 
                 {/* Quick Actions */}
-                <FadeIn delay={200}>
+                <View>
                     <Text style={styles.sectionTitle}>Quick Actions</Text>
                     <View style={styles.quickActions}>
                         <TouchableOpacity
@@ -192,7 +192,7 @@ export default function HomeScreen() {
                             <Text style={styles.quickActionText}>Log{'\n'}Water</Text>
                         </TouchableOpacity>
                     </View>
-                </FadeIn>
+                </View>
 
                 {/* Water Tracker Mini */}
                 <Card title="Water Intake" style={styles.waterCard}>

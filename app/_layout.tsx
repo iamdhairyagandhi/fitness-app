@@ -14,8 +14,26 @@ import type { FoodLogEntry, MealType } from '@/types';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useCallback, useEffect } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import React, { Component, useCallback, useEffect } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+
+// Error boundary to catch runtime crashes
+class ErrorBoundary extends Component<{ children: React.ReactNode }, { error: Error | null }> {
+    state = { error: null as Error | null };
+    static getDerivedStateFromError(error: Error) { return { error }; }
+    componentDidCatch(error: Error) { console.error('ROOT ERROR:', error); }
+    render() {
+        if (this.state.error) {
+            return (
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#111', padding: 20 }}>
+                    <Text style={{ color: '#f44', fontSize: 18, fontWeight: 'bold', marginBottom: 10 }}>App Error</Text>
+                    <Text style={{ color: '#fff', fontSize: 14 }}>{this.state.error.message}</Text>
+                </View>
+            );
+        }
+        return this.props.children;
+    }
+}
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -28,6 +46,7 @@ const queryClient = new QueryClient({
 
 function RootLayoutContent() {
     const { isLoading, setSession, setLoading, setUser, setOnboarded } = useAuthStore();
+    console.log('RootLayoutContent render, isLoading:', isLoading);
 
     const hydrateFromSupabase = useCallback(async (userId: string) => {
         try {
@@ -123,8 +142,15 @@ function RootLayoutContent() {
     }, [setUser, setOnboarded]);
 
     useEffect(() => {
+        // Safety timeout — never stay on loading screen forever
+        const timeout = setTimeout(() => {
+            console.warn('Auth check timed out, forcing loading=false');
+            setLoading(false);
+        }, 5000);
+
         // Check initial session
         supabase.auth.getSession().then(({ data: { session } }) => {
+            clearTimeout(timeout);
             if (session) {
                 setSession({ access_token: session.access_token });
                 // Hydrate stores from Supabase
@@ -133,6 +159,7 @@ function RootLayoutContent() {
                 setLoading(false);
             }
         }).catch(() => {
+            clearTimeout(timeout);
             setLoading(false);
         });
 
@@ -152,7 +179,8 @@ function RootLayoutContent() {
 
     if (isLoading) {
         return (
-            <View style={styles.loading}>
+            <View style={[styles.loading, { backgroundColor: '#fff' }]}>
+                <Text style={{ color: '#000', fontSize: 20, marginBottom: 10 }}>Loading FitFusion...</Text>
                 <ActivityIndicator size="large" color={Colors.primary} />
             </View>
         );
@@ -204,13 +232,15 @@ function ThemedStatusBar() {
 
 export default function RootLayout() {
     return (
-        <ThemeProvider>
-            <QueryClientProvider client={queryClient}>
-                <ToastProvider>
-                    <RootLayoutContent />
-                </ToastProvider>
-            </QueryClientProvider>
-        </ThemeProvider>
+        <ErrorBoundary>
+            <ThemeProvider>
+                <QueryClientProvider client={queryClient}>
+                    <ToastProvider>
+                        <RootLayoutContent />
+                    </ToastProvider>
+                </QueryClientProvider>
+            </ThemeProvider>
+        </ErrorBoundary>
     );
 }
 

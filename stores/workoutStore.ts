@@ -6,7 +6,9 @@ import { generateId } from '@/lib/utils';
 import type {
     Exercise,
     PersonalRecord,
+    SupersetGroup,
     UserProfile,
+    WorkoutMode,
     WorkoutSession,
     WorkoutSessionExercise,
     WorkoutSet,
@@ -31,7 +33,7 @@ interface WorkoutState {
     exercises: Exercise[];
 
     // Actions - Active Workout
-    startWorkout: (name: string, templateId?: string) => void;
+    startWorkout: (name: string, templateId?: string, mode?: WorkoutMode) => void;
     finishWorkout: () => WorkoutSession | null;
     discardWorkout: () => void;
     addExerciseToWorkout: (exercise: Exercise) => void;
@@ -40,6 +42,9 @@ interface WorkoutState {
     updateSet: (exerciseIndex: number, setIndex: number, updates: Partial<WorkoutSet>) => void;
     removeSet: (exerciseIndex: number, setIndex: number) => void;
     toggleSetComplete: (exerciseIndex: number, setIndex: number) => void;
+    setWorkoutMode: (mode: WorkoutMode) => void;
+    addSupersetGroup: (name: string, exerciseIndices: number[], restBetween: number) => void;
+    removeSupersetGroup: (groupId: string) => void;
 
     // Actions - Rest Timer
     startRestTimer: (seconds?: number) => void;
@@ -65,7 +70,7 @@ export const useWorkoutStore = create<WorkoutState>()(
             personalRecords: [],
             exercises: [],
 
-            startWorkout: (name, templateId) => {
+            startWorkout: (name, templateId, mode) => {
                 const workout: WorkoutSession = {
                     id: generateId(),
                     user_id: '',
@@ -78,6 +83,8 @@ export const useWorkoutStore = create<WorkoutState>()(
                     notes: null,
                     mood: null,
                     exercises: [],
+                    workout_mode: mode ?? 'standard',
+                    superset_groups: [],
                 };
                 set({ activeWorkout: workout, isWorkoutActive: true });
             },
@@ -369,6 +376,40 @@ export const useWorkoutStore = create<WorkoutState>()(
             setRecentWorkouts: (recentWorkouts) => set({ recentWorkouts }),
             setPersonalRecords: (personalRecords) => set({ personalRecords }),
             setExercises: (exercises) => set({ exercises }),
+
+            setWorkoutMode: (mode) => {
+                const { activeWorkout } = get();
+                if (!activeWorkout) return;
+                set({ activeWorkout: { ...activeWorkout, workout_mode: mode } });
+            },
+
+            addSupersetGroup: (name, exerciseIndices, restBetween) => {
+                const { activeWorkout } = get();
+                if (!activeWorkout) return;
+                const group: SupersetGroup = {
+                    id: generateId(),
+                    name,
+                    exerciseIndices,
+                    restBetweenRounds: restBetween,
+                };
+                set({
+                    activeWorkout: {
+                        ...activeWorkout,
+                        superset_groups: [...activeWorkout.superset_groups, group],
+                    },
+                });
+            },
+
+            removeSupersetGroup: (groupId) => {
+                const { activeWorkout } = get();
+                if (!activeWorkout) return;
+                set({
+                    activeWorkout: {
+                        ...activeWorkout,
+                        superset_groups: activeWorkout.superset_groups.filter((g) => g.id !== groupId),
+                    },
+                });
+            },
         }),
         {
             name: 'fitfusion-workout',

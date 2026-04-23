@@ -143,6 +143,8 @@ export async function fetchRecentWorkouts(userId: string, limit = 20): Promise<W
         notes: w.notes,
         mood: w.mood,
         exercises: w.exercises || [],
+        workout_mode: w.workout_mode || 'standard',
+        superset_groups: w.superset_groups || [],
     }));
 }
 

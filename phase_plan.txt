@@ -1,0 +1,205 @@
+Here's a realistic phased plan to go from 30 implemented → full coverage. Each phase builds on the last.
+
+---
+
+## Phase A: Foundation Upgrades (do first — unblocks everything)
+
+**These are infrastructure changes that multiple future features depend on.**
+
+1. **Offline-First Persistence** — Add Zustand persist middleware with AsyncStorage so all stores survive app restart. Add `@react-native-community/netinfo` for connectivity detection + offline banner + retry queue for Supabase writes
+2. **Expanded Exercise Database** — Replace the 10 hardcoded exercises with 200+ seeded into Supabase (with muscle groups, equipment, instructions, tips). This unblocks workout builder, split optimizer, warm-up generator
+3. **External Food API Integration** — Wire up OpenFoodFacts/USDA FoodData Central API in food-search.tsx to replace the 30 hardcoded items. This unblocks barcode scanner, natural language logging, and accurate micros
+4. **Real Barcode Scanning** — Integrate `expo-camera` barcode mode → look up scanned code via OpenFoodFacts API
+5. **Real AI Food Scanner** — Wire the existing `analyzeFoodPhoto()` in openai.ts to the ai-scanner.tsx screen using `expo-image-picker`
+6. **Data Export** — Implement actual CSV/JSON export of all user data (workouts, nutrition, measurements, goals) in settings.tsx
+7. **Theme System** — Make the dark/light/system toggle actually apply by wrapping Colors in a ThemeContext
+8. **Accessibility Pass** — Add `accessibilityLabel`, `accessibilityRole`, `accessibilityHint` to all interactive elements, buttons, inputs, cards across every screen
+
+**Estimated effort: ~2-3 weeks**
+
+---
+
+## Phase B: Workout Intelligence
+
+9. **Auto-Progression Engine** — After each workout, compare to previous session → suggest weight/rep increases next time. Store progression rules per exercise
+10. **Superset/Circuit/EMOM/AMRAP Modes** — Add `workout_type` field to active workout, build timer modes (EMOM countdown, AMRAP clock), group exercises into supersets
+11. **Warm-Up & Cool-Down Generator** — AI generates dynamic warm-up based on today's workout muscles + static cool-down. New screen `/workout/warmup`
+12. **Training Split Optimizer** — AI analyzes recovery data + workout history → suggests optimal weekly split. New screen or section in AI chat
+13. **Deload Detection** — Track rolling 4-week volume. When fatigue ratio exceeds threshold, prompt deload week with reduced program
+14. **Strength Standards** — Compare 1RM estimates to population percentiles by bodyweight/age/sex (use public strength standards data)
+15. **GPS Cardio Tracking** — New `/workout/cardio` screen using `expo-location` for run/cycle tracking with pace, distance, elevation, map replay
+16. **VO2 Max Estimation** — Calculate from cardio data (Cooper test formula or HR-based estimation)
+17. **Heart Rate Zone Training** — If BLE HR monitor connected, show real-time zone overlay during cardio
+
+**Estimated effort: ~3-4 weeks**
+
+---
+
+## Phase C: Nutrition Intelligence
+
+18. **Natural Language Food Logging** — Send text to GPT → parse food items + quantities → auto-log. Add mic button for voice-to-text → same pipeline
+19. **Receipt/Menu Scanner** — Camera → GPT-4o Vision → parse menu items/receipt line items → present for logging
+20. **Adaptive Calorie Targets** — Weekly: compare actual weight trend vs expected → adjust TDEE estimate → update calorie target automatically
+21. **Metabolic Adaptation Detection** — If weight loss stalls despite consistent deficit for 2+ weeks, flag it and suggest diet break/refeed
+22. **Gut Health Score** — Score based on fiber diversity (unique fiber sources), fermented food frequency, and prebiotic intake from food log data
+23. **Meal Photo Journal** — Store photo URI with each food log entry, add timeline view in nutrition tab
+24. **IIFYM Mode** — Dedicated view showing remaining macro budget with AI food suggestions to fill gaps ("You need 40g protein and 20g carbs — try Greek yogurt + banana")
+25. **Recipe Macro Adjuster** — In recipe view, let user set target macros → AI suggests ingredient swaps/portion changes
+
+**Estimated effort: ~2-3 weeks**
+
+---
+
+## Phase D: Meal Planning & Recipes Expansion
+
+26. **Meal Prep Mode** — Extend meal plan with batch-cooking instructions, container packing guide, prep day schedule
+27. **Leftover Optimizer** — User inputs available ingredients (or camera scan fridge) → AI suggests recipes using them
+28. **Restaurant Menu Advisor** — Paste or scan menu → AI highlights best options for user's macro targets + allergies
+29. **Cultural Cuisine Support** — Expand food DB with international foods (Indian, Chinese, Mexican, Japanese, Korean, Middle Eastern, African cuisine entries)
+30. **Family/Household Mode** — Multi-profile support under one account. Each member has their own macro targets, meal plan generates per-person portions
+31. **Grocery Store Integration** — Deep link to Instacart/Amazon Fresh with pre-filled cart from grocery list (use their affiliate/partner URLs)
+
+**Estimated effort: ~2-3 weeks**
+
+---
+
+## Phase E: Body Composition & Health
+
+32. **Progress Photo AI Analysis** — Send progress photos to GPT-4o Vision → estimate body fat %, identify muscle development, generate comparison reports
+33. **Muscle Balance Analysis** — Compare left/right lift data (curl, leg press) + photo analysis → flag asymmetries with corrective recommendations
+34. **Posture Analysis** — Camera-based: user stands in frame → GPT-4o Vision analyzes alignment → corrective exercise recommendations
+35. **DEXA/InBody Import** — Manual entry form for scan results (body fat %, lean mass, bone density) that calibrates the app's estimation models
+36. **Blood Work Integration** — Manual entry of lab results (testosterone, thyroid, vitamin D, cholesterol, etc.) with trend tracking and AI interpretation
+37. **Blood Pressure & Resting HR Logger** — Simple manual log with trend charts and health range indicators
+38. **Menstrual Cycle Integration** — Cycle phase tracking → auto-adjust training intensity and calorie targets per phase (follicular, ovulatory, luteal, menstrual)
+39. **Medication & Supplement Logger** — Extend supplement tracker with medication support, interaction warnings, timing reminders
+
+**Estimated effort: ~2-3 weeks**
+
+---
+
+## Phase F: AI Coaching Expansion
+
+40. **Coach Personalities** — Add personality selector to chat (Drill Sergeant, Gentle Encourager, Data Nerd, Bro Science). Each modifies the system prompt
+41. **Plateau Buster** — Weekly analysis: if any metric (weight, lifts, body fat) stalls for 2+ weeks → AI generates specific intervention plan
+42. **Injury Prevention Alerts** — Track volume spikes per muscle group. If weekly volume exceeds 2x previous week or same muscle trained 3+ days in a row → alert
+43. **Program Periodization** — AI builds mesocycle blocks (accumulation → intensification → peaking → deload) based on goal dates
+44. **"What If" Simulator** — User enters hypothetical changes ("What if I cut 300 cal?") → AI projects weight/strength outcomes at 4/8/12 weeks
+45. **Scientific Reference Engine** — Append PubMed citation links to AI recommendations. Build a curated reference database of ~100 key studies
+46. **Daily Briefing Push Notification** — Morning notification with today's workout, meal plan, readiness score, motivational message
+
+**Estimated effort: ~2-3 weeks**
+
+---
+
+## Phase G: Social & Community Expansion
+
+47. **Accountability Partners** — Pair two users with shared streak, daily check-in prompts, and mutual progress visibility
+48. **Community Recipes** — Users can publish recipes, rate/review others' recipes, with macro verification
+49. **Transformation Stories** — Before/after photo showcase with user stories, voting, categories
+50. **Live Workout Rooms** — Real-time workout session via Supabase Realtime subscriptions — see partners' sets as they complete them
+51. **Coach Marketplace** — Trainer profiles with specialties, pricing, client slots. Trainers get a dashboard to view client data and assign programs
+52. **Forum / Q&A** — Categorized discussion boards with AI moderation (flag misinformation via GPT check)
+53. **Workout Partners** — Match users by location, schedule, training style, experience level
+
+**Estimated effort: ~3-4 weeks**
+
+---
+
+## Phase H: Device Integrations
+
+54. **Apple HealthKit** — `expo-health` or `react-native-health` to read/write steps, HR, sleep, workouts, weight, body fat
+55. **Google Fit** — Same sync for Android users
+56. **Bluetooth HR Monitors** — `react-native-ble-plx` for real-time chest strap HR during workouts
+57. **Smart Scale Sync** — Via HealthKit/Google Fit (most smart scales write there)
+58. **Strava Sync** — OAuth + Strava API for cardio activity import/export
+59. **Apple Watch Companion** — Expo + WatchOS: log sets, see timer, heart rate on wrist
+60. **Smart Notification Timing** — ML model learns when user is most responsive → optimize push notification delivery times
+
+**Estimated effort: ~3-4 weeks (native modules, heavy testing)**
+
+---
+
+## Phase I: Camera & Computer Vision
+
+61. **AI Form Coach** — `expo-camera` live feed → send frames to pose estimation model (MediaPipe or on-device ML) → real-time form feedback with audio cues
+62. **Real-Time Rep Counter** — Same pose estimation pipeline → count reps by detecting joint angle cycles
+63. **3D Body Scan** — Use iPhone LiDAR (ARKit via `expo-three` or native module) to create body mesh, track volume changes
+64. **Gym Equipment Scanner** — Camera → identify machine via image recognition → auto-select exercise, suggest settings from history
+65. **AR Gym Overlay** — ARKit/ARCore overlay: point at equipment → see exercise library entries and your PR history floating in AR
+
+**Estimated effort: ~4-6 weeks (ML models, native bridging, heavy R&D)**
+
+---
+
+## Phase J: Personalization & Platform Expansion
+
+66. **Multilingual (i18n)** — `expo-localization` + `i18next` with translation files for 10+ languages
+67. **Adaptive UI** — Beginner/intermediate/advanced mode toggle that shows/hides features and simplifies UI
+68. **Home Screen Widgets** — `expo-widgets` or native modules for iOS/Android widgets (today's workout, macros remaining, water, streak)
+69. **Voice Control** — `expo-speech` for TTS + speech recognition for hands-free workout logging ("Next set, 100kg, 8 reps")
+70. **Siri/Google Assistant** — Siri Shortcuts + Google Assistant Actions for quick logging commands
+71. **iPad Tablet Layout** — Responsive layouts with side-by-side panels for tablet screens
+72. **Desktop Web App** — Full Expo web build with desktop-optimized navigation and keyboard shortcuts
+
+**Estimated effort: ~3-4 weeks**
+
+---
+
+## Phase K: Education & Content
+
+73. **Exercise Tutorial System** — Progressive learning paths with video/GIF demos per exercise, form cues, common mistakes
+74. **Nutrition Academy** — Bite-sized lessons (macro basics, meal timing, hydration, supplements) with progress tracking
+75. **Myth Buster** — AI-powered: user asks a fitness claim → AI evaluates with citations
+76. **Podcast & Article Feed** — Curated RSS feed of evidence-based fitness/nutrition content
+77. **Video Coaching Library** — Embedded video series for specific goals (beginner strength, weight loss, etc.)
+
+**Estimated effort: ~2-3 weeks (mostly content creation)**
+
+---
+
+## Phase L: Advanced & Future Tech
+
+78. **Digital Twin** — AI model simulating your body's response to different protocols before committing
+79. **Genetic Integration** — Import 23andMe raw data → parse relevant SNPs → tailor caffeine, injury risk, muscle fiber type recommendations
+80. **Microbiome Integration** — Import gut test results → optimize fiber/probiotic recommendations
+81. **AI Physique Predictor** — Current photo + goal → DALL-E/Stable Diffusion generates realistic future physique image
+82. **Voice Journaling** — Speak daily journal → AI extracts sentiment, energy, motivation → correlate with performance
+83. **Federated Learning / Edge AI** — On-device food recognition and form analysis (Core ML / TFLite) for privacy
+
+**Estimated effort: ~4-6 weeks (heavy R&D, third-party data)**
+
+---
+
+## Phase M: Monetization & Production
+
+84. **Free/Premium Tier** — In-app purchases via RevenueCat + `expo-in-app-purchases`, paywall for AI features, advanced analytics, meal plans
+85. **Coach/Trainer Portal** — Separate web dashboard where trainers manage clients, assign programs, view data
+86. **Corporate Wellness** — B2B admin dashboard with team analytics, challenge management, anonymized reports
+87. **API / Developer Platform** — Public REST API for third-party integrations
+88. **EAS Build + OTA Updates** — `eas.json` config, production builds, `expo-updates` for OTA patches
+89. **App Store Submission** — Final icon/splash assets, App Store screenshots, privacy policy, review compliance
+
+**Estimated effort: ~3-4 weeks**
+
+---
+
+## Recommended Priority Order
+
+| Order | Phase | Why First |
+|-------|-------|-----------|
+| 1 | **A** (Foundation) | Unblocks everything — offline, real data, a11y |
+| 2 | **B** (Workout Intel) | Core differentiator |
+| 3 | **C** (Nutrition Intel) | Second core pillar |
+| 4 | **F** (AI Coaching) | High-value, mostly prompt engineering |
+| 5 | **E** (Body/Health) | Deepens retention |
+| 6 | **D** (Meal Planning) | Expands nutrition |
+| 7 | **H** (Integrations) | Major user demand |
+| 8 | **G** (Social) | Growth driver |
+| 9 | **J** (Personalization) | Platform maturity |
+| 10 | **I** (Camera/CV) | Hardest, highest wow-factor |
+| 11 | **K** (Education) | Content-heavy |
+| 12 | **L** (Advanced) | R&D / moonshots |
+| 13 | **M** (Monetization) | When ready to launch |
+
+**Total: ~35-47 weeks for everything.** Want me to start building Phase A?

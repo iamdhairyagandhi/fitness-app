@@ -130,6 +130,17 @@ export interface WorkoutSession {
     notes: string | null;
     mood: 1 | 2 | 3 | 4 | 5 | null;
     exercises: WorkoutSessionExercise[];
+    workout_mode: WorkoutMode;
+    superset_groups: SupersetGroup[];
+}
+
+export type WorkoutMode = 'standard' | 'superset' | 'circuit' | 'emom' | 'amrap';
+
+export interface SupersetGroup {
+    id: string;
+    name: string;
+    exerciseIndices: number[];
+    restBetweenRounds: number;
 }
 
 export interface WorkoutSessionExercise {
