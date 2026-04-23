@@ -1,5 +1,6 @@
 import { deleteFoodLog, saveFoodLog, saveWaterLog } from '@/lib/db';
 import { applyXPReward } from '@/lib/gamification';
+import AsyncStorage from '@/lib/storage';
 import { generateId } from '@/lib/utils';
 import type {
     DailyNutritionSummary,
@@ -8,7 +9,6 @@ import type {
     MealType,
     WaterLog,
 } from '@/types';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { useAuthStore } from './authStore';

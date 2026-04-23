@@ -33,10 +33,10 @@ export default function AuthCallbackScreen() {
                     setSession({ access_token: session.access_token });
                     router.replace('/(tabs)');
                 } else {
-                    router.replace('/(auth)/login');
+                    router.replace('/login' as any);
                 }
             } catch {
-                router.replace('/(auth)/login');
+                router.replace('/login' as any);
             }
         }
 

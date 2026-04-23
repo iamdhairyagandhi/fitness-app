@@ -47,13 +47,13 @@ export default function WelcomeScreen() {
                 <View style={styles.buttons}>
                     <Button
                         title="Get Started"
-                        onPress={() => router.push('/(auth)/signup')}
+                        onPress={() => router.push('/signup' as any)}
                         variant="primary"
                         size="lg"
                     />
                     <Button
                         title="I already have an account"
-                        onPress={() => router.push('/(auth)/login')}
+                        onPress={() => router.push('/login' as any)}
                         variant="ghost"
                         size="md"
                     />

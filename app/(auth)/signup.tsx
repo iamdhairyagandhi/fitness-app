@@ -53,7 +53,7 @@ export default function SignUpScreen() {
 
         if (data.session) {
             setSession({ access_token: data.session.access_token });
-            router.replace('/(auth)/onboarding');
+            router.replace('/onboarding' as any);
         } else {
             const msg = 'Check your email for a confirmation link, then come back and log in.';
             toast.info('Check your email', msg);
@@ -127,7 +127,7 @@ export default function SignUpScreen() {
                             <Text style={styles.messageText}>{message}</Text>
                             <Button
                                 title="Go to Login"
-                                onPress={() => router.replace('/(auth)/login')}
+                                onPress={() => router.replace('/login' as any)}
                                 variant="outline"
                                 size="md"
                             />
@@ -172,7 +172,7 @@ export default function SignUpScreen() {
 
                 <View style={styles.footer}>
                     <Text style={styles.footerText}>Already have an account? </Text>
-                    <TouchableOpacity onPress={() => router.replace('/(auth)/login')}>
+                    <TouchableOpacity onPress={() => router.replace('/login' as any)}>
                         <Text style={styles.footerLink}>Sign In</Text>
                     </TouchableOpacity>
                 </View>

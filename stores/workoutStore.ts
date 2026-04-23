@@ -2,6 +2,7 @@ import { DEFAULT_REST_SECONDS } from '@/constants/config';
 import { savePersonalRecords, saveWorkoutSession } from '@/lib/db';
 import { applyXPReward, calculateStreak } from '@/lib/gamification';
 import { postActivity } from '@/lib/socialDb';
+import AsyncStorage from '@/lib/storage';
 import { generateId } from '@/lib/utils';
 import type {
     Exercise,
@@ -14,7 +15,6 @@ import type {
     WorkoutSet,
     WorkoutTemplate,
 } from '@/types';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { useAuthStore } from './authStore';

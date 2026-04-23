@@ -1,12 +1,12 @@
 import { saveGoal, saveMeasurement, saveProgressPhoto, saveWeightEntry } from '@/lib/db';
 import { applyXPReward } from '@/lib/gamification';
+import AsyncStorage from '@/lib/storage';
 import type {
     BodyMeasurement,
     Goal,
     ProgressPhoto,
     WeightEntry,
 } from '@/types';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { useAuthStore } from './authStore';

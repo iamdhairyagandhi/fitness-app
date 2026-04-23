@@ -1,7 +1,7 @@
 import { upsertProfile } from '@/lib/db';
 import { postActivity } from '@/lib/socialDb';
+import AsyncStorage from '@/lib/storage';
 import type { UserProfile } from '@/types';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 

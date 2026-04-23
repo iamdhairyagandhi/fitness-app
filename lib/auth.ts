@@ -1,9 +1,16 @@
 import { GOOGLE_WEB_CLIENT_ID } from '@/constants/config';
 import { supabase } from '@/lib/supabase';
 import * as AuthSession from 'expo-auth-session';
-import * as Crypto from 'expo-crypto';
 import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
+
+// Lazy-load expo-crypto to avoid crash when native module is missing
+let Crypto: typeof import('expo-crypto') | null = null;
+try {
+    Crypto = require('expo-crypto');
+} catch {
+    console.warn('[auth] expo-crypto native module unavailable — Apple sign-in disabled');
+}
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -43,9 +50,11 @@ export async function signInWithGoogle() {
 // ── Apple sign-in via Supabase OAuth ─────────────────────────
 
 export async function signInWithApple() {
+    if (!Crypto) throw new Error('expo-crypto is required for Apple sign-in but is not available');
+
     // Generate a nonce for security
     const rawNonce = Crypto.getRandomBytes(16)
-        .reduce((acc, byte) => acc + byte.toString(16).padStart(2, '0'), '');
+        .reduce((acc: string, byte: number) => acc + byte.toString(16).padStart(2, '0'), '');
 
     const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'apple',

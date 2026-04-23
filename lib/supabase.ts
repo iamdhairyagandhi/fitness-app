@@ -1,6 +1,6 @@
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from '@/constants/config';
-import * as SecureStore from 'expo-secure-store';
 import { createClient } from '@supabase/supabase-js';
+import * as SecureStore from 'expo-secure-store';
 
 const ExpoSecureStoreAdapter = {
     getItem: (key: string) => {

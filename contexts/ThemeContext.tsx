@@ -2,7 +2,7 @@
 // Provides light/dark/system theme switching across the app
 // ─────────────────────────────────────────────────────────────
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from '@/lib/storage';
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { useColorScheme } from 'react-native';
 
