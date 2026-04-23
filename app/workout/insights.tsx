@@ -6,9 +6,9 @@ import {
     detectDeload,
     generateProgressionSuggestions,
 } from '@/lib/workoutIntelligence';
-import { useWorkoutStore } from '@/stores/workoutStore';
-import { useRecoveryStore } from '@/stores/recoveryStore';
 import { useAuthStore } from '@/stores/authStore';
+import { useRecoveryStore } from '@/stores/recoveryStore';
+import { useWorkoutStore } from '@/stores/workoutStore';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useMemo } from 'react';

@@ -10,8 +10,7 @@ import type {
     PersonalRecord,
     RecoveryLog,
     WorkoutSession,
-    WorkoutSessionExercise,
-    WorkoutSet,
+    WorkoutSessionExercise
 } from '@/types';
 
 // ── Types ────────────────────────────────────────────────────

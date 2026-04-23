@@ -376,113 +376,113 @@ export default function ActiveWorkoutScreen() {
                     );
                     const isSelectedForSuperset = supersetSelection.includes(exIdx);
                     return (
-                    <Card key={exercise.id} style={styles.exerciseCard}>
-                        <View style={styles.exerciseHeader}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 6 }}>
-                                {supersetGroup && (
-                                    <View style={styles.supersetBadge}>
-                                        <Ionicons name="link" size={10} color="#fff" />
-                                    </View>
+                        <Card key={exercise.id} style={styles.exerciseCard}>
+                            <View style={styles.exerciseHeader}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 6 }}>
+                                    {supersetGroup && (
+                                        <View style={styles.supersetBadge}>
+                                            <Ionicons name="link" size={10} color="#fff" />
+                                        </View>
+                                    )}
+                                    <Text style={styles.exerciseName}>{exercise.exercise.name}</Text>
+                                </View>
+                                {currentMode === 'superset' && !supersetGroup && (
+                                    <TouchableOpacity
+                                        style={[styles.supersetSelectBtn, isSelectedForSuperset && styles.supersetSelectBtnActive]}
+                                        onPress={() => {
+                                            setSupersetSelection((prev) =>
+                                                prev.includes(exIdx) ? prev.filter((i) => i !== exIdx) : [...prev, exIdx]
+                                            );
+                                        }}
+                                    >
+                                        <Ionicons
+                                            name={isSelectedForSuperset ? 'checkbox' : 'square-outline'}
+                                            size={18}
+                                            color={isSelectedForSuperset ? '#8B5CF6' : Colors.textTertiary}
+                                        />
+                                    </TouchableOpacity>
                                 )}
-                                <Text style={styles.exerciseName}>{exercise.exercise.name}</Text>
-                            </View>
-                            {currentMode === 'superset' && !supersetGroup && (
-                                <TouchableOpacity
-                                    style={[styles.supersetSelectBtn, isSelectedForSuperset && styles.supersetSelectBtnActive]}
-                                    onPress={() => {
-                                        setSupersetSelection((prev) =>
-                                            prev.includes(exIdx) ? prev.filter((i) => i !== exIdx) : [...prev, exIdx]
-                                        );
-                                    }}
-                                >
-                                    <Ionicons
-                                        name={isSelectedForSuperset ? 'checkbox' : 'square-outline'}
-                                        size={18}
-                                        color={isSelectedForSuperset ? '#8B5CF6' : Colors.textTertiary}
-                                    />
+                                <TouchableOpacity>
+                                    <Ionicons name="ellipsis-horizontal" size={20} color={Colors.textTertiary} />
                                 </TouchableOpacity>
-                            )}
-                            <TouchableOpacity>
-                                <Ionicons name="ellipsis-horizontal" size={20} color={Colors.textTertiary} />
-                            </TouchableOpacity>
-                        </View>
+                            </View>
 
-                        {/* Sets header */}
-                        <View style={styles.setsHeader}>
-                            <Text style={[styles.setHeaderText, { width: 40 }]}>SET</Text>
-                            <Text style={[styles.setHeaderText, { flex: 1 }]}>PREV</Text>
-                            <Text style={[styles.setHeaderText, { width: 70 }]}>KG</Text>
-                            <Text style={[styles.setHeaderText, { width: 70 }]}>REPS</Text>
-                            <Text style={[styles.setHeaderText, { width: 36 }]}>✓</Text>
-                        </View>
+                            {/* Sets header */}
+                            <View style={styles.setsHeader}>
+                                <Text style={[styles.setHeaderText, { width: 40 }]}>SET</Text>
+                                <Text style={[styles.setHeaderText, { flex: 1 }]}>PREV</Text>
+                                <Text style={[styles.setHeaderText, { width: 70 }]}>KG</Text>
+                                <Text style={[styles.setHeaderText, { width: 70 }]}>REPS</Text>
+                                <Text style={[styles.setHeaderText, { width: 36 }]}>✓</Text>
+                            </View>
 
-                        {/* Sets */}
-                        {exercise.sets.map((set, setIdx) => (
-                            <View
-                                key={set.id}
-                                style={[
-                                    styles.setRow,
-                                    set.completed && styles.setRowCompleted,
-                                ]}
-                            >
-                                <Text style={[styles.setNumber, { width: 40 }]}>
-                                    {set.set_type === 'warmup' ? 'W' : set.set_number}
-                                </Text>
-                                <Text style={[styles.setPrev, { flex: 1 }]}>—</Text>
-                                <TextInput
-                                    style={styles.setInput}
-                                    value={set.weight_kg?.toString() || ''}
-                                    onChangeText={(v) =>
-                                        updateSet(exIdx, setIdx, {
-                                            weight_kg: v ? parseFloat(v) : null,
-                                        })
-                                    }
-                                    keyboardType="decimal-pad"
-                                    placeholder="0"
-                                    placeholderTextColor={Colors.textTertiary}
-                                />
-                                <TextInput
-                                    style={styles.setInput}
-                                    value={set.reps?.toString() || ''}
-                                    onChangeText={(v) =>
-                                        updateSet(exIdx, setIdx, {
-                                            reps: v ? parseInt(v, 10) : null,
-                                        })
-                                    }
-                                    keyboardType="number-pad"
-                                    placeholder="0"
-                                    placeholderTextColor={Colors.textTertiary}
-                                />
-                                <TouchableOpacity
+                            {/* Sets */}
+                            {exercise.sets.map((set, setIdx) => (
+                                <View
+                                    key={set.id}
                                     style={[
-                                        styles.checkButton,
-                                        set.completed && styles.checkButtonActive,
+                                        styles.setRow,
+                                        set.completed && styles.setRowCompleted,
                                     ]}
-                                    onPress={() => {
-                                        toggleSetComplete(exIdx, setIdx);
-                                        if (!set.completed) {
-                                            startRestTimer(90);
-                                        }
-                                    }}
                                 >
-                                    <Ionicons
-                                        name="checkmark"
-                                        size={18}
-                                        color={set.completed ? Colors.text : Colors.textTertiary}
+                                    <Text style={[styles.setNumber, { width: 40 }]}>
+                                        {set.set_type === 'warmup' ? 'W' : set.set_number}
+                                    </Text>
+                                    <Text style={[styles.setPrev, { flex: 1 }]}>—</Text>
+                                    <TextInput
+                                        style={styles.setInput}
+                                        value={set.weight_kg?.toString() || ''}
+                                        onChangeText={(v) =>
+                                            updateSet(exIdx, setIdx, {
+                                                weight_kg: v ? parseFloat(v) : null,
+                                            })
+                                        }
+                                        keyboardType="decimal-pad"
+                                        placeholder="0"
+                                        placeholderTextColor={Colors.textTertiary}
                                     />
-                                </TouchableOpacity>
-                            </View>
-                        ))}
+                                    <TextInput
+                                        style={styles.setInput}
+                                        value={set.reps?.toString() || ''}
+                                        onChangeText={(v) =>
+                                            updateSet(exIdx, setIdx, {
+                                                reps: v ? parseInt(v, 10) : null,
+                                            })
+                                        }
+                                        keyboardType="number-pad"
+                                        placeholder="0"
+                                        placeholderTextColor={Colors.textTertiary}
+                                    />
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.checkButton,
+                                            set.completed && styles.checkButtonActive,
+                                        ]}
+                                        onPress={() => {
+                                            toggleSetComplete(exIdx, setIdx);
+                                            if (!set.completed) {
+                                                startRestTimer(90);
+                                            }
+                                        }}
+                                    >
+                                        <Ionicons
+                                            name="checkmark"
+                                            size={18}
+                                            color={set.completed ? Colors.text : Colors.textTertiary}
+                                        />
+                                    </TouchableOpacity>
+                                </View>
+                            ))}
 
-                        {/* Add set button */}
-                        <TouchableOpacity
-                            style={styles.addSetBtn}
-                            onPress={() => addSet(exIdx)}
-                        >
-                            <Ionicons name="add" size={18} color={Colors.primary} />
-                            <Text style={styles.addSetText}>Add Set</Text>
-                        </TouchableOpacity>
-                    </Card>
+                            {/* Add set button */}
+                            <TouchableOpacity
+                                style={styles.addSetBtn}
+                                onPress={() => addSet(exIdx)}
+                            >
+                                <Ionicons name="add" size={18} color={Colors.primary} />
+                                <Text style={styles.addSetText}>Add Set</Text>
+                            </TouchableOpacity>
+                        </Card>
                     );
                 })}
 
