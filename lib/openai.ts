@@ -1,10 +1,57 @@
-import { OPENAI_API_KEY } from '@/constants/config';
-
-const OPENAI_ENDPOINT = 'https://api.openai.com/v1/chat/completions';
+import { AI_PROXY_ENABLED } from '@/constants/config';
+import { supabase } from '@/lib/supabase';
 
 export interface OpenAIMessage {
-    role: 'system' | 'user' | 'assistant';
+    role: 'system' | 'user' | 'assistant' | 'function';
+    name?: string;
+    function_call?: {
+        name: string;
+        arguments: string;
+    };
     content: string | { type: string; text?: string; image_url?: { url: string } }[];
+}
+
+export interface OpenAIChatCompletionResponse {
+    choices: {
+        message?: {
+            role: string;
+            content?: string;
+            function_call?: {
+                name: string;
+                arguments: string;
+            };
+        };
+    }[];
+}
+
+export interface OpenAIChatCompletionRequest {
+    model: string;
+    messages: OpenAIMessage[];
+    max_tokens?: number;
+    temperature?: number;
+    response_format?: { type: string };
+    functions?: unknown[];
+    function_call?: 'auto' | 'none' | { name: string };
+}
+
+export async function createOpenAIChatCompletion(
+    body: OpenAIChatCompletionRequest,
+): Promise<OpenAIChatCompletionResponse> {
+    if (!AI_PROXY_ENABLED) {
+        throw new Error('AI proxy not configured');
+    }
+
+    const { data, error } = await supabase.functions.invoke('openai-chat', { body });
+    if (error) {
+        throw new Error(error.message || 'AI request failed');
+    }
+
+    const response = data as OpenAIChatCompletionResponse & { error?: { message?: string } };
+    if (response?.error) {
+        throw new Error(response.error.message || 'AI request failed');
+    }
+
+    return response;
 }
 
 /**
@@ -14,30 +61,13 @@ export async function chatCompletion(
     messages: OpenAIMessage[],
     options?: { maxTokens?: number; temperature?: number }
 ): Promise<string> {
-    if (!OPENAI_API_KEY) {
-        throw new Error('OpenAI API key not configured');
-    }
-
-    const response = await fetch(OPENAI_ENDPOINT, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${OPENAI_API_KEY}`,
-        },
-        body: JSON.stringify({
-            model: 'gpt-4o-mini',
-            messages,
-            max_tokens: options?.maxTokens ?? 500,
-            temperature: options?.temperature ?? 0.7,
-        }),
+    const data = await createOpenAIChatCompletion({
+        model: 'gpt-4o-mini',
+        messages,
+        max_tokens: options?.maxTokens ?? 500,
+        temperature: options?.temperature ?? 0.7,
     });
 
-    if (!response.ok) {
-        const err = await response.text();
-        throw new Error(`OpenAI API error: ${response.status} - ${err}`);
-    }
-
-    const data = await response.json();
     return data.choices[0]?.message?.content ?? '';
 }
 
@@ -45,10 +75,6 @@ export async function chatCompletion(
  * Analyze a food photo using GPT-4o Vision
  */
 export async function analyzeFoodPhoto(base64Image: string): Promise<string> {
-    if (!OPENAI_API_KEY) {
-        throw new Error('OpenAI API key not configured');
-    }
-
     const messages: OpenAIMessage[] = [
         {
             role: 'system',
@@ -63,31 +89,18 @@ export async function analyzeFoodPhoto(base64Image: string): Promise<string> {
         },
     ];
 
-    const response = await fetch(OPENAI_ENDPOINT, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${OPENAI_API_KEY}`,
-        },
-        body: JSON.stringify({
-            model: 'gpt-4o',
-            messages,
-            max_tokens: 800,
-            temperature: 0.3,
-        }),
+    const data = await createOpenAIChatCompletion({
+        model: 'gpt-4o',
+        messages,
+        max_tokens: 800,
+        temperature: 0.3,
     });
 
-    if (!response.ok) {
-        const err = await response.text();
-        throw new Error(`OpenAI Vision API error: ${response.status} - ${err}`);
-    }
-
-    const data = await response.json();
     return data.choices[0]?.message?.content ?? '';
 }
 
 /**
- * Build the FitFusion coaching system prompt with user context
+ * Build the BodyPilot coaching system prompt with user context
  */
 export function buildCoachingSystemPrompt(context: {
     name?: string;
@@ -108,7 +121,7 @@ export function buildCoachingSystemPrompt(context: {
     bodyFatPct?: number;
     fastingActive?: boolean;
 }): string {
-    return `You are FitFusion AI Coach, a friendly, knowledgeable fitness and nutrition assistant.
+    return `You are BodyPilot AI Coach, a friendly, knowledgeable fitness and nutrition assistant.
 
 User Profile:
 - Name: ${context.name || 'User'}

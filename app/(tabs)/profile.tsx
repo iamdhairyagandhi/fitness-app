@@ -1,5 +1,6 @@
 import { Button, Card, toast } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 import { getLevelProgress } from '@/lib/gamification';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
@@ -18,11 +19,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function ProfileScreen() {
     const insets = useSafeAreaInsets();
+    const { colors } = useTheme();
     const { user, logout } = useAuthStore();
     const { recentWorkouts, personalRecords } = useWorkoutStore();
 
     const displayName = user?.display_name || 'Athlete';
-    const email = user?.email || 'user@fitfusion.app';
+    const email = user?.email || 'user@bodypilot.app';
     const usernameDisplay = user?.username ? `@${user.username}` : null;
     const level = user?.level || 1;
     const xp = user?.xp || 0;
@@ -84,59 +86,59 @@ export default function ProfileScreen() {
     ];
 
     return (
-        <View style={[styles.container, { paddingTop: insets.top }]}>
+        <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
-                <Text style={styles.title}>Profile</Text>
+                <Text style={[styles.title, { color: colors.text }]}>Profile</Text>
 
                 {/* Profile Card */}
                 <Card style={styles.profileCard}>
-                    <View style={styles.avatar}>
-                        <Text style={styles.avatarText}>
+                    <View style={[styles.avatar, { backgroundColor: colors.primary, shadowColor: colors.primary }]}>
+                        <Text style={[styles.avatarText, { color: colors.textInverse }]}>
                             {displayName.charAt(0).toUpperCase()}
                         </Text>
                     </View>
-                    <Text style={styles.userName}>{displayName}</Text>
+                    <Text style={[styles.userName, { color: colors.text }]}>{displayName}</Text>
                     {usernameDisplay ? (
-                        <Text style={styles.usernameText}>{usernameDisplay}</Text>
+                        <Text style={[styles.usernameText, { color: colors.textTertiary }]}>{usernameDisplay}</Text>
                     ) : null}
-                    <Text style={styles.userEmail}>{email}</Text>
+                    <Text style={[styles.userEmail, { color: colors.textTertiary }]}>{email}</Text>
 
                     {/* Level & XP */}
                     <View style={styles.levelContainer}>
-                        <View style={styles.levelBadge}>
-                            <Text style={styles.levelText}>Level {level}</Text>
+                        <View style={[styles.levelBadge, { backgroundColor: colors.primary + '20' }]}>
+                            <Text style={[styles.levelText, { color: colors.primary }]}>Level {level}</Text>
                         </View>
                         <View style={styles.xpBar}>
-                            <View style={styles.xpBarBg}>
+                            <View style={[styles.xpBarBg, { backgroundColor: colors.surfaceLight }]}>
                                 <View
                                     style={[
                                         styles.xpBarFill,
-                                        { width: `${levelProgress}%` },
+                                        { width: `${levelProgress}%`, backgroundColor: colors.primary },
                                     ]}
                                 />
                             </View>
-                            <Text style={styles.xpText}>{xp} XP</Text>
+                            <Text style={[styles.xpText, { color: colors.textSecondary }]}>{xp} XP</Text>
                         </View>
                     </View>
 
                     {/* Quick Stats */}
                     <View style={styles.statsRow}>
                         <View style={styles.stat}>
-                            <Text style={styles.statValue}>{workoutCount}</Text>
-                            <Text style={styles.statLabel}>Workouts</Text>
+                            <Text style={[styles.statValue, { color: colors.text }]}>{workoutCount}</Text>
+                            <Text style={[styles.statLabel, { color: colors.textTertiary }]}>Workouts</Text>
                         </View>
                         <View style={styles.statDivider} />
                         <View style={styles.stat}>
-                            <Text style={styles.statValue}>{streakCount}</Text>
-                            <Text style={styles.statLabel}>Day Streak</Text>
+                            <Text style={[styles.statValue, { color: colors.text }]}>{streakCount}</Text>
+                            <Text style={[styles.statLabel, { color: colors.textTertiary }]}>Day Streak</Text>
                         </View>
                         <View style={styles.statDivider} />
                         <View style={styles.stat}>
-                            <Text style={styles.statValue}>{prCount}</Text>
-                            <Text style={styles.statLabel}>PRs</Text>
+                            <Text style={[styles.statValue, { color: colors.text }]}>{prCount}</Text>
+                            <Text style={[styles.statLabel, { color: colors.textTertiary }]}>PRs</Text>
                         </View>
                     </View>
                 </Card>
@@ -144,7 +146,7 @@ export default function ProfileScreen() {
                 {/* Settings Groups */}
                 {settingsGroups.map((group) => (
                     <View key={group.title} style={styles.settingsGroup}>
-                        <Text style={styles.groupTitle}>{group.title}</Text>
+                        <Text style={[styles.groupTitle, { color: colors.textTertiary }]}>{group.title}</Text>
                         <Card padding={0}>
                             {group.items.map((item, index) => (
                                 <TouchableOpacity
@@ -152,13 +154,14 @@ export default function ProfileScreen() {
                                     style={[
                                         styles.settingsRow,
                                         index < group.items.length - 1 && styles.settingsRowBorder,
+                                        index < group.items.length - 1 && { borderBottomColor: colors.border },
                                     ]}
                                     onPress={item.onPress}
                                     activeOpacity={0.6}
                                 >
-                                    <Ionicons name={item.icon} size={20} color={Colors.textSecondary} />
-                                    <Text style={styles.settingsLabel}>{item.label}</Text>
-                                    <Ionicons name="chevron-forward" size={18} color={Colors.textTertiary} />
+                                    <Ionicons name={item.icon} size={20} color={colors.textSecondary} />
+                                    <Text style={[styles.settingsLabel, { color: colors.text }]}>{item.label}</Text>
+                                    <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
                                 </TouchableOpacity>
                             ))}
                         </Card>
@@ -173,7 +176,7 @@ export default function ProfileScreen() {
                     style={{ marginTop: Spacing.lg }}
                 />
 
-                <Text style={styles.version}>FitFusion v4.0.0 (Phase 4)</Text>
+                <Text style={styles.version}>BodyPilot v4.0.0 (Phase 4)</Text>
             </ScrollView>
         </View>
     );

@@ -1,5 +1,4 @@
 import { Button, Input, toast } from '@/components/ui';
-import { ADMIN_EMAIL, ADMIN_PASSWORD } from '@/constants/config';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { signInWithApple, signInWithGoogle } from '@/lib/auth';
 import { hydrateAllStores } from '@/lib/db';
@@ -12,6 +11,7 @@ import { useRecoveryStore } from '@/stores/recoveryStore';
 import { useWorkoutStore } from '@/stores/workoutStore';
 import type { FoodLogEntry, MealType } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
+import type { Session } from '@supabase/supabase-js';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -30,7 +30,81 @@ export default function LoginScreen() {
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
-    const { setSession, setAdmin, setUser, setOnboarded } = useAuthStore();
+    const { setSession, setUser, setOnboarded } = useAuthStore();
+
+    const finishLogin = async (session: Session) => {
+        setSession({ access_token: session.access_token });
+
+        // Hydrate stores from Supabase
+        try {
+            const hydrated = await hydrateAllStores(session.user.id);
+
+            if (hydrated.profile) {
+                setUser(hydrated.profile);
+            }
+
+            // Check if user has completed onboarding (height_cm is set during onboarding)
+            const needsOnboarding = !hydrated.profile?.height_cm;
+
+            if (!needsOnboarding) {
+                setOnboarded(true);
+
+                // Populate stores
+                const ws = useWorkoutStore.getState();
+                if (hydrated.exercises.length) ws.setExercises(hydrated.exercises);
+                if (hydrated.workouts.length) ws.setRecentWorkouts(hydrated.workouts);
+                if (hydrated.templates.length) ws.setTemplates(hydrated.templates);
+                if (hydrated.personalRecords.length) ws.setPersonalRecords(hydrated.personalRecords);
+
+                if (hydrated.foodLogs.length || hydrated.waterLogs.length) {
+                    const meals: Record<MealType, FoodLogEntry[]> = { breakfast: [], lunch: [], dinner: [], snack: [] };
+                    let cal = 0, p = 0, c = 0, f = 0;
+                    for (const fl of hydrated.foodLogs) {
+                        meals[fl.meal_type].push(fl);
+                        cal += fl.calories; p += fl.protein_g; c += fl.carbs_g; f += fl.fat_g;
+                    }
+                    const water = hydrated.waterLogs.reduce((s, w) => s + w.amount_ml, 0);
+                    useNutritionStore.getState().setTodaySummary({
+                        date: new Date().toISOString().split('T')[0],
+                        total_calories: cal, total_protein_g: p, total_carbs_g: c, total_fat_g: f, total_fiber_g: 0,
+                        water_ml: water, meals,
+                    });
+                }
+
+                const ps = useProgressStore.getState();
+                if (hydrated.weightEntries.length) ps.setWeightEntries(hydrated.weightEntries);
+                if (hydrated.measurements.length) ps.setMeasurements(hydrated.measurements);
+                if (hydrated.photos.length) ps.setProgressPhotos(hydrated.photos);
+                if (hydrated.goals.length) ps.setGoals(hydrated.goals);
+
+                if (hydrated.unlockedIds.length) {
+                    const rs = useRecoveryStore.getState();
+                    const achievements = rs.achievements.map((a) =>
+                        hydrated.unlockedIds.includes(a.id) ? { ...a, unlocked_at: 'loaded', progress: 100 } : a
+                    );
+                    useRecoveryStore.setState({ achievements });
+                }
+                if (hydrated.supplements.length) useRecoveryStore.setState({ supplements: hydrated.supplements });
+                if (hydrated.dietProfile) useMealPlanStore.setState({ dietProfile: hydrated.dietProfile });
+                if (hydrated.fastingSessions.length) {
+                    const active = hydrated.fastingSessions.find((f) => f.status === 'active');
+                    useMealPlanStore.setState({
+                        activeFast: active || null,
+                        fastHistory: hydrated.fastingSessions.filter((f) => f.status !== 'active'),
+                    });
+                }
+
+                router.replace('/(tabs)');
+            } else {
+                router.replace('/(auth)/onboarding');
+            }
+        } catch (error) {
+            // Hydration failed; still let them in, onboarding will set things up.
+            console.error('Hydration failed:', error);
+            toast.warning('Welcome!', 'Your profile will be set up next');
+            router.replace('/(auth)/onboarding');
+        }
+    };
 
     const handleLogin = async () => {
         setErrorMsg('');
@@ -39,99 +113,49 @@ export default function LoginScreen() {
             return;
         }
 
-        // Admin bypass — skip Supabase
-        if (email.trim().toLowerCase() === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-            setAdmin(true);
-            setSession({ access_token: 'admin-token' });
-            router.replace('/(tabs)');
-            return;
-        }
-
         setLoading(true);
-        const { data, error } = await supabase.auth.signInWithPassword({
-            email: email.trim(),
-            password,
-        });
+        try {
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email: email.trim(),
+                password,
+            });
 
-        if (error) {
-            toast.error('Login Failed', error.message);
-            setErrorMsg(error.message);
-            setLoading(false);
-            return;
-        }
-
-        if (data.session) {
-            setSession({ access_token: data.session.access_token });
-
-            // Hydrate stores from Supabase
-            try {
-                const hydrated = await hydrateAllStores(data.session.user.id);
-
-                if (hydrated.profile) {
-                    setUser(hydrated.profile);
-                }
-
-                // Check if user has completed onboarding (height_cm is set during onboarding)
-                const needsOnboarding = !hydrated.profile?.height_cm;
-
-                if (!needsOnboarding) {
-                    setOnboarded(true);
-
-                    // Populate stores
-                    const ws = useWorkoutStore.getState();
-                    if (hydrated.exercises.length) ws.setExercises(hydrated.exercises);
-                    if (hydrated.workouts.length) ws.setRecentWorkouts(hydrated.workouts);
-                    if (hydrated.templates.length) ws.setTemplates(hydrated.templates);
-                    if (hydrated.personalRecords.length) ws.setPersonalRecords(hydrated.personalRecords);
-
-                    if (hydrated.foodLogs.length || hydrated.waterLogs.length) {
-                        const meals: Record<MealType, FoodLogEntry[]> = { breakfast: [], lunch: [], dinner: [], snack: [] };
-                        let cal = 0, p = 0, c = 0, f = 0;
-                        for (const fl of hydrated.foodLogs) {
-                            meals[fl.meal_type].push(fl);
-                            cal += fl.calories; p += fl.protein_g; c += fl.carbs_g; f += fl.fat_g;
-                        }
-                        const water = hydrated.waterLogs.reduce((s, w) => s + w.amount_ml, 0);
-                        useNutritionStore.getState().setTodaySummary({
-                            date: new Date().toISOString().split('T')[0],
-                            total_calories: cal, total_protein_g: p, total_carbs_g: c, total_fat_g: f, total_fiber_g: 0,
-                            water_ml: water, meals,
-                        });
-                    }
-
-                    const ps = useProgressStore.getState();
-                    if (hydrated.weightEntries.length) ps.setWeightEntries(hydrated.weightEntries);
-                    if (hydrated.measurements.length) ps.setMeasurements(hydrated.measurements);
-                    if (hydrated.photos.length) ps.setProgressPhotos(hydrated.photos);
-                    if (hydrated.goals.length) ps.setGoals(hydrated.goals);
-
-                    if (hydrated.unlockedIds.length) {
-                        const rs = useRecoveryStore.getState();
-                        const achievements = rs.achievements.map((a) =>
-                            hydrated.unlockedIds.includes(a.id) ? { ...a, unlocked_at: 'loaded', progress: 100 } : a
-                        );
-                        useRecoveryStore.setState({ achievements });
-                    }
-                    if (hydrated.supplements.length) useRecoveryStore.setState({ supplements: hydrated.supplements });
-                    if (hydrated.dietProfile) useMealPlanStore.setState({ dietProfile: hydrated.dietProfile });
-                    if (hydrated.fastingSessions.length) {
-                        const active = hydrated.fastingSessions.find((f) => f.status === 'active');
-                        useMealPlanStore.setState({
-                            activeFast: active || null,
-                            fastHistory: hydrated.fastingSessions.filter((f) => f.status !== 'active'),
-                        });
-                    }
-
-                    router.replace('/(tabs)');
-                } else {
-                    router.replace('/(auth)/onboarding');
-                }
-            } catch {
-                // Hydration failed — still let them in, onboarding will set things up
-                router.replace('/(auth)/onboarding');
+            if (error) {
+                toast.error('Login Failed', error.message);
+                setErrorMsg(error.message);
+                setLoading(false);
+                return;
             }
+
+            if (!data.session) {
+                toast.error('Error', 'No session returned');
+                return;
+            }
+
+            await finishLogin(data.session);
+        } catch (error) {
+            console.error('Login error:', error);
+            toast.error('Error', 'An unexpected error occurred');
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
+    };
+
+    const handleSocialLogin = async (signIn: () => Promise<any>, label: 'Google' | 'Apple') => {
+        setErrorMsg('');
+        setLoading(true);
+        try {
+            const result = await signIn();
+            const session = result?.session || (await supabase.auth.getSession()).data.session;
+            if (!session) throw new Error(`${label} sign-in did not return a session`);
+            await finishLogin(session);
+        } catch (e: any) {
+            const message = e.message || `${label} sign-in failed`;
+            setErrorMsg(message);
+            toast.error(`${label} Sign-In Failed`, message);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -213,27 +237,13 @@ export default function LoginScreen() {
                     <View style={styles.socialButtons}>
                         <TouchableOpacity
                             style={styles.socialButton}
-                            onPress={async () => {
-                                setErrorMsg('');
-                                try {
-                                    await signInWithGoogle();
-                                } catch (e: any) {
-                                    setErrorMsg(e.message || 'Google sign-in failed');
-                                }
-                            }}
+                            onPress={() => handleSocialLogin(signInWithGoogle, 'Google')}
                         >
                             <Ionicons name="logo-google" size={22} color={Colors.text} />
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={styles.socialButton}
-                            onPress={async () => {
-                                setErrorMsg('');
-                                try {
-                                    await signInWithApple();
-                                } catch (e: any) {
-                                    setErrorMsg(e.message || 'Apple sign-in failed');
-                                }
-                            }}
+                            onPress={() => handleSocialLogin(signInWithApple, 'Apple')}
                         >
                             <Ionicons name="logo-apple" size={22} color={Colors.text} />
                         </TouchableOpacity>
@@ -244,7 +254,7 @@ export default function LoginScreen() {
                     <Text style={styles.footerText}>
                         Don't have an account?{' '}
                     </Text>
-                    <TouchableOpacity onPress={() => router.replace('/signup' as any)}>
+                    <TouchableOpacity onPress={() => router.replace('signup')}>
                         <Text style={styles.footerLink}>Sign Up</Text>
                     </TouchableOpacity>
                 </View>

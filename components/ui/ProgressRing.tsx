@@ -1,4 +1,5 @@
 import { Colors, FontSize, FontWeight } from '@/constants/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
@@ -24,6 +25,7 @@ export function ProgressRing({
     value,
     sublabel,
 }: ProgressRingProps) {
+    const { colors } = useTheme();
     const radius = (size - strokeWidth) / 2;
     const circumference = 2 * Math.PI * radius;
     const strokeDashoffset = circumference - (Math.min(progress, 100) / 100) * circumference;
@@ -35,7 +37,7 @@ export function ProgressRing({
                     cx={size / 2}
                     cy={size / 2}
                     r={radius}
-                    stroke={bgColor}
+                    stroke={bgColor === Colors.border ? colors.border : bgColor}
                     strokeWidth={strokeWidth}
                     fill="transparent"
                 />
@@ -54,9 +56,9 @@ export function ProgressRing({
                 />
             </Svg>
             <View style={styles.labelContainer}>
-                {value && <Text style={[styles.value, { fontSize: size > 80 ? FontSize.xl : FontSize.md }]}>{value}</Text>}
-                {label && <Text style={[styles.label, { fontSize: size > 80 ? FontSize.xs : 9 }]}>{label}</Text>}
-                {sublabel && <Text style={[styles.sublabel, { fontSize: 9 }]}>{sublabel}</Text>}
+                {value && <Text style={[styles.value, { fontSize: size > 80 ? FontSize.xl : FontSize.md, color: colors.text }]}>{value}</Text>}
+                {label && <Text style={[styles.label, { fontSize: size > 80 ? FontSize.xs : 9, color: colors.textSecondary }]}>{label}</Text>}
+                {sublabel && <Text style={[styles.sublabel, { fontSize: 9, color: colors.textTertiary }]}>{sublabel}</Text>}
             </View>
         </View>
     );

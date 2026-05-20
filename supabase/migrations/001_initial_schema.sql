@@ -1,4 +1,4 @@
--- FitFusion Database Schema
+-- BodyPilot Database Schema
 -- Run this in your Supabase SQL editor to set up all tables
 
 -- ============================================================

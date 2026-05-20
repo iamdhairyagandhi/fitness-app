@@ -1,7 +1,8 @@
-import { GOOGLE_WEB_CLIENT_ID } from '@/constants/config';
 import { supabase } from '@/lib/supabase';
+import type { Provider } from '@supabase/supabase-js';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 import { Platform } from 'react-native';
 
 // Lazy-load expo-crypto to avoid crash when native module is missing
@@ -14,37 +15,90 @@ try {
 
 WebBrowser.maybeCompleteAuthSession();
 
-// ── Google sign-in via Supabase OAuth ────────────────────────
+const OAUTH_REDIRECT_URL = AuthSession.makeRedirectUri({
+    scheme: 'fitfusion',
+    path: 'auth/callback',
+});
 
-export async function signInWithGoogle() {
+function firstParam(value: string | string[] | null | undefined): string | null {
+    if (Array.isArray(value)) return value[0] ?? null;
+    return value ?? null;
+}
+
+function extractOAuthParams(url: string) {
+    const parsed = Linking.parse(url);
+    const params = new URLSearchParams();
+
+    for (const [key, value] of Object.entries(parsed.queryParams ?? {})) {
+        const firstValue = firstParam(value as string | string[]);
+        if (firstValue) params.set(key, firstValue);
+    }
+
+    const queryIndex = url.indexOf('?');
+    const hashIndex = url.indexOf('#');
+    const queryEnd = hashIndex >= 0 ? hashIndex : undefined;
+    const rawQuery = queryIndex >= 0 ? url.slice(queryIndex + 1, queryEnd) : '';
+    const rawHash = hashIndex >= 0 ? url.slice(hashIndex + 1) : '';
+
+    for (const chunk of [rawQuery, rawHash]) {
+        const chunkParams = new URLSearchParams(chunk);
+        chunkParams.forEach((value, key) => {
+            if (value && !params.has(key)) params.set(key, value);
+        });
+    }
+
+    return params;
+}
+
+async function completeOAuthSignIn(provider: Provider) {
     const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
+        provider,
         options: {
-            redirectTo: AuthSession.makeRedirectUri({ path: 'auth/callback' }),
-            queryParams: {
-                // hint: the Google client IDs for platform-specific flows
-                ...(Platform.OS === 'web' && GOOGLE_WEB_CLIENT_ID
-                    ? { client_id: GOOGLE_WEB_CLIENT_ID }
-                    : {}),
-            },
+            redirectTo: OAUTH_REDIRECT_URL,
+            skipBrowserRedirect: Platform.OS !== 'web',
         },
     });
 
     if (error) throw error;
 
-    // On web, Supabase opens the URL automatically.
-    // On native, we need to open the browser manually.
-    if (data?.url && Platform.OS !== 'web') {
-        const result = await WebBrowser.openAuthSessionAsync(
-            data.url,
-            AuthSession.makeRedirectUri({ path: 'auth/callback' }),
-        );
-        if (result.type !== 'success') {
-            throw new Error('Google sign-in was cancelled');
-        }
+    if (Platform.OS === 'web') return data;
+    if (!data?.url) throw new Error('No sign-in URL returned');
+
+    const result = await WebBrowser.openAuthSessionAsync(data.url, OAUTH_REDIRECT_URL);
+    if (result.type !== 'success') {
+        throw new Error(`${provider === 'google' ? 'Google' : 'Apple'} sign-in was cancelled`);
     }
 
-    return data;
+    const params = extractOAuthParams(result.url);
+    const code = params.get('code');
+    const accessToken = params.get('access_token');
+    const refreshToken = params.get('refresh_token');
+    const oauthError = params.get('error_description') || params.get('error');
+
+    if (oauthError) throw new Error(String(oauthError));
+
+    if (code) {
+        const { data: sessionData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+        if (exchangeError) throw exchangeError;
+        return sessionData;
+    }
+
+    if (accessToken && refreshToken) {
+        const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+        });
+        if (sessionError) throw sessionError;
+        return sessionData;
+    }
+
+    throw new Error('Sign-in did not return a valid session');
+}
+
+// ── Google sign-in via Supabase OAuth ────────────────────────
+
+export async function signInWithGoogle() {
+    return completeOAuthSignIn('google');
 }
 
 // ── Apple sign-in via Supabase OAuth ─────────────────────────
@@ -52,30 +106,7 @@ export async function signInWithGoogle() {
 export async function signInWithApple() {
     if (!Crypto) throw new Error('expo-crypto is required for Apple sign-in but is not available');
 
-    // Generate a nonce for security
-    const rawNonce = Crypto.getRandomBytes(16)
-        .reduce((acc: string, byte: number) => acc + byte.toString(16).padStart(2, '0'), '');
-
-    const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'apple',
-        options: {
-            redirectTo: AuthSession.makeRedirectUri({ path: 'auth/callback' }),
-        },
-    });
-
-    if (error) throw error;
-
-    if (data?.url && Platform.OS !== 'web') {
-        const result = await WebBrowser.openAuthSessionAsync(
-            data.url,
-            AuthSession.makeRedirectUri({ path: 'auth/callback' }),
-        );
-        if (result.type !== 'success') {
-            throw new Error('Apple sign-in was cancelled');
-        }
-    }
-
-    return data;
+    return completeOAuthSignIn('apple');
 }
 
 // ── Username helpers ─────────────────────────────────────────
@@ -115,4 +146,18 @@ export async function updatePhoneNumber(userId: string, phone: string): Promise<
         .eq('id', userId);
 
     if (error) throw error;
+}
+
+// ── Account deletion ────────────────────────────────────────
+
+export async function deleteCurrentAccount(): Promise<void> {
+    const { data, error } = await supabase.functions.invoke('delete-account', { body: {} });
+    if (error) throw error;
+
+    const result = data as { error?: { message?: string } } | null;
+    if (result?.error) {
+        throw new Error(result.error.message || 'Failed to delete account');
+    }
+
+    await supabase.auth.signOut();
 }

@@ -1,4 +1,5 @@
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 import type { SocialChallenge } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
@@ -21,6 +22,7 @@ interface ChallengeCardProps {
 }
 
 export function ChallengeCard({ challenge, onPress, onJoin, onLeave }: ChallengeCardProps) {
+    const { colors } = useTheme();
     const icon = CHALLENGE_ICONS[challenge.challenge_type] || 'flag';
     const daysLeft = Math.max(0, Math.ceil(
         (new Date(challenge.end_date).getTime() - Date.now()) / 86400000
@@ -31,14 +33,14 @@ export function ChallengeCard({ challenge, onPress, onJoin, onLeave }: Challenge
         : 0;
 
     return (
-        <TouchableOpacity style={styles.card} onPress={() => onPress(challenge.id)}>
+        <TouchableOpacity style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => onPress(challenge.id)}>
             <View style={styles.header}>
                 <View style={styles.iconWrap}>
                     <Ionicons name={icon as any} size={20} color={Colors.analytics} />
                 </View>
                 <View style={styles.headerInfo}>
-                    <Text style={styles.title} numberOfLines={1}>{challenge.title}</Text>
-                    <Text style={styles.creator}>
+                    <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>{challenge.title}</Text>
+                    <Text style={[styles.creator, { color: colors.textTertiary }]}>
                         by {challenge.creator?.display_name || 'Unknown'}
                     </Text>
                 </View>
@@ -48,16 +50,16 @@ export function ChallengeCard({ challenge, onPress, onJoin, onLeave }: Challenge
             </View>
 
             {challenge.description ? (
-                <Text style={styles.description} numberOfLines={2}>{challenge.description}</Text>
+                <Text style={[styles.description, { color: colors.textSecondary }]} numberOfLines={2}>{challenge.description}</Text>
             ) : null}
 
             {/* Progress bar (if joined) */}
             {isJoined ? (
                 <View style={styles.progressWrap}>
-                    <View style={styles.progressBar}>
-                        <View style={[styles.progressFill, { width: `${progress}%` }]} />
+                    <View style={[styles.progressBar, { backgroundColor: colors.surfaceLight }]}>
+                        <View style={[styles.progressFill, { width: `${progress}%`, backgroundColor: colors.primary }]} />
                     </View>
-                    <Text style={styles.progressText}>
+                    <Text style={[styles.progressText, { color: colors.textSecondary }]}>
                         {challenge.user_participation!.current_value} / {challenge.target_value} {challenge.unit}
                     </Text>
                 </View>
@@ -66,12 +68,12 @@ export function ChallengeCard({ challenge, onPress, onJoin, onLeave }: Challenge
             <View style={styles.footer}>
                 <View style={styles.footerStats}>
                     <View style={styles.stat}>
-                        <Ionicons name="people-outline" size={14} color={Colors.textSecondary} />
-                        <Text style={styles.statText}>{challenge.participant_count}</Text>
+                        <Ionicons name="people-outline" size={14} color={colors.textSecondary} />
+                        <Text style={[styles.statText, { color: colors.textSecondary }]}>{challenge.participant_count}</Text>
                     </View>
                     <View style={styles.stat}>
-                        <Ionicons name="time-outline" size={14} color={Colors.textSecondary} />
-                        <Text style={styles.statText}>{daysLeft}d left</Text>
+                        <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
+                        <Text style={[styles.statText, { color: colors.textSecondary }]}>{daysLeft}d left</Text>
                     </View>
                 </View>
 
@@ -84,10 +86,10 @@ export function ChallengeCard({ challenge, onPress, onJoin, onLeave }: Challenge
                     </TouchableOpacity>
                 ) : (
                     <TouchableOpacity
-                        style={styles.joinBtn}
+                        style={[styles.joinBtn, { backgroundColor: colors.primary }]}
                         onPress={() => onJoin(challenge.id)}
                     >
-                        <Text style={styles.joinText}>Join</Text>
+                        <Text style={[styles.joinText, { color: colors.textInverse }]}>Join</Text>
                     </TouchableOpacity>
                 )}
             </View>

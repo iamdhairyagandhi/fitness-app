@@ -16,6 +16,30 @@ export function cmToFtIn(cm: number): string {
     return `${feet}'${inches}"`;
 }
 
+export type UnitSystem = 'metric' | 'imperial';
+
+export function getWeightUnit(unitSystem?: UnitSystem | null): 'kg' | 'lb' {
+    return unitSystem === 'imperial' ? 'lb' : 'kg';
+}
+
+export function displayWeightFromKg(kg: number, unitSystem?: UnitSystem | null, decimals = 1): number {
+    const value = unitSystem === 'imperial' ? kgToLbs(kg) : kg;
+    return Number(value.toFixed(decimals));
+}
+
+export function inputWeightToKg(weight: number, unitSystem?: UnitSystem | null): number {
+    return unitSystem === 'imperial' ? lbsToKg(weight) : weight;
+}
+
+export function formatWeight(kg: number, unitSystem?: UnitSystem | null, decimals = 1): string {
+    return `${displayWeightFromKg(kg, unitSystem, decimals).toFixed(decimals)} ${getWeightUnit(unitSystem)}`;
+}
+
+export function formatVolume(kg: number, unitSystem?: UnitSystem | null): string {
+    const value = unitSystem === 'imperial' ? kgToLbs(kg) : kg;
+    return `${formatNumber(Math.round(value))} ${getWeightUnit(unitSystem)}`;
+}
+
 /** Calculate estimated 1RM using Epley formula */
 export function estimate1RM(weight: number, reps: number): number {
     if (reps === 1) return weight;

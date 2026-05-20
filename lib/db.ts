@@ -91,7 +91,10 @@ export async function upsertProfile(profile: Partial<UserProfile> & { id: string
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', id);
 
-    if (error) console.warn('upsertProfile error:', error.message);
+    if (error) {
+        console.warn('upsertProfile error:', error.message);
+        throw error;
+    }
 }
 
 // ── Exercises ────────────────────────────────────────────────

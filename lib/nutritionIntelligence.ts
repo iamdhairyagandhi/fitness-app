@@ -1,5 +1,5 @@
 /**
- * FitFusion Nutrition Intelligence Engine — Phase C
+ * BodyPilot Nutrition Intelligence Engine — Phase C
  *
  * #18 Natural Language Food Parsing
  * #19 Receipt/Menu Parsing

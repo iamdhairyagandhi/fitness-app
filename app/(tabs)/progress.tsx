@@ -1,6 +1,7 @@
 import { Button, Card, Input, toast } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
-import { generateId } from '@/lib/utils';
+import { useTheme } from '@/contexts/ThemeContext';
+import { displayWeightFromKg, generateId, getWeightUnit, inputWeightToKg } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
 import { useProgressStore } from '@/stores/progressStore';
 import type { WeightEntry } from '@/types';
@@ -21,6 +22,7 @@ const { width } = Dimensions.get('window');
 
 export default function ProgressScreen() {
     const insets = useSafeAreaInsets();
+    const { colors } = useTheme();
     const user = useAuthStore((s) => s.user);
     const {
         weightEntries,
@@ -36,10 +38,12 @@ export default function ProgressScreen() {
 
     const latestWeight = weightEntries[0]?.weight_kg || user?.current_weight_kg || 0;
     const isImperial = user?.unit_system === 'imperial';
+    const weightUnit = getWeightUnit(user?.unit_system);
+    const displayLatestWeight = displayWeightFromKg(latestWeight, user?.unit_system);
 
     const handleLogWeight = () => {
         const weight = parseFloat(weightInput);
-        if (isNaN(weight) || weight <= 0 || weight > 500) {
+        if (isNaN(weight) || weight <= 0 || weight > (isImperial ? 1100 : 500)) {
             toast.error('Invalid weight', 'Please enter a valid weight');
             return;
         }
@@ -47,7 +51,7 @@ export default function ProgressScreen() {
         const entry: WeightEntry = {
             id: generateId(),
             user_id: '',
-            weight_kg: weight,
+            weight_kg: inputWeightToKg(weight, user?.unit_system),
             body_fat_pct: null,
             logged_at: new Date().toISOString(),
             notes: null,
@@ -74,16 +78,16 @@ export default function ProgressScreen() {
     const range = maxWeight - minWeight || 1;
 
     return (
-        <View style={[styles.container, { paddingTop: insets.top }]}>
+        <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
                 {/* Header */}
                 <View style={styles.header}>
-                    <Text style={styles.title}>Progress</Text>
-                    <TouchableOpacity style={styles.headerButton} onPress={() => router.push('/progress/photos')}>
-                        <Ionicons name="camera-outline" size={22} color={Colors.text} />
+                    <Text style={[styles.title, { color: colors.text }]}>Progress</Text>
+                    <TouchableOpacity style={[styles.headerButton, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/progress/photos')}>
+                        <Ionicons name="camera-outline" size={22} color={colors.text} />
                     </TouchableOpacity>
                 </View>
 
@@ -92,10 +96,10 @@ export default function ProgressScreen() {
                     {(['overview', 'weight', 'photos', 'goals'] as const).map((tab) => (
                         <TouchableOpacity
                             key={tab}
-                            style={[styles.tab, activeTab === tab && styles.tabActive]}
+                            style={[styles.tab, { backgroundColor: colors.surface }, activeTab === tab && styles.tabActive, activeTab === tab && { backgroundColor: colors.primary }]}
                             onPress={() => setActiveTab(tab)}
                         >
-                            <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
+                            <Text style={[styles.tabText, { color: colors.textSecondary }, activeTab === tab && styles.tabTextActive, activeTab === tab && { color: colors.textInverse }]}>
                                 {tab.charAt(0).toUpperCase() + tab.slice(1)}
                             </Text>
                         </TouchableOpacity>
@@ -109,25 +113,25 @@ export default function ProgressScreen() {
                         <Card style={styles.weightSummary}>
                             <View style={styles.weightHeader}>
                                 <View>
-                                    <Text style={styles.weightLabel}>Current Weight</Text>
-                                    <Text style={styles.weightValue}>
-                                        {latestWeight.toFixed(1)}{' '}
-                                        <Text style={styles.weightUnit}>kg</Text>
+                                    <Text style={[styles.weightLabel, { color: colors.textSecondary }]}>Current Weight</Text>
+                                    <Text style={[styles.weightValue, { color: colors.text }]}>
+                                        {displayLatestWeight.toFixed(1)}{' '}
+                                        <Text style={[styles.weightUnit, { color: colors.textTertiary }]}>{weightUnit}</Text>
                                     </Text>
                                 </View>
                                 <TouchableOpacity
-                                    style={styles.logWeightBtn}
+                                    style={[styles.logWeightBtn, { backgroundColor: colors.surfaceLight }]}
                                     onPress={() => setShowWeightInput(!showWeightInput)}
                                 >
-                                    <Ionicons name="add" size={20} color={Colors.primary} />
-                                    <Text style={styles.logWeightText}>Log</Text>
+                                    <Ionicons name="add" size={20} color={colors.primary} />
+                                    <Text style={[styles.logWeightText, { color: colors.primary }]}>Log</Text>
                                 </TouchableOpacity>
                             </View>
 
                             {showWeightInput && (
                                 <View style={styles.weightInputRow}>
                                     <Input
-                                        placeholder="Weight in kg"
+                                        placeholder={`Weight in ${weightUnit}`}
                                         value={weightInput}
                                         onChangeText={setWeightInput}
                                         keyboardType="decimal-pad"
@@ -157,8 +161,8 @@ export default function ProgressScreen() {
                                                             height,
                                                             backgroundColor:
                                                                 i === chartData.length - 1
-                                                                    ? Colors.primary
-                                                                    : Colors.surfaceLight,
+                                                                    ? colors.primary
+                                                                    : colors.surfaceLight,
                                                         },
                                                     ]}
                                                 />
@@ -179,13 +183,13 @@ export default function ProgressScreen() {
                         <View style={styles.statsGrid}>
                             <Card style={styles.statCard}>
                                 <Text style={styles.statEmoji}>📏</Text>
-                                <Text style={styles.statValue}>0</Text>
-                                <Text style={styles.statLabel}>Measurements</Text>
+                                <Text style={[styles.statValue, { color: colors.text }]}>0</Text>
+                                <Text style={[styles.statLabel, { color: colors.textTertiary }]}>Measurements</Text>
                             </Card>
                             <Card style={styles.statCard}>
                                 <Text style={styles.statEmoji}>📸</Text>
-                                <Text style={styles.statValue}>{progressPhotos.length}</Text>
-                                <Text style={styles.statLabel}>Photos</Text>
+                                <Text style={[styles.statValue, { color: colors.text }]}>{progressPhotos.length}</Text>
+                                <Text style={[styles.statLabel, { color: colors.textTertiary }]}>Photos</Text>
                             </Card>
                             <Card style={styles.statCard}>
                                 <Text style={styles.statEmoji}>🎯</Text>
@@ -235,7 +239,7 @@ export default function ProgressScreen() {
                                                     <View
                                                         style={[
                                                             styles.goalBarFill,
-                                                            { width: `${pct}%` },
+                                                            { width: `${pct}%`, backgroundColor: colors.primary },
                                                         ]}
                                                     />
                                                 </View>
@@ -265,7 +269,7 @@ export default function ProgressScreen() {
                             <Card style={{ marginBottom: Spacing.lg }}>
                                 <View style={styles.weightInputRow}>
                                     <Input
-                                        placeholder="Weight in kg"
+                                        placeholder={`Weight in ${weightUnit}`}
                                         value={weightInput}
                                         onChangeText={setWeightInput}
                                         keyboardType="decimal-pad"
@@ -291,7 +295,7 @@ export default function ProgressScreen() {
                                 <View key={entry.id} style={styles.weightRow}>
                                     <View>
                                         <Text style={styles.weightRowValue}>
-                                            {entry.weight_kg.toFixed(1)} kg
+                                            {displayWeightFromKg(entry.weight_kg, user?.unit_system).toFixed(1)} {weightUnit}
                                         </Text>
                                         <Text style={styles.weightRowDate}>
                                             {new Date(entry.logged_at).toLocaleDateString()}
@@ -374,7 +378,7 @@ export default function ProgressScreen() {
                                         <View style={styles.goalProgress}>
                                             <View style={styles.goalBarBg}>
                                                 <View
-                                                    style={[styles.goalBarFill, { width: `${pct}%` }]}
+                                                    style={[styles.goalBarFill, { width: `${pct}%`, backgroundColor: colors.primary }]}
                                                 />
                                             </View>
                                             <Text style={styles.goalPct}>{Math.round(pct)}%</Text>
@@ -396,8 +400,8 @@ export default function ProgressScreen() {
                                                         });
                                                     }}
                                                 >
-                                                    <Ionicons name="add-circle" size={18} color={Colors.primary} />
-                                                    <Text style={styles.goalActionText}>+10%</Text>
+                                                    <Ionicons name="add-circle" size={18} color={colors.primary} />
+                                                    <Text style={[styles.goalActionText, { color: colors.primary }]}>+10%</Text>
                                                 </TouchableOpacity>
                                                 <TouchableOpacity
                                                     style={styles.goalActionBtn}

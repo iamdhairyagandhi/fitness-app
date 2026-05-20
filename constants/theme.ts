@@ -1,59 +1,59 @@
-// FitFusion Design System
-// Premium wellness aesthetic — warm, motivating, clean
+// BodyPilot Design System
+// Minimal performance aesthetic — black, white, and electric lime
 
 export const Colors = {
-    // Core palette — sophisticated teal + warm amber
-    primary: '#0EA5E9',          // Sky blue — trust, clarity, focus
-    primaryLight: '#38BDF8',
-    primaryDark: '#0284C7',
+    // Core palette — BodyPilot black + electric lime
+    primary: '#A7FF00',
+    primaryLight: '#C6FF4D',
+    primaryDark: '#7CC000',
 
-    secondary: '#F59E0B',        // Warm amber — achievement, energy
-    secondaryLight: '#FBBF24',
-    secondaryDark: '#D97706',
+    secondary: '#FFFFFF',
+    secondaryLight: '#F5F5F5',
+    secondaryDark: '#B7B7B7',
 
     accent: '#F43F5E',           // Rose — alerts, urgency (used sparingly)
     accentLight: '#FB7185',
-    warning: '#F59E0B',          // Amber
+    warning: '#EAB308',
     success: '#10B981',          // Emerald — goals met, positive
     error: '#EF4444',            // Clean red for errors
 
-    // Backgrounds — deep warm neutrals (not pure black)
-    background: '#0C0C0F',
-    surface: '#16161D',
-    surfaceLight: '#1E1F28',
-    surfaceElevated: '#262733',
+    // Backgrounds
+    background: '#000000',
+    surface: '#101010',
+    surfaceLight: '#171717',
+    surfaceElevated: '#202020',
 
     // Text — warm whites, clear hierarchy
-    text: '#F4F4F6',
-    textSecondary: '#9CA3AF',
-    textTertiary: '#6B7280',
-    textInverse: '#0C0C0F',
+    text: '#FFFFFF',
+    textSecondary: '#B7B7B7',
+    textTertiary: '#777777',
+    textInverse: '#000000',
 
     // Borders — subtle, warm
-    border: '#1F2029',
-    borderLight: '#2A2B38',
+    border: '#1F1F1F',
+    borderLight: '#343434',
 
     // Macro colors — distinctive, muted elegance
     protein: '#F97316',          // Warm orange
     carbs: '#6366F1',            // Indigo
     fat: '#EAB308',              // Gold
-    calories: '#0EA5E9',         // Sky blue (matches primary)
+    calories: '#A7FF00',
 
     // Feature colors — harmonious palette
     recovery: '#10B981',         // Emerald
     fasting: '#8B5CF6',          // Violet
     supplements: '#EC4899',      // Pink
     recipes: '#F97316',          // Orange
-    achievements: '#F59E0B',     // Amber
+    achievements: '#A7FF00',
     analytics: '#6366F1',        // Indigo
     mealPlan: '#14B8A6',         // Teal
     bodyComp: '#8B5CF6',         // Violet
     micros: '#10B981',           // Emerald
 
     // Transparent overlays
-    overlay: 'rgba(12, 12, 15, 0.8)',
-    overlayLight: 'rgba(255, 255, 255, 0.04)',
-    glass: 'rgba(22, 22, 29, 0.85)',
+    overlay: 'rgba(0, 0, 0, 0.82)',
+    overlayLight: 'rgba(255, 255, 255, 0.06)',
+    glass: 'rgba(16, 16, 16, 0.9)',
 } as const;
 
 export const Spacing = {

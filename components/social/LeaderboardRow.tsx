@@ -1,4 +1,5 @@
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 import type { LeaderboardEntry } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
@@ -14,42 +15,48 @@ interface LeaderboardRowProps {
 const RANK_COLORS = ['#FFD700', '#C0C0C0', '#CD7F32']; // gold, silver, bronze
 
 export function LeaderboardRow({ entry, rank, onPress, isCurrentUser }: LeaderboardRowProps) {
+    const { colors } = useTheme();
     const isTopThree = rank <= 3;
 
     return (
         <TouchableOpacity
-            style={[styles.row, isCurrentUser && styles.currentUserRow]}
+            style={[
+                styles.row,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+                isCurrentUser && styles.currentUserRow,
+                isCurrentUser && { borderColor: colors.primary + '60', backgroundColor: colors.primary + '08' },
+            ]}
             onPress={() => onPress(entry.id)}
         >
-            <View style={[styles.rankBadge, isTopThree && { backgroundColor: RANK_COLORS[rank - 1] + '30' }]}>
+            <View style={[styles.rankBadge, { backgroundColor: colors.surfaceLight }, isTopThree && { backgroundColor: RANK_COLORS[rank - 1] + '30' }]}>
                 {isTopThree ? (
                     <Ionicons name="medal" size={16} color={RANK_COLORS[rank - 1]} />
                 ) : (
-                    <Text style={styles.rankText}>{rank}</Text>
+                    <Text style={[styles.rankText, { color: colors.textSecondary }]}>{rank}</Text>
                 )}
             </View>
 
-            <View style={styles.avatar}>
-                <Text style={styles.avatarText}>
+            <View style={[styles.avatar, { backgroundColor: colors.primary + '20' }]}>
+                <Text style={[styles.avatarText, { color: colors.primary }]}>
                     {entry.display_name.charAt(0).toUpperCase()}
                 </Text>
             </View>
 
             <View style={styles.info}>
-                <Text style={styles.name} numberOfLines={1}>
+                <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
                     {entry.display_name}
                     {isCurrentUser ? ' (you)' : ''}
                 </Text>
                 <View style={styles.statsRow}>
-                    <Text style={styles.stat}>Lv.{entry.level}</Text>
+                    <Text style={[styles.stat, { color: colors.textTertiary }]}>Lv.{entry.level}</Text>
                     <Ionicons name="flame" size={11} color={Colors.accent} />
-                    <Text style={styles.stat}>{entry.streak_count}</Text>
+                    <Text style={[styles.stat, { color: colors.textTertiary }]}>{entry.streak_count}</Text>
                 </View>
             </View>
 
             <View style={styles.score}>
-                <Text style={styles.scoreValue}>{formatNumber(entry.xp)}</Text>
-                <Text style={styles.scoreLabel}>XP</Text>
+                <Text style={[styles.scoreValue, { color: colors.text }]}>{formatNumber(entry.xp)}</Text>
+                <Text style={[styles.scoreLabel, { color: colors.textTertiary }]}>XP</Text>
             </View>
         </TouchableOpacity>
     );

@@ -9,6 +9,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     FlatList,
+    Image,
     StyleSheet,
     Text,
     TextInput,
@@ -109,7 +110,7 @@ export default function FoodSearchScreen() {
     const renderFoodItem = useCallback(({ item }: { item: FoodItem }) => (
         <TouchableOpacity
             style={[
-                styles.foodRow,
+                styles.foodCard,
                 selectedFood?.id === item.id && styles.foodRowSelected,
             ]}
             onPress={() => {
@@ -118,17 +119,34 @@ export default function FoodSearchScreen() {
             }}
             activeOpacity={0.7}
         >
+            <View style={styles.foodImageWrap}>
+                {item.image_url ? (
+                    <Image source={{ uri: item.image_url }} style={styles.foodImage} resizeMode="cover" />
+                ) : (
+                    <Ionicons name="restaurant-outline" size={24} color={Colors.primary} />
+                )}
+            </View>
             <View style={styles.foodInfo}>
-                <Text style={styles.foodName}>{item.name}</Text>
-                <Text style={styles.foodMeta}>
-                    {item.serving_size_g}{item.serving_unit === 'g' ? 'g' : ` ${item.serving_unit}`} • {item.calories} kcal
+                <View style={styles.foodTitleRow}>
+                    <Text style={styles.foodName} numberOfLines={2}>{item.name}</Text>
+                </View>
+                <Text style={styles.foodMeta} numberOfLines={1}>
+                    {item.brand ? `${item.brand} • ` : ''}
+                    {item.serving_size_g}{item.serving_unit === 'g' ? 'g' : ` ${item.serving_unit}`} serving
                 </Text>
+                <View style={styles.foodMacroBar}>
+                    <View style={[styles.foodMacroSegment, { flex: Math.max(item.protein_g * 4, 1), backgroundColor: Colors.protein }]} />
+                    <View style={[styles.foodMacroSegment, { flex: Math.max(item.carbs_g * 4, 1), backgroundColor: Colors.carbs }]} />
+                    <View style={[styles.foodMacroSegment, { flex: Math.max(item.fat_g * 9, 1), backgroundColor: Colors.fat }]} />
+                </View>
+                <View style={styles.foodMacroRow}>
+                    <Text style={styles.foodCaloriesStrong}>{item.calories} kcal</Text>
+                    <Text style={[styles.macroText, { color: Colors.protein }]}>P {item.protein_g}g</Text>
+                    <Text style={[styles.macroText, { color: Colors.carbs }]}>C {item.carbs_g}g</Text>
+                    <Text style={[styles.macroText, { color: Colors.fat }]}>F {item.fat_g}g</Text>
+                </View>
             </View>
-            <View style={styles.foodMacros}>
-                <Text style={[styles.macroText, { color: Colors.protein }]}>P {item.protein_g}g</Text>
-                <Text style={[styles.macroText, { color: Colors.carbs }]}>C {item.carbs_g}g</Text>
-                <Text style={[styles.macroText, { color: Colors.fat }]}>F {item.fat_g}g</Text>
-            </View>
+            <Ionicons name="add-circle" size={24} color={Colors.primary} />
         </TouchableOpacity>
     ), [selectedFood]);
 
@@ -196,7 +214,7 @@ export default function FoodSearchScreen() {
                         <Text style={styles.searchingText}>Searching online...</Text>
                     </View>
                 ) : apiResults.length > 0 ? (
-                    <Text style={styles.sourceHint}>Results from OpenFoodFacts & USDA</Text>
+                    <Text style={styles.sourceHint}>Showing matching foods</Text>
                 ) : query.length >= 2 ? (
                     <Text style={styles.sourceHint}>Showing offline results</Text>
                 ) : null}
@@ -215,7 +233,9 @@ export default function FoodSearchScreen() {
             {selectedFood && (
                 <View style={[styles.bottomSheet, { paddingBottom: insets.bottom + Spacing.md }]}>
                     <View style={styles.sheetHeader}>
-                        <Text style={styles.sheetFoodName}>{selectedFood.name}</Text>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.sheetFoodName}>{selectedFood.name}</Text>
+                        </View>
                         <TouchableOpacity onPress={() => setSelectedFood(null)}>
                             <Ionicons name="close" size={22} color={Colors.textSecondary} />
                         </TouchableOpacity>
@@ -309,17 +329,57 @@ const styles = StyleSheet.create({
         flex: 1, color: Colors.text, fontSize: FontSize.md, paddingVertical: Spacing.md,
     },
     list: { paddingHorizontal: Spacing.lg, paddingBottom: 220 },
-    foodRow: {
-        paddingVertical: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.border,
+    foodCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.md,
+        backgroundColor: Colors.surface,
+        borderRadius: BorderRadius.lg,
+        borderWidth: 1,
+        borderColor: Colors.border,
+        padding: Spacing.md,
+        marginBottom: Spacing.md,
     },
     foodRowSelected: {
-        backgroundColor: Colors.surfaceLight, marginHorizontal: -Spacing.md,
-        paddingHorizontal: Spacing.md, borderRadius: BorderRadius.md,
+        borderColor: Colors.primary,
+        backgroundColor: Colors.primary + '18',
     },
-    foodInfo: { marginBottom: Spacing.xs },
-    foodName: { color: Colors.text, fontSize: FontSize.md, fontWeight: FontWeight.medium },
+    foodImageWrap: {
+        width: 68,
+        height: 68,
+        borderRadius: BorderRadius.md,
+        backgroundColor: Colors.surfaceElevated,
+        borderWidth: 1,
+        borderColor: Colors.borderLight,
+        overflow: 'hidden',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    foodImage: {
+        width: '100%',
+        height: '100%',
+    },
+    foodInfo: { flex: 1 },
+    foodTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: Spacing.sm,
+    },
+    foodName: { color: Colors.text, fontSize: FontSize.md, fontWeight: FontWeight.bold, flex: 1 },
     foodMeta: { color: Colors.textTertiary, fontSize: FontSize.sm, marginTop: 2 },
-    foodMacros: { flexDirection: 'row', gap: Spacing.md },
+    foodMacroBar: {
+        flexDirection: 'row',
+        height: 5,
+        borderRadius: BorderRadius.full,
+        overflow: 'hidden',
+        marginTop: Spacing.sm,
+        backgroundColor: Colors.border,
+    },
+    foodMacroSegment: {
+        height: '100%',
+    },
+    foodMacroRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, marginTop: Spacing.sm },
+    foodCaloriesStrong: { color: Colors.text, fontSize: FontSize.xs, fontWeight: FontWeight.bold },
     macroText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
     emptyState: { alignItems: 'center', paddingTop: Spacing.huge, gap: Spacing.md },
     emptyText: { color: Colors.textSecondary, fontSize: FontSize.md },
@@ -338,7 +398,7 @@ const styles = StyleSheet.create({
     sheetHeader: {
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.md,
     },
-    sheetFoodName: { color: Colors.text, fontSize: FontSize.lg, fontWeight: FontWeight.bold, flex: 1 },
+    sheetFoodName: { color: Colors.text, fontSize: FontSize.lg, fontWeight: FontWeight.bold },
     sheetMacroRow: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: Spacing.lg },
     sheetMacro: { alignItems: 'center' },
     sheetMacroValue: { fontSize: FontSize.xl, fontWeight: FontWeight.bold },

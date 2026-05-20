@@ -1,4 +1,5 @@
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 import type { ActivityFeedItem, ReactionType } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
@@ -42,17 +43,19 @@ interface FeedCardProps {
 }
 
 export function FeedCard({ item, onReact, onComment, onProfile }: FeedCardProps) {
+    const { colors } = useTheme();
     const actConfig = ACTIVITY_ICONS[item.activity_type] || ACTIVITY_ICONS.workout_completed;
+    const activityColor = item.activity_type === 'workout_completed' ? colors.primary : actConfig.color;
 
     return (
-        <View style={styles.card}>
+        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity
                     style={styles.avatarRow}
                     onPress={() => onProfile(item.user_id)}
                 >
-                    <View style={[styles.avatar, { backgroundColor: actConfig.color + '20' }]}>
+                    <View style={[styles.avatar, { backgroundColor: activityColor + '20' }]}>
                         {item.profile?.avatar_url ? (
                             <Text style={styles.avatarText}>
                                 {item.profile.display_name.charAt(0).toUpperCase()}
@@ -64,20 +67,20 @@ export function FeedCard({ item, onReact, onComment, onProfile }: FeedCardProps)
                         )}
                     </View>
                     <View style={styles.headerText}>
-                        <Text style={styles.name}>{item.profile?.display_name || 'User'}</Text>
-                        <Text style={styles.time}>{timeAgo(item.created_at)}</Text>
+                        <Text style={[styles.name, { color: colors.text }]}>{item.profile?.display_name || 'User'}</Text>
+                        <Text style={[styles.time, { color: colors.textTertiary }]}>{timeAgo(item.created_at)}</Text>
                     </View>
                 </TouchableOpacity>
-                <View style={[styles.typeBadge, { backgroundColor: actConfig.color + '20' }]}>
-                    <Ionicons name={actConfig.icon as any} size={14} color={actConfig.color} />
+                <View style={[styles.typeBadge, { backgroundColor: activityColor + '20' }]}>
+                    <Ionicons name={actConfig.icon as any} size={14} color={activityColor} />
                 </View>
             </View>
 
             {/* Content */}
             <View style={styles.content}>
-                <Text style={styles.title}>{item.title}</Text>
+                <Text style={[styles.title, { color: colors.text }]}>{item.title}</Text>
                 {item.description ? (
-                    <Text style={styles.description}>{item.description}</Text>
+                    <Text style={[styles.description, { color: colors.textSecondary }]}>{item.description}</Text>
                 ) : null}
             </View>
 
@@ -85,15 +88,15 @@ export function FeedCard({ item, onReact, onComment, onProfile }: FeedCardProps)
             {item.metadata && Object.keys(item.metadata).length > 0 ? (
                 <View style={styles.metaRow}>
                     {item.metadata.duration_min ? (
-                        <View style={styles.metaChip}>
-                            <Ionicons name="time-outline" size={12} color={Colors.textSecondary} />
-                            <Text style={styles.metaText}>{String(item.metadata.duration_min)}min</Text>
+                        <View style={[styles.metaChip, { backgroundColor: colors.surfaceLight }]}>
+                            <Ionicons name="time-outline" size={12} color={colors.textSecondary} />
+                            <Text style={[styles.metaText, { color: colors.textSecondary }]}>{String(item.metadata.duration_min)}min</Text>
                         </View>
                     ) : null}
                     {item.metadata.volume_kg ? (
-                        <View style={styles.metaChip}>
-                            <Ionicons name="barbell-outline" size={12} color={Colors.textSecondary} />
-                            <Text style={styles.metaText}>{String(item.metadata.volume_kg)}kg</Text>
+                        <View style={[styles.metaChip, { backgroundColor: colors.surfaceLight }]}>
+                            <Ionicons name="barbell-outline" size={12} color={colors.textSecondary} />
+                            <Text style={[styles.metaText, { color: colors.textSecondary }]}>{String(item.metadata.volume_kg)}kg</Text>
                         </View>
                     ) : null}
                     {item.metadata.exercise_name ? (
@@ -120,6 +123,7 @@ export function FeedCard({ item, onReact, onComment, onProfile }: FeedCardProps)
                             style={[
                                 styles.reactionBtn,
                                 item.user_reaction === type && styles.reactionBtnActive,
+                                item.user_reaction === type && { backgroundColor: colors.primary + '22' },
                             ]}
                             onPress={() => onReact(item.id, type)}
                         >
@@ -127,16 +131,16 @@ export function FeedCard({ item, onReact, onComment, onProfile }: FeedCardProps)
                         </TouchableOpacity>
                     ))}
                     {item.reactions_count > 0 ? (
-                        <Text style={styles.countText}>{item.reactions_count}</Text>
+                        <Text style={[styles.countText, { color: colors.textSecondary }]}>{item.reactions_count}</Text>
                     ) : null}
                 </View>
                 <TouchableOpacity
                     style={styles.commentBtn}
                     onPress={() => onComment(item.id)}
                 >
-                    <Ionicons name="chatbubble-outline" size={16} color={Colors.textSecondary} />
+                    <Ionicons name="chatbubble-outline" size={16} color={colors.textSecondary} />
                     {item.comments_count > 0 ? (
-                        <Text style={styles.countText}>{item.comments_count}</Text>
+                        <Text style={[styles.countText, { color: colors.textSecondary }]}>{item.comments_count}</Text>
                     ) : null}
                 </TouchableOpacity>
             </View>

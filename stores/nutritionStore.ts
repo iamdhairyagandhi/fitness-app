@@ -80,6 +80,11 @@ export const useNutritionStore = create<NutritionState>()(
                 const meals = { ...todaySummary.meals };
                 meals[mealType] = [...meals[mealType], entry];
 
+                const recentFoods = [
+                    foodItem,
+                    ...get().recentFoods.filter((food) => food.id !== foodItem.id),
+                ].slice(0, 12);
+
                 set({
                     todaySummary: {
                         ...todaySummary,
@@ -89,6 +94,7 @@ export const useNutritionStore = create<NutritionState>()(
                         total_fat_g: todaySummary.total_fat_g + entry.fat_g,
                         meals,
                     },
+                    recentFoods,
                 });
 
                 // Persist to Supabase
@@ -173,7 +179,7 @@ export const useNutritionStore = create<NutritionState>()(
             resetDaily: () => set({ todaySummary: emptyDay(), waterLogs: [] }),
         }),
         {
-            name: 'fitfusion-nutrition',
+            name: 'bodypilot-nutrition',
             storage: createJSONStorage(() => AsyncStorage),
             partialize: (state) => ({
                 todaySummary: state.todaySummary,

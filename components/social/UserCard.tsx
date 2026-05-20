@@ -1,4 +1,5 @@
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 import type { PublicProfile } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
@@ -12,43 +13,45 @@ interface UserCardProps {
 }
 
 export function UserCard({ user, onPress, onFollow, onUnfollow }: UserCardProps) {
+    const { colors } = useTheme();
+
     return (
-        <TouchableOpacity style={styles.card} onPress={() => onPress(user.id)}>
-            <View style={styles.avatar}>
-                <Text style={styles.avatarText}>
+        <TouchableOpacity style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => onPress(user.id)}>
+            <View style={[styles.avatar, { backgroundColor: colors.primary + '20' }]}>
+                <Text style={[styles.avatarText, { color: colors.primary }]}>
                     {user.display_name.charAt(0).toUpperCase()}
                 </Text>
             </View>
 
             <View style={styles.info}>
-                <Text style={styles.name} numberOfLines={1}>{user.display_name}</Text>
+                <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>{user.display_name}</Text>
                 {user.username ? (
-                    <Text style={styles.username} numberOfLines={1}>@{user.username}</Text>
+                    <Text style={[styles.username, { color: colors.textTertiary }]} numberOfLines={1}>@{user.username}</Text>
                 ) : null}
                 <View style={styles.statsRow}>
-                    <Text style={styles.statText}>Lv.{user.level}</Text>
-                    <Text style={styles.statDot}>·</Text>
+                    <Text style={[styles.statText, { color: colors.textSecondary }]}>Lv.{user.level}</Text>
+                    <Text style={[styles.statDot, { color: colors.textTertiary }]}>·</Text>
                     <Ionicons name="flame" size={12} color={Colors.accent} />
-                    <Text style={styles.statText}>{user.streak_count}</Text>
-                    <Text style={styles.statDot}>·</Text>
-                    <Text style={styles.statText}>{user.workouts_completed} workouts</Text>
+                    <Text style={[styles.statText, { color: colors.textSecondary }]}>{user.streak_count}</Text>
+                    <Text style={[styles.statDot, { color: colors.textTertiary }]}>·</Text>
+                    <Text style={[styles.statText, { color: colors.textSecondary }]}>{user.workouts_completed} workouts</Text>
                 </View>
             </View>
 
             {user.is_following ? (
                 <TouchableOpacity
-                    style={styles.unfollowBtn}
+                    style={[styles.unfollowBtn, { borderColor: colors.border }]}
                     onPress={() => onUnfollow(user.id)}
                 >
-                    <Text style={styles.unfollowText}>Following</Text>
+                    <Text style={[styles.unfollowText, { color: colors.textSecondary }]}>Following</Text>
                 </TouchableOpacity>
             ) : (
                 <TouchableOpacity
-                    style={styles.followBtn}
+                    style={[styles.followBtn, { backgroundColor: colors.primary }]}
                     onPress={() => onFollow(user.id)}
                 >
-                    <Ionicons name="person-add" size={14} color={Colors.background} />
-                    <Text style={styles.followText}>Follow</Text>
+                    <Ionicons name="person-add" size={14} color={colors.textInverse} />
+                    <Text style={[styles.followText, { color: colors.textInverse }]}>Follow</Text>
                 </TouchableOpacity>
             )}
         </TouchableOpacity>

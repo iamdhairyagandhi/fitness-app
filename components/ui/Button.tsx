@@ -1,4 +1,5 @@
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 import React from 'react';
 import {
     ActivityIndicator,
@@ -34,11 +35,37 @@ export function Button({
     textStyle,
     fullWidth = true,
 }: ButtonProps) {
+    const { colors } = useTheme();
+    const themedStyle = {
+        primary: {
+            backgroundColor: colors.primary,
+            shadowColor: colors.primary,
+        },
+        secondary: {
+            backgroundColor: colors.surfaceLight,
+            borderColor: colors.border,
+        },
+        outline: {
+            borderColor: colors.primary,
+        },
+        ghost: {},
+        danger: {},
+    }[variant];
+    const themedTextStyle = {
+        primary: { color: colors.textInverse },
+        secondary: { color: colors.text },
+        outline: { color: colors.primary },
+        ghost: { color: colors.primary },
+        danger: {},
+    }[variant];
+    const loaderColor = variant === 'outline' || variant === 'ghost' ? colors.primary : colors.textInverse;
+
     return (
         <TouchableOpacity
             style={[
                 styles.base,
                 styles[variant],
+                themedStyle,
                 styles[`size_${size}`],
                 fullWidth && styles.fullWidth,
                 disabled && styles.disabled,
@@ -50,7 +77,7 @@ export function Button({
         >
             {loading ? (
                 <ActivityIndicator
-                    color={variant === 'outline' || variant === 'ghost' ? Colors.primary : Colors.text}
+                    color={loaderColor}
                     size="small"
                 />
             ) : (
@@ -60,6 +87,7 @@ export function Button({
                         style={[
                             styles.text,
                             styles[`text_${variant}`],
+                            themedTextStyle,
                             styles[`text_${size}`],
                             textStyle,
                         ]}
@@ -132,7 +160,7 @@ const styles = StyleSheet.create({
         letterSpacing: 0.2,
     },
     text_primary: {
-        color: Colors.text,
+        color: Colors.textInverse,
     },
     text_secondary: {
         color: Colors.text,

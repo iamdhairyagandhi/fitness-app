@@ -3,11 +3,15 @@
 export const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://your-project.supabase.co';
 export const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'your-anon-key';
 
-// OpenAI configuration
-export const OPENAI_API_KEY = process.env.EXPO_PUBLIC_OPENAI_API_KEY || '';
+export const HAS_SUPABASE_CONFIG =
+    SUPABASE_URL !== 'https://your-project.supabase.co' &&
+    SUPABASE_ANON_KEY !== 'your-anon-key';
+
+// AI calls are routed through the Supabase Edge Function in supabase/functions/openai-chat.
+export const AI_PROXY_ENABLED = HAS_SUPABASE_CONFIG;
 
 // App constants
-export const APP_NAME = 'FitFusion';
+export const APP_NAME = 'BodyPilot';
 export const APP_VERSION = '1.0.0';
 
 // Nutrition defaults
@@ -19,10 +23,6 @@ export const DEFAULT_FAT_PCT = 0.30;
 // Water
 export const DEFAULT_WATER_GOAL_ML = 2500;
 export const WATER_SERVING_ML = 250;
-
-// Admin credentials (demo/testing)
-export const ADMIN_EMAIL = 'admin@fitfusion.com';
-export const ADMIN_PASSWORD = 'admin123';
 
 // Workout
 export const DEFAULT_REST_SECONDS = 90;

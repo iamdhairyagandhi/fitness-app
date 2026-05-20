@@ -19,6 +19,11 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { useAuthStore } from './authStore';
 
+function parseTargetReps(targetReps: string): number | null {
+    const firstNumber = targetReps.match(/\d+/)?.[0];
+    return firstNumber ? Number(firstNumber) : null;
+}
+
 interface WorkoutState {
     // Active workout
     activeWorkout: WorkoutSession | null;
@@ -34,6 +39,7 @@ interface WorkoutState {
 
     // Actions - Active Workout
     startWorkout: (name: string, templateId?: string, mode?: WorkoutMode) => void;
+    startWorkoutFromTemplate: (template: WorkoutTemplate) => void;
     finishWorkout: () => WorkoutSession | null;
     discardWorkout: () => void;
     addExerciseToWorkout: (exercise: Exercise) => void;
@@ -86,6 +92,70 @@ export const useWorkoutStore = create<WorkoutState>()(
                     workout_mode: mode ?? 'standard',
                     superset_groups: [],
                 };
+                set({ activeWorkout: workout, isWorkoutActive: true });
+            },
+
+            startWorkoutFromTemplate: (template) => {
+                const exercises: WorkoutSessionExercise[] = template.exercises.map((templateExercise, exerciseIndex) => {
+                    const plannedSets = templateExercise.planned_sets?.length
+                        ? templateExercise.planned_sets
+                        : Array.from({ length: Math.max(1, templateExercise.target_sets) }, (_, setIndex) => ({
+                            id: generateId(),
+                            set_number: setIndex + 1,
+                            set_type: templateExercise.set_type || 'normal',
+                            target_reps: templateExercise.target_reps,
+                            intensity_percent: templateExercise.intensity_percent ?? null,
+                        }));
+
+                    return {
+                        id: generateId(),
+                        exercise_id: templateExercise.exercise_id,
+                        exercise: templateExercise.exercise,
+                        order: exerciseIndex,
+                        sets: plannedSets.map((plannedSet, setIndex) => ({
+                            id: generateId(),
+                            set_number: setIndex + 1,
+                            set_type: plannedSet.set_type || templateExercise.set_type || 'normal',
+                            reps: parseTargetReps(plannedSet.target_reps || templateExercise.target_reps),
+                            weight_kg: templateExercise.target_weight_kg,
+                            duration_seconds: null,
+                            distance_meters: null,
+                            rpe: plannedSet.intensity_percent
+                                ? Math.max(1, Math.min(10, Math.round(plannedSet.intensity_percent / 10)))
+                                : null,
+                            is_pr: false,
+                            completed: false,
+                        })),
+                    };
+                });
+
+                const supersetNames = Array.from(
+                    new Set(template.exercises.map((exercise) => exercise.superset_group).filter(Boolean))
+                ) as string[];
+
+                const workout: WorkoutSession = {
+                    id: generateId(),
+                    user_id: '',
+                    template_id: template.id,
+                    name: template.name,
+                    started_at: new Date().toISOString(),
+                    completed_at: null,
+                    duration_seconds: null,
+                    total_volume_kg: 0,
+                    notes: template.description,
+                    mood: null,
+                    exercises,
+                    workout_mode: supersetNames.length > 0 ? 'superset' : 'standard',
+                    superset_groups: supersetNames.map((name) => ({
+                        id: generateId(),
+                        name,
+                        exerciseIndices: template.exercises
+                            .map((exercise, index) => exercise.superset_group === name ? index : -1)
+                            .filter((index) => index >= 0),
+                        restBetweenRounds: 60,
+                    })),
+                };
+
                 set({ activeWorkout: workout, isWorkoutActive: true });
             },
 
@@ -375,7 +445,11 @@ export const useWorkoutStore = create<WorkoutState>()(
             setTemplates: (templates) => set({ templates }),
             setRecentWorkouts: (recentWorkouts) => set({ recentWorkouts }),
             setPersonalRecords: (personalRecords) => set({ personalRecords }),
-            setExercises: (exercises) => set({ exercises }),
+            setExercises: (exercises) => {
+                const current = get().exercises;
+                if (current.length > exercises.length) return;
+                set({ exercises });
+            },
 
             setWorkoutMode: (mode) => {
                 const { activeWorkout } = get();
@@ -412,7 +486,7 @@ export const useWorkoutStore = create<WorkoutState>()(
             },
         }),
         {
-            name: 'fitfusion-workout',
+            name: 'bodypilot-workout',
             storage: createJSONStorage(() => AsyncStorage),
             partialize: (state) => ({
                 templates: state.templates,

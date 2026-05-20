@@ -53,7 +53,7 @@ export const useAuthStore = create<AuthState>()(
             logout: () => set({ user: null, session: null, isOnboarded: false, isAdmin: false }),
         }),
         {
-            name: 'fitfusion-auth',
+            name: 'bodypilot-auth',
             storage: createJSONStorage(() => AsyncStorage),
             partialize: (state) => ({
                 user: state.user,

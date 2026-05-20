@@ -1,5 +1,6 @@
 import { Card } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { displayWeightFromKg, getWeightUnit, inputWeightToKg } from '@/lib/utils';
 import { calculateStrengthLevels } from '@/lib/workoutIntelligence';
 import { useAuthStore } from '@/stores/authStore';
 import { useWorkoutStore } from '@/stores/workoutStore';
@@ -13,18 +14,19 @@ const LEVEL_COLORS: Record<string, string> = {
     Beginner: '#9CA3AF',
     Novice: '#60A5FA',
     Intermediate: '#34D399',
-    Advanced: '#F59E0B',
+    Advanced: Colors.primary,
     Elite: '#EF4444',
 };
 
 export default function StrengthStandardsScreen() {
     const insets = useSafeAreaInsets();
     const user = useAuthStore((s) => s.user);
-    const [bodyweight, setBodyweight] = useState(user?.weight_kg?.toString() || '75');
+    const weightUnit = getWeightUnit(user?.unit_system);
+    const [bodyweight, setBodyweight] = useState(displayWeightFromKg(user?.weight_kg || 75, user?.unit_system).toString());
     const [gender, setGender] = useState<'male' | 'female'>(user?.gender === 'female' ? 'female' : 'male');
     const personalRecords = useWorkoutStore((s) => s.personalRecords);
 
-    const bw = parseFloat(bodyweight) || 75;
+    const bw = inputWeightToKg(parseFloat(bodyweight) || 75, user?.unit_system);
     const levels = useMemo(() => calculateStrengthLevels(personalRecords, bw, gender), [personalRecords, bw, gender]);
 
     return (
@@ -43,7 +45,7 @@ export default function StrengthStandardsScreen() {
                 <Card style={styles.inputCard}>
                     <View style={styles.inputRow}>
                         <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>Bodyweight (kg)</Text>
+                            <Text style={styles.inputLabel}>Bodyweight ({weightUnit})</Text>
                             <TextInput
                                 style={styles.input}
                                 value={bodyweight}
@@ -102,9 +104,9 @@ export default function StrengthStandardsScreen() {
                             <View style={styles.levelsRow}>
                                 <View style={styles.levelCol}>
                                     <Text style={[styles.levelWeight, { color }]}>
-                                        {item.estimated1RM.toFixed(0)}
+                                        {displayWeightFromKg(item.estimated1RM, user?.unit_system, 0).toFixed(0)}
                                     </Text>
-                                    <Text style={styles.levelKg}>kg e1RM</Text>
+                                    <Text style={styles.levelKg}>{weightUnit} e1RM</Text>
                                 </View>
                                 <View style={styles.levelCol}>
                                     <Text style={[styles.levelWeight, { color }]}>
@@ -118,7 +120,7 @@ export default function StrengthStandardsScreen() {
                                 </View>
                             </View>
                             <Text style={styles.bwRatio}>
-                                Next: {item.nextLevel} at {item.nextLevelWeight.toFixed(1)} kg
+                                Next: {item.nextLevel} at {displayWeightFromKg(item.nextLevelWeight, user?.unit_system).toFixed(1)} {weightUnit}
                             </Text>
                         </Card>
                     );

@@ -99,7 +99,7 @@ export const useProgressStore = create<ProgressState>()(
             },
         }),
         {
-            name: 'fitfusion-progress',
+            name: 'bodypilot-progress',
             storage: createJSONStorage(() => AsyncStorage),
             partialize: (state) => ({
                 weightEntries: state.weightEntries,

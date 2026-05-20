@@ -1,0 +1,87 @@
+{
+  "configVersion": 0,
+  "apple": {
+    "version": "1.0",
+    "copyright": "2026 Dhairya Gandhi",
+    "release": {
+      "automaticRelease": true
+    },
+    "info": {
+      "en-US": {
+        "description": "BodyPilot helps you train smarter, eat better, and understand your progress in one fitness companion.\n\nPlan and log workouts, track sets and personal records, monitor nutrition and macros, record body measurements, follow recovery trends, and use AI tools for meal ideas, food scanning, meal plans, weekly insights, and coaching support.\n\nKey features:\n- Workout tracking with exercises, volume, personal records, warmups, cardio, and strength standards\n- Nutrition logging with macros, water, food search, barcode scanning, meal planning, recipes, and grocery lists\n- AI food scanning, receipt/menu parsing, natural language food logging, meal plans, and coaching chat\n- Progress tracking for weight, measurements, body composition, photos, goals, and analytics\n- Recovery tools for sleep, energy, soreness, supplements, fasting, and weekly reports\n- Social features with profiles, activity, challenges, comments, and leaderboards\n\nBodyPilot does not sell user data and does not use third-party advertising tracking.",
+        "keywords": [
+          "fitness",
+          "workout",
+          "nutrition",
+          "calorie",
+          "macros",
+          "meal",
+          "tracker",
+          "gym",
+          "progress",
+          "AI coach"
+        ],
+        "promoText": "Track workouts, nutrition, progress, recovery, and goals with AI-powered coaching tools.",
+        "supportUrl": "https://fudqcomgwnjxcqgocfuw.supabase.co/functions/v1/support",
+        "title": "BodyPilot: AI Fitness",
+        "subtitle": "Workout & Nutrition Tracker",
+        "privacyPolicyUrl": "https://fudqcomgwnjxcqgocfuw.supabase.co/functions/v1/privacy-policy",
+        "privacyChoicesUrl": "https://fudqcomgwnjxcqgocfuw.supabase.co/functions/v1/support",
+        "screenshots": {
+          "APP_IPAD_PRO_3GEN_129": [
+            "store/apple/screenshot/en-US/APP_IPAD_PRO_3GEN_129/welcome.png"
+          ],
+          "APP_IPHONE_67": [
+            "store/apple/screenshot/en-US/APP_IPHONE_67/nutrition.png",
+            "store/apple/screenshot/en-US/APP_IPHONE_67/workout.png",
+            "store/apple/screenshot/en-US/APP_IPHONE_67/progress.png",
+            "store/apple/screenshot/en-US/APP_IPHONE_67/social.png",
+            "store/apple/screenshot/en-US/APP_IPHONE_67/profile.png"
+          ]
+        }
+      }
+    },
+    "categories": [
+      "HEALTH_AND_FITNESS"
+    ],
+    "advisory": {
+      "ageRatingOverride": "NONE",
+      "alcoholTobaccoOrDrugUseOrReferences": "NONE",
+      "contests": "NONE",
+      "gambling": false,
+      "gamblingSimulated": "NONE",
+      "horrorOrFearThemes": "NONE",
+      "kidsAgeBand": null,
+      "koreaAgeRatingOverride": "NONE",
+      "lootBox": false,
+      "matureOrSuggestiveThemes": "NONE",
+      "medicalOrTreatmentInformation": "NONE",
+      "profanityOrCrudeHumor": "NONE",
+      "sexualContentGraphicAndNudity": "NONE",
+      "sexualContentOrNudity": "NONE",
+      "unrestrictedWebAccess": false,
+      "violenceCartoonOrFantasy": "NONE",
+      "violenceRealistic": "NONE",
+      "violenceRealisticProlongedGraphicOrSadistic": "NONE",
+      "advertising": false,
+      "ageAssurance": false,
+      "ageRatingOverrideV2": "NONE",
+      "developerAgeRatingInfoUrl": null,
+      "gunsOrOtherWeapons": "NONE",
+      "healthOrWellnessTopics": true,
+      "messagingAndChat": true,
+      "parentalControls": false,
+      "userGeneratedContent": true
+    },
+    "review": {
+      "firstName": "Dhairya",
+      "lastName": "Gandhi",
+      "email": "dhairya5402@gmail.com",
+      "phone": "+1 240 726 3426",
+      "demoUsername": "app-review@fitfusion.app",
+      "demoPassword": "FitFusionReview2026!",
+      "demoRequired": true,
+      "notes": "BodyPilot requires sign-in to review synced workout, nutrition, progress, recovery, AI, and social features. Please use the provided demo account. Account deletion is available in Profile > Account Settings > Delete Account."
+    }
+  }
+}

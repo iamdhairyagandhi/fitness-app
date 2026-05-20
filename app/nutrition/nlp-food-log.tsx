@@ -5,7 +5,7 @@
  */
 
 import { Button, toast } from '@/components/ui';
-import { OPENAI_API_KEY } from '@/constants/config';
+import { AI_PROXY_ENABLED } from '@/constants/config';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import {
     parseNaturalLanguageFood,
@@ -63,7 +63,7 @@ export default function NLPFoodLogScreen() {
 
         try {
             let parsed: NLPFoodParseResult;
-            if (OPENAI_API_KEY) {
+            if (AI_PROXY_ENABLED) {
                 parsed = await parseNaturalLanguageFood(text.trim());
             } else {
                 parsed = parseNaturalLanguageFoodDemo(text.trim());

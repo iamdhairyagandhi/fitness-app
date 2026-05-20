@@ -1,9 +1,11 @@
 import { Button, Input, toast } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { fetchProfile } from '@/lib/db';
 import { signInWithApple, signInWithGoogle } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
 import { Ionicons } from '@expo/vector-icons';
+import type { Session } from '@supabase/supabase-js';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -22,7 +24,24 @@ export default function SignUpScreen() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
-    const { setSession } = useAuthStore();
+    const { setSession, setUser, setOnboarded } = useAuthStore();
+
+    const finishSocialSignIn = async (session: Session) => {
+        setSession({ access_token: session.access_token });
+        const profile = await fetchProfile(session.user.id);
+
+        if (profile) {
+            setUser(profile);
+        }
+
+        if (profile?.height_cm) {
+            setOnboarded(true);
+            router.replace('/(tabs)');
+        } else {
+            setOnboarded(false);
+            router.replace('/(auth)/onboarding');
+        }
+    };
 
     const handleSignUp = async () => {
         if (!name.trim() || !email.trim() || !password.trim()) {
@@ -60,6 +79,21 @@ export default function SignUpScreen() {
             setMessage(msg);
         }
         setLoading(false);
+    };
+
+    const handleSocialSignUp = async (signIn: () => Promise<any>, label: 'Google' | 'Apple') => {
+        setMessage('');
+        setLoading(true);
+        try {
+            const result = await signIn();
+            const session = result?.session || (await supabase.auth.getSession()).data.session;
+            if (!session) throw new Error(`${label} sign-in did not return a session`);
+            await finishSocialSignIn(session);
+        } catch (e: any) {
+            setMessage(e.message || `${label} sign-in failed`);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -143,27 +177,13 @@ export default function SignUpScreen() {
                     <View style={styles.socialButtons}>
                         <TouchableOpacity
                             style={styles.socialButton}
-                            onPress={async () => {
-                                setMessage('');
-                                try {
-                                    await signInWithGoogle();
-                                } catch (e: any) {
-                                    setMessage(e.message || 'Google sign-in failed');
-                                }
-                            }}
+                            onPress={() => handleSocialSignUp(signInWithGoogle, 'Google')}
                         >
                             <Ionicons name="logo-google" size={22} color={Colors.text} />
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={styles.socialButton}
-                            onPress={async () => {
-                                setMessage('');
-                                try {
-                                    await signInWithApple();
-                                } catch (e: any) {
-                                    setMessage(e.message || 'Apple sign-in failed');
-                                }
-                            }}
+                            onPress={() => handleSocialSignUp(signInWithApple, 'Apple')}
                         >
                             <Ionicons name="logo-apple" size={22} color={Colors.text} />
                         </TouchableOpacity>

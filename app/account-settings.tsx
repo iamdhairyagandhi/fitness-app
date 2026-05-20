@@ -1,6 +1,6 @@
-import { Button, Card, Input } from '@/components/ui';
+import { Button, Card, Input, toast } from '@/components/ui';
 import { Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
-import { checkUsernameAvailable, setUsername, updatePhoneNumber } from '@/lib/auth';
+import { checkUsernameAvailable, deleteCurrentAccount, setUsername, updatePhoneNumber } from '@/lib/auth';
 import { useAuthStore } from '@/stores/authStore';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -18,7 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function AccountSettingsScreen() {
     const insets = useSafeAreaInsets();
-    const { user, updateUser } = useAuthStore();
+    const { user, updateUser, logout } = useAuthStore();
 
     // Username
     const [username, setUsernameValue] = useState(user?.username || '');
@@ -30,6 +30,7 @@ export default function AccountSettingsScreen() {
     const [phone, setPhone] = useState(user?.phone_number || '');
 
     const [saving, setSaving] = useState(false);
+    const [deleting, setDeleting] = useState(false);
     const [successMsg, setSuccessMsg] = useState('');
     const [errorMsg, setErrorMsg] = useState('');
 
@@ -121,6 +122,30 @@ export default function AccountSettingsScreen() {
         } finally {
             setSaving(false);
         }
+    };
+
+    const handleDeleteAccount = () => {
+        toast.confirm({
+            title: 'Delete Account?',
+            message: 'This permanently deletes your BodyPilot account and associated fitness, nutrition, progress, recovery, and social data.',
+            confirmLabel: 'Delete',
+            destructive: true,
+            onConfirm: async () => {
+                setDeleting(true);
+                setErrorMsg('');
+                try {
+                    await deleteCurrentAccount();
+                    logout();
+                    toast.success('Account Deleted', 'Your account deletion request is complete.');
+                    router.replace('/login' as any);
+                } catch (e: any) {
+                    setErrorMsg(e.message || 'Failed to delete account');
+                    toast.error('Delete Failed', 'Please try again or contact support.');
+                } finally {
+                    setDeleting(false);
+                }
+            },
+        });
     };
 
     return (
@@ -218,6 +243,23 @@ export default function AccountSettingsScreen() {
                         </View>
                     </Card>
 
+                    {/* Account deletion */}
+                    <Text style={styles.sectionTitle}>Delete Account</Text>
+                    <Card>
+                        <Text style={styles.dangerText}>
+                            Permanently delete your account and personal BodyPilot data. This action cannot be undone.
+                        </Text>
+                        <Button
+                            title="Delete Account"
+                            onPress={handleDeleteAccount}
+                            variant="danger"
+                            loading={deleting}
+                            disabled={saving || deleting}
+                            icon={<Ionicons name="trash-outline" size={18} color={Colors.error} />}
+                            style={{ marginTop: Spacing.md }}
+                        />
+                    </Card>
+
                     {successMsg ? <Text style={styles.successMsg}>{successMsg}</Text> : null}
                     {errorMsg ? <Text style={styles.errorMsg}>{errorMsg}</Text> : null}
 
@@ -269,6 +311,7 @@ const styles = StyleSheet.create({
     connectedLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
     connectedLabel: { color: Colors.text, fontSize: FontSize.md },
     connectedStatus: { color: Colors.textTertiary, fontSize: FontSize.sm },
+    dangerText: { color: Colors.textSecondary, fontSize: FontSize.sm, lineHeight: 20 },
     successMsg: {
         color: Colors.success,
         fontSize: FontSize.md,

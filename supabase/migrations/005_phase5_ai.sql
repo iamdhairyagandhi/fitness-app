@@ -1,5 +1,5 @@
 -- ============================================================
--- FitFusion Schema V5 — Phase 5: Advanced AI
+-- BodyPilot Schema V5 — Phase 5: Advanced AI
 -- Run after 004_auth_enhancements.sql
 -- ============================================================
 

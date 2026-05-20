@@ -1,5 +1,5 @@
 -- ============================================================
--- FitFusion Schema V3 — Phase 4: Social Features
+-- BodyPilot Schema V3 — Phase 4: Social Features
 -- Run after 002_phase3_additions.sql
 -- ============================================================
 

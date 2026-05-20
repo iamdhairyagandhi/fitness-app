@@ -1,4 +1,5 @@
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 import React, { useState } from 'react';
 import {
     StyleSheet,
@@ -27,21 +28,31 @@ export function Input({
     ...props
 }: InputProps) {
     const [focused, setFocused] = useState(false);
+    const { colors } = useTheme();
 
     return (
         <View style={[styles.container, containerStyle]}>
-            {label && <Text style={styles.label}>{label}</Text>}
-            <View style={[styles.inputWrapper, focused && styles.inputFocused, error && styles.inputError]}>
+            {label && <Text style={[styles.label, { color: colors.textSecondary }]}>{label}</Text>}
+            <View
+                style={[
+                    styles.inputWrapper,
+                    { backgroundColor: colors.surfaceLight, borderColor: colors.border },
+                    focused && styles.inputFocused,
+                    focused && { borderColor: colors.primary, backgroundColor: colors.surface },
+                    error && styles.inputError,
+                ]}
+            >
                 {leftIcon && <View style={styles.iconLeft}>{leftIcon}</View>}
                 <TextInput
                     style={[
                         styles.input,
+                        { color: colors.text },
                         leftIcon ? styles.inputWithLeftIcon : null,
                         rightIcon ? styles.inputWithRightIcon : null,
                         style,
                     ]}
-                    placeholderTextColor={Colors.textTertiary}
-                    selectionColor={Colors.primary}
+                    placeholderTextColor={colors.textTertiary}
+                    selectionColor={colors.primary}
                     onFocus={(e) => {
                         setFocused(true);
                         props.onFocus?.(e);
@@ -54,7 +65,7 @@ export function Input({
                 />
                 {rightIcon && <View style={styles.iconRight}>{rightIcon}</View>}
             </View>
-            {error && <Text style={styles.error}>{error}</Text>}
+            {error && <Text style={[styles.error, { color: colors.error }]}>{error}</Text>}
         </View>
     );
 }

@@ -5,7 +5,7 @@
  */
 
 import { Button, toast } from '@/components/ui';
-import { OPENAI_API_KEY } from '@/constants/config';
+import { AI_PROXY_ENABLED } from '@/constants/config';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { parseReceiptDemo, parseReceiptImage } from '@/lib/nutritionIntelligence';
 import { generateId } from '@/lib/utils';
@@ -64,7 +64,7 @@ export default function ReceiptScannerScreen() {
             setIsScanning(true);
 
             let parsed: ReceiptScanResult;
-            if (OPENAI_API_KEY && asset.base64) {
+            if (AI_PROXY_ENABLED && asset.base64) {
                 parsed = await parseReceiptImage(asset.base64);
             } else {
                 parsed = parseReceiptDemo();
@@ -160,7 +160,7 @@ export default function ReceiptScannerScreen() {
                                 <Text style={styles.cameraBtnText}>Gallery</Text>
                             </TouchableOpacity>
                         </View>
-                        {!OPENAI_API_KEY && (
+                        {!AI_PROXY_ENABLED && (
                             <TouchableOpacity
                                 style={styles.demoBtn}
                                 onPress={() => {

@@ -11,12 +11,27 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
  * It extracts tokens from the URL fragment and sets the session.
  */
 export default function AuthCallbackScreen() {
-    const params = useLocalSearchParams<{ access_token?: string; refresh_token?: string }>();
+    const params = useLocalSearchParams<{
+        access_token?: string;
+        refresh_token?: string;
+        code?: string;
+        error?: string;
+        error_description?: string;
+    }>();
     const { setSession } = useAuthStore();
 
     useEffect(() => {
         async function handleCallback() {
             try {
+                if (params.error || params.error_description) {
+                    throw new Error(String(params.error_description || params.error));
+                }
+
+                if (params.code) {
+                    const { error } = await supabase.auth.exchangeCodeForSession(String(params.code));
+                    if (error) throw error;
+                }
+
                 // On web, Supabase handles the hash fragment automatically.
                 // On native, we try to set session from the redirect params.
                 if (params.access_token && params.refresh_token) {

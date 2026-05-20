@@ -1,5 +1,5 @@
 -- ============================================================
--- FitFusion Schema V4 — Auth Enhancements
+-- BodyPilot Schema V4 — Auth Enhancements
 -- Run after 003_social_features.sql
 -- ============================================================
 

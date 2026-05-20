@@ -1,4 +1,5 @@
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -11,19 +12,20 @@ interface MacroBarProps {
 }
 
 export function MacroBar({ label, current, target, color, unit = 'g' }: MacroBarProps) {
+    const { colors } = useTheme();
     const progress = target > 0 ? Math.min(current / target, 1) : 0;
     const isOver = current > target;
 
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.label}>{label}</Text>
-                <Text style={[styles.values, isOver && styles.overValues]}>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>{label}</Text>
+                <Text style={[styles.values, { color: colors.text }, isOver && styles.overValues]}>
                     {Math.round(current)}{unit}{' '}
-                    <Text style={styles.target}>/ {Math.round(target)}{unit}</Text>
+                    <Text style={[styles.target, { color: colors.textTertiary }]}>/ {Math.round(target)}{unit}</Text>
                 </Text>
             </View>
-            <View style={styles.barBg}>
+            <View style={[styles.barBg, { backgroundColor: colors.border }]}>
                 <View
                     style={[
                         styles.barFill,

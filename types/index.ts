@@ -116,6 +116,18 @@ export interface WorkoutTemplateExercise {
     target_weight_kg: number | null;
     rest_seconds: number;
     notes: string | null;
+    set_type?: WorkoutSet['set_type'];
+    intensity_percent?: number | null;
+    superset_group?: string | null;
+    planned_sets?: WorkoutTemplateSet[];
+}
+
+export interface WorkoutTemplateSet {
+    id: string;
+    set_number: number;
+    set_type: WorkoutSet['set_type'];
+    target_reps: string;
+    intensity_percent: number | null;
 }
 
 export interface WorkoutSession {
@@ -154,7 +166,7 @@ export interface WorkoutSessionExercise {
 export interface WorkoutSet {
     id: string;
     set_number: number;
-    set_type: 'normal' | 'warmup' | 'drop' | 'failure';
+    set_type: 'normal' | 'warmup' | 'drop' | 'failure' | 'volume';
     reps: number | null;
     weight_kg: number | null;
     duration_seconds: number | null;

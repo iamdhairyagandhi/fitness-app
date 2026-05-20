@@ -1,5 +1,5 @@
 import { Button, toast } from '@/components/ui';
-import { OPENAI_API_KEY } from '@/constants/config';
+import { AI_PROXY_ENABLED } from '@/constants/config';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { analyzeFoodPhoto } from '@/lib/openai';
 import { generateId } from '@/lib/utils';
@@ -109,7 +109,7 @@ export default function AIScannerScreen() {
             setIsAnalyzing(true);
             setResults([]);
 
-            if (OPENAI_API_KEY && asset.base64) {
+            if (AI_PROXY_ENABLED && asset.base64) {
                 // Real AI analysis
                 try {
                     const aiResponse = await analyzeFoodPhoto(asset.base64);
@@ -162,9 +162,9 @@ export default function AIScannerScreen() {
                         <Ionicons name="restaurant-outline" size={60} color={Colors.primary} />
                         <Text style={styles.captureTitle}>Snap your meal</Text>
                         <Text style={styles.captureSubtext}>
-                            {OPENAI_API_KEY
+                            {AI_PROXY_ENABLED
                                 ? 'AI will identify the food and estimate nutrition values'
-                                : 'Demo mode — set EXPO_PUBLIC_OPENAI_API_KEY for real analysis'}
+                                : 'Demo mode - live AI scanning is not configured yet'}
                         </Text>
                     </View>
 
@@ -179,11 +179,11 @@ export default function AIScannerScreen() {
                         </TouchableOpacity>
                     </View>
 
-                    {!OPENAI_API_KEY && (
+                    {!AI_PROXY_ENABLED && (
                         <View style={styles.apiWarning}>
                             <Ionicons name="information-circle" size={18} color={Colors.warning} />
                             <Text style={styles.apiWarningText}>
-                                Set EXPO_PUBLIC_OPENAI_API_KEY in .env for live AI scanning.
+                                Configure the Supabase AI function for live AI scanning.
                                 Demo mode is active.
                             </Text>
                         </View>

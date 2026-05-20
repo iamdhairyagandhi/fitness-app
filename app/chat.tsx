@@ -1,4 +1,4 @@
-import { OPENAI_API_KEY } from '@/constants/config';
+import { AI_PROXY_ENABLED } from '@/constants/config';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { chatWithFunctions, type AIResponse } from '@/lib/aiEngine';
 import { buildCoachingSystemPrompt, type OpenAIMessage } from '@/lib/openai';
@@ -40,7 +40,7 @@ const QUICK_PROMPTS = [
 // ── Demo fallback responses ──────────────────────────────────
 
 const DEMO_RESPONSES: Record<string, string> = {
-    default: "I'm your FitFusion AI Coach! 💪\n\nTo enable live AI responses, add your OpenAI API key to the .env file (EXPO_PUBLIC_OPENAI_API_KEY).\n\nIn the meantime, I can still help you navigate the app. Try logging a workout, tracking your meals, or checking your progress!",
+    default: "I'm your BodyPilot AI Coach! 💪\n\nLive AI responses are not configured yet.\n\nIn the meantime, I can still help you navigate the app. Try logging a workout, tracking your meals, or checking your progress!",
     meal: "Here's a balanced meal suggestion for your remaining macros:\n\n🍗 **Grilled Chicken Breast** (150g) — 248 kcal, 46g protein, 0g carbs, 5g fat\n🍚 **Brown Rice** (150g cooked) — 168 kcal, 4g protein, 36g carbs, 1g fat\n🥦 **Steamed Broccoli** (100g) — 35 kcal, 2g protein, 7g carbs, 0g fat\n\n**Total: ~451 kcal | 52g protein | 43g carbs | 6g fat**",
     workout: "Here's a solid workout for today:\n\n**Upper Body Push (45 min)**\n\n1. Bench Press — 4×8 @ moderate weight\n2. Overhead Press — 3×10\n3. Incline DB Press — 3×12\n4. Lateral Raises — 3×15\n5. Tricep Pushdowns — 3×12\n6. Face Pulls — 3×15\n\n💡 Rest 90-120s between compounds, 60s for isolation.",
     progress: "📈 **This Week's Summary:**\n- Track more workouts to see trends!\n- Protein goal: aim for 4+ days this week\n\n🎯 **Focus Areas:**\n1. Log every meal for complete data\n2. Hit protein target daily\n3. Add weight or reps each week\n\nKeep pushing! 🔥",
@@ -137,7 +137,7 @@ export default function AIChatScreen() {
     const welcomeMsg: ChatMessage = {
         id: 'welcome',
         role: 'assistant',
-        content: `Hey${user?.display_name ? ` ${user.display_name}` : ''}! 👋 I'm your FitFusion AI Coach.\n\nI can help with:\n• **Workout plans** — I'll create structured programs you can follow\n• **Meal plans** — Custom plans fitted to your exact macros\n• **Progress analysis** — Data-driven insights on your trends\n• **Recovery advice** — Based on your sleep and stress data\n\nWhat would you like help with?`,
+        content: `Hey${user?.display_name ? ` ${user.display_name}` : ''}! 👋 I'm your BodyPilot AI Coach.\n\nI can help with:\n• **Workout plans** — I'll create structured programs you can follow\n• **Meal plans** — Custom plans fitted to your exact macros\n• **Progress analysis** — Data-driven insights on your trends\n• **Recovery advice** — Based on your sleep and stress data\n\nWhat would you like help with?`,
         timestamp: new Date().toISOString(),
     };
 
@@ -209,7 +209,7 @@ export default function AIChatScreen() {
             let responseText: string;
             let functionCall: AIResponse['functionCall'] | undefined;
 
-            if (OPENAI_API_KEY) {
+            if (AI_PROXY_ENABLED) {
                 const systemPrompt = buildSystemPrompt();
                 const apiMessages: OpenAIMessage[] = [
                     { role: 'system', content: systemPrompt },
@@ -318,7 +318,7 @@ export default function AIChatScreen() {
                 <View style={styles.headerCenter}>
                     <Text style={styles.headerTitle}>AI Coach</Text>
                     <Text style={styles.headerSubtitle}>
-                        {OPENAI_API_KEY ? '✨ Powered by GPT-4o' : '📋 Demo Mode'}
+                        {AI_PROXY_ENABLED ? '✨ Live AI' : '📋 Demo Mode'}
                     </Text>
                 </View>
                 <View style={styles.headerActions}>

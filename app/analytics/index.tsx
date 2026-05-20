@@ -1,5 +1,6 @@
 import { Card } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { displayWeightFromKg, getWeightUnit } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
 import { useNutritionStore } from '@/stores/nutritionStore';
 import { useRecoveryStore } from '@/stores/recoveryStore';
@@ -114,6 +115,8 @@ export default function AnalyticsDashboard() {
         return diff < 7 * 86400000;
     }).length;
     const totalVolume = weeklyVolume.reduce((s, d) => s + d.volume, 0);
+    const displayTotalVolume = displayWeightFromKg(totalVolume, user?.unit_system, 0);
+    const weightUnit = getWeightUnit(user?.unit_system);
     const maxVolume = Math.max(...weeklyVolume.map((d) => d.volume), 1);
     const avgCals = Math.round(nutritionWeek.reduce((s, d) => s + d.cals, 0) / 7);
     const avgProtein = Math.round(nutritionWeek.reduce((s, d) => s + d.protein, 0) / 7);
@@ -156,8 +159,8 @@ export default function AnalyticsDashboard() {
                             </Card>
                             <Card style={styles.summaryCard}>
                                 <Text style={styles.summaryIcon}>📊</Text>
-                                <Text style={styles.summaryValue}>{(totalVolume / 1000).toFixed(0)}k</Text>
-                                <Text style={styles.summaryLabel}>Volume (kg)</Text>
+                                <Text style={styles.summaryValue}>{(displayTotalVolume / 1000).toFixed(0)}k</Text>
+                                <Text style={styles.summaryLabel}>Volume ({weightUnit})</Text>
                             </Card>
                             <Card style={styles.summaryCard}>
                                 <Text style={styles.summaryIcon}>🔥</Text>
@@ -243,8 +246,8 @@ export default function AnalyticsDashboard() {
                         <Card style={styles.volumeStatsCard}>
                             <View style={styles.volumeStatsRow}>
                                 <View style={styles.volumeStatItem}>
-                                    <Text style={styles.volumeStatValue}>{(totalVolume / 1000).toFixed(1)}k</Text>
-                                    <Text style={styles.volumeStatLabel}>Total (kg)</Text>
+                                    <Text style={styles.volumeStatValue}>{(displayTotalVolume / 1000).toFixed(1)}k</Text>
+                                    <Text style={styles.volumeStatLabel}>Total ({weightUnit})</Text>
                                 </View>
                                 <View style={styles.volumeStatItem}>
                                     <Text style={[styles.volumeStatValue, { color: Colors.success }]}>—</Text>

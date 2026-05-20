@@ -1,4 +1,5 @@
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 import React from 'react';
 import { StyleSheet, Text, View, ViewStyle } from 'react-native';
 
@@ -12,12 +13,18 @@ interface CardProps {
 }
 
 export function Card({ children, title, subtitle, style, padding = Spacing.lg, variant = 'default' }: CardProps) {
+    const { colors } = useTheme();
+    const themedCard = {
+        backgroundColor: variant === 'outlined' ? 'transparent' : variant === 'elevated' ? colors.surfaceLight : colors.surface,
+        borderColor: colors.border,
+    };
+
     return (
-        <View style={[styles.card, variant === 'elevated' && styles.elevated, variant === 'outlined' && styles.outlined, { padding }, style]}>
+        <View style={[styles.card, variant === 'elevated' && styles.elevated, variant === 'outlined' && styles.outlined, themedCard, { padding }, style]}>
             {title && (
                 <View style={styles.header}>
-                    <Text style={styles.title}>{title}</Text>
-                    {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+                    <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+                    {subtitle && <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{subtitle}</Text>}
                 </View>
             )}
             {children}

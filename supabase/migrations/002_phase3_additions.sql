@@ -1,5 +1,5 @@
 -- ============================================================
--- FitFusion Schema V2 — Phase 3 additions
+-- BodyPilot Schema V2 — Phase 3 additions
 -- Run after 001_initial_schema.sql
 -- ============================================================
 

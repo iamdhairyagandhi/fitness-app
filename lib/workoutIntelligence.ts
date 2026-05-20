@@ -3,6 +3,7 @@
 // VO2 max estimation, heart rate zones, training volume analysis
 // ─────────────────────────────────────────────────────────────
 
+import { Colors } from '@/constants/theme';
 import type {
     Exercise,
     ExperienceLevel,
@@ -655,7 +656,7 @@ export function calculateHRZones(age: number, restingHR: number = 60): HeartRate
                 minBPM: Math.round(restingHR + hrr * 0.6),
                 maxBPM: Math.round(restingHR + hrr * 0.7),
                 description: 'Fat burning, endurance base',
-                color: '#0EA5E9',
+                color: Colors.primary,
             },
             {
                 zone: 3,
@@ -671,7 +672,7 @@ export function calculateHRZones(age: number, restingHR: number = 60): HeartRate
                 minBPM: Math.round(restingHR + hrr * 0.8),
                 maxBPM: Math.round(restingHR + hrr * 0.9),
                 description: 'Lactate threshold training',
-                color: '#F59E0B',
+                color: Colors.primary,
             },
             {
                 zone: 5,

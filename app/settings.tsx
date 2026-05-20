@@ -1,13 +1,13 @@
 import { Card, toast } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
-import { useTheme } from '@/contexts/ThemeContext';
+import { ThemeScheme, useTheme } from '@/contexts/ThemeContext';
 import { buildMeasurementsExport, buildWorkoutExport, exportData } from '@/lib/export';
 import { useAuthStore } from '@/stores/authStore';
 import { useProgressStore } from '@/stores/progressStore';
 import { useWorkoutStore } from '@/stores/workoutStore';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     ScrollView,
     StyleSheet,
@@ -21,12 +21,12 @@ type UnitSystem = 'metric' | 'imperial';
 
 export default function SettingsScreen() {
     const insets = useSafeAreaInsets();
-    const { user, setUser } = useAuthStore();
-    const { mode: theme, setMode: setTheme } = useTheme();
+    const { user, updateUser } = useAuthStore();
+    const { mode: theme, scheme, schemes, setMode: setTheme, setScheme, colors } = useTheme();
     const recentWorkouts = useWorkoutStore((s) => s.recentWorkouts);
     const weightEntries = useProgressStore((s) => s.weightEntries);
 
-    const [units, setUnits] = useState<UnitSystem>('metric');
+    const [units, setUnits] = useState<UnitSystem>(user?.unit_system || 'metric');
     const [restTimer, setRestTimer] = useState(user?.preferred_rest_seconds || 90);
     const [notifications, setNotifications] = useState({
         workoutReminder: true,
@@ -41,15 +41,23 @@ export default function SettingsScreen() {
         setNotifications((prev) => ({ ...prev, [key]: !prev[key] }));
     };
 
+    useEffect(() => {
+        setUnits(user?.unit_system || 'metric');
+        setRestTimer(user?.preferred_rest_seconds || 90);
+    }, [user?.preferred_rest_seconds, user?.unit_system]);
+
     const handleSave = () => {
-        setUser({ preferred_rest_seconds: restTimer } as any);
+        updateUser({
+            unit_system: units,
+            preferred_rest_seconds: restTimer,
+        });
         toast.success('Saved', 'Your settings have been updated.');
         router.back();
     };
 
     const Toggle = ({ value, onPress }: { value: boolean; onPress: () => void }) => (
         <TouchableOpacity
-            style={[styles.toggle, value && styles.toggleActive]}
+            style={[styles.toggle, { backgroundColor: colors.surfaceLight }, value && styles.toggleActive, value && { backgroundColor: colors.primary }]}
             onPress={onPress}
         >
             <View style={[styles.toggleDot, value && styles.toggleDotActive]} />
@@ -62,15 +70,15 @@ export default function SettingsScreen() {
         onSelect: (v: any) => void;
     }) => (
         <View style={styles.optionSection}>
-            <Text style={styles.optionLabel}>{icon} {label}</Text>
+            <Text style={[styles.optionLabel, { color: colors.textSecondary }]}>{icon} {label}</Text>
             <View style={styles.optionRow}>
                 {options.map((opt) => (
                     <TouchableOpacity
                         key={opt.value}
-                        style={[styles.optionChip, value === opt.value && styles.optionChipActive]}
+                        style={[styles.optionChip, { backgroundColor: colors.surface, borderColor: colors.border }, value === opt.value && styles.optionChipActive, value === opt.value && { backgroundColor: colors.primary, borderColor: colors.primary }]}
                         onPress={() => onSelect(opt.value)}
                     >
-                        <Text style={[styles.optionChipText, value === opt.value && styles.optionChipTextActive]}>
+                        <Text style={[styles.optionChipText, { color: colors.textSecondary }, value === opt.value && styles.optionChipTextActive, value === opt.value && { color: colors.textInverse }]}>
                             {opt.label}
                         </Text>
                     </TouchableOpacity>
@@ -80,14 +88,14 @@ export default function SettingsScreen() {
     );
 
     return (
-        <View style={[styles.container, { paddingTop: insets.top }]}>
+        <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()}>
-                    <Ionicons name="arrow-back" size={24} color={Colors.text} />
+                    <Ionicons name="arrow-back" size={24} color={colors.text} />
                 </TouchableOpacity>
-                <Text style={styles.title}>Settings</Text>
+                <Text style={[styles.title, { color: colors.text }]}>Settings</Text>
                 <TouchableOpacity onPress={handleSave}>
-                    <Text style={styles.saveBtn}>Save</Text>
+                    <Text style={[styles.saveBtn, { color: colors.primary }]}>Save</Text>
                 </TouchableOpacity>
             </View>
 
@@ -109,6 +117,33 @@ export default function SettingsScreen() {
                     options={[{ label: 'Dark', value: 'dark' }, { label: 'Light', value: 'light' }, { label: 'System', value: 'system' }]}
                     onSelect={setTheme}
                 />
+
+                <View style={styles.optionSection}>
+                    <Text style={[styles.optionLabel, { color: colors.textSecondary }]}>🌈 Color Scheme</Text>
+                    <View style={styles.schemeGrid}>
+                        {schemes.map((item) => (
+                            <TouchableOpacity
+                                key={item.id}
+                                style={[styles.schemeCard, { backgroundColor: colors.surface, borderColor: colors.border }, scheme === item.id && styles.schemeCardActive, scheme === item.id && { borderColor: colors.primary }]}
+                                onPress={() => setScheme(item.id as ThemeScheme)}
+                                activeOpacity={0.82}
+                            >
+                                <View style={styles.schemeSwatches}>
+                                    <View style={[styles.schemeSwatch, { backgroundColor: item.colors.background, borderColor: item.colors.border }]} />
+                                    <View style={[styles.schemeSwatch, { backgroundColor: item.colors.surface }]} />
+                                    <View style={[styles.schemeSwatch, { backgroundColor: item.colors.primary }]} />
+                                </View>
+                                <Text style={[styles.schemeName, scheme === item.id && styles.schemeNameActive]}>
+                                    {item.name}
+                                </Text>
+                                <Text style={styles.schemeDescription} numberOfLines={2}>
+                                    {item.description}
+                                </Text>
+                                <Text style={styles.schemeTone}>{item.tone}</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </View>
 
                 {/* Rest Timer Default */}
                 <View style={styles.optionSection}>
@@ -174,7 +209,7 @@ export default function SettingsScreen() {
                                 const measurements = buildMeasurementsExport(weightEntries);
                                 const allData = [...workouts.map((w) => ({ type: 'workout', ...w })), ...measurements.map((m) => ({ type: 'measurement', ...m }))];
                                 if (allData.length === 0) { toast.info('No Data', 'No data to export yet.'); return; }
-                                const ok = await exportData({ format: 'csv', filename: `fitfusion-export-${today}`, data: allData });
+                                const ok = await exportData({ format: 'csv', filename: `bodypilot-export-${today}`, data: allData });
                                 if (ok) toast.success('Exported!', 'Your data has been exported.');
                                 else toast.error('Export Failed', 'Could not export data.');
                             }
@@ -195,7 +230,7 @@ export default function SettingsScreen() {
                     ))}
                 </Card>
 
-                <Text style={styles.version}>FitFusion v6.0.0 (Phase A)</Text>
+                <Text style={styles.version}>BodyPilot v6.0.0 (Phase A)</Text>
             </ScrollView>
         </View>
     );
@@ -216,6 +251,59 @@ const styles = StyleSheet.create({
     optionChipActive: { borderColor: Colors.primary, backgroundColor: Colors.surfaceLight },
     optionChipText: { color: Colors.textSecondary, fontSize: FontSize.sm, fontWeight: FontWeight.medium },
     optionChipTextActive: { color: Colors.primary },
+
+    schemeGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: Spacing.sm,
+    },
+    schemeCard: {
+        width: '48%',
+        minHeight: 132,
+        backgroundColor: Colors.surface,
+        borderRadius: BorderRadius.md,
+        borderWidth: 1.5,
+        borderColor: Colors.border,
+        padding: Spacing.md,
+    },
+    schemeCardActive: {
+        borderColor: Colors.primary,
+        backgroundColor: Colors.surfaceLight,
+    },
+    schemeSwatches: {
+        flexDirection: 'row',
+        marginBottom: Spacing.md,
+    },
+    schemeSwatch: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: Colors.border,
+        marginRight: -5,
+    },
+    schemeName: {
+        color: Colors.text,
+        fontSize: FontSize.sm,
+        fontWeight: FontWeight.bold,
+        marginBottom: 3,
+    },
+    schemeNameActive: {
+        color: Colors.primary,
+    },
+    schemeDescription: {
+        color: Colors.textTertiary,
+        fontSize: FontSize.xs,
+        lineHeight: 16,
+        minHeight: 32,
+    },
+    schemeTone: {
+        color: Colors.textTertiary,
+        fontSize: FontSize.xxs,
+        fontWeight: FontWeight.bold,
+        textTransform: 'uppercase',
+        marginTop: Spacing.sm,
+    },
 
     restTimerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.xl },
     restBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.surface, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: Colors.border },

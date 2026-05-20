@@ -1,17 +1,28 @@
-import { Colors, FontSize, FontWeight } from '@/constants/theme';
+import { FontSize, FontWeight } from '@/constants/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { Platform, StyleSheet } from 'react-native';
 
 export default function TabLayout() {
+    const { colors } = useTheme();
+    const isLight = colors.background !== '#000000' && colors.text === '#000000';
+
     return (
         <Tabs
             screenOptions={{
                 headerShown: false,
-                tabBarActiveTintColor: Colors.primary,
-                tabBarInactiveTintColor: Colors.textTertiary,
-                tabBarStyle: styles.tabBar,
+                tabBarActiveTintColor: colors.primary,
+                tabBarInactiveTintColor: colors.textTertiary,
+                tabBarStyle: [
+                    styles.tabBar,
+                    {
+                        backgroundColor: colors.surface,
+                        borderTopColor: colors.border,
+                        shadowOpacity: isLight ? 0.08 : 0.15,
+                    },
+                ],
                 tabBarLabelStyle: styles.tabBarLabel,
                 tabBarItemStyle: styles.tabBarItem,
                 tabBarIconStyle: styles.tabBarIcon,
@@ -77,8 +88,8 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
     tabBar: {
-        backgroundColor: Colors.surface,
-        borderTopColor: Colors.border,
+        backgroundColor: '#101010',
+        borderTopColor: '#1F1F1F',
         borderTopWidth: 0.5,
         height: Platform.OS === 'ios' ? 88 : 68,
         paddingTop: 6,

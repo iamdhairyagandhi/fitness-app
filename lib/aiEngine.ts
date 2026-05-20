@@ -1,5 +1,5 @@
 /**
- * FitFusion AI Engine — Phase 5
+ * BodyPilot AI Engine — Phase 5
  *
  * Provides:
  * - Function-calling chat completions (the AI can create workouts, meal plans, log food, etc.)
@@ -10,8 +10,8 @@
  * - Correlation analysis
  */
 
-import { OPENAI_API_KEY } from '@/constants/config';
-import type { OpenAIMessage } from '@/lib/openai';
+import { AI_PROXY_ENABLED } from '@/constants/config';
+import { createOpenAIChatCompletion, type OpenAIMessage } from '@/lib/openai';
 import type {
     AIGeneratedMealPlan,
     AIGeneratedWorkout,
@@ -19,8 +19,6 @@ import type {
     RecoveryLog,
     WorkoutSession
 } from '@/types';
-
-const OPENAI_ENDPOINT = 'https://api.openai.com/v1/chat/completions';
 
 // ── OpenAI Function Definitions ──────────────────────────────
 
@@ -127,32 +125,19 @@ export async function chatWithFunctions(
     messages: OpenAIMessage[],
     options?: { maxTokens?: number; temperature?: number },
 ): Promise<AIResponse> {
-    if (!OPENAI_API_KEY) {
-        throw new Error('OpenAI API key not configured');
+    if (!AI_PROXY_ENABLED) {
+        throw new Error('AI proxy not configured');
     }
 
-    const response = await fetch(OPENAI_ENDPOINT, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${OPENAI_API_KEY}`,
-        },
-        body: JSON.stringify({
-            model: 'gpt-4o-mini',
-            messages,
-            max_tokens: options?.maxTokens ?? 2000,
-            temperature: options?.temperature ?? 0.7,
-            functions: AI_FUNCTIONS,
-            function_call: 'auto',
-        }),
+    const data = await createOpenAIChatCompletion({
+        model: 'gpt-4o-mini',
+        messages,
+        max_tokens: options?.maxTokens ?? 2000,
+        temperature: options?.temperature ?? 0.7,
+        functions: AI_FUNCTIONS,
+        function_call: 'auto',
     });
 
-    if (!response.ok) {
-        const err = await response.text();
-        throw new Error(`OpenAI API error: ${response.status} - ${err}`);
-    }
-
-    const data = await response.json();
     const choice = data.choices[0];
 
     if (choice?.message?.function_call) {
@@ -163,17 +148,13 @@ export async function chatWithFunctions(
         } catch { /* empty */ }
 
         // Now get a natural language description of what was generated
-        const followUp = await fetch(OPENAI_ENDPOINT, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${OPENAI_API_KEY}`,
-            },
-            body: JSON.stringify({
+        let textResponse = '';
+        try {
+            const followUpData = await createOpenAIChatCompletion({
                 model: 'gpt-4o-mini',
                 messages: [
                     ...messages,
-                    choice.message,
+                    choice.message as OpenAIMessage,
                     {
                         role: 'function',
                         name: fc.name,
@@ -182,14 +163,9 @@ export async function chatWithFunctions(
                 ],
                 max_tokens: 500,
                 temperature: 0.7,
-            }),
-        });
-
-        let textResponse = '';
-        if (followUp.ok) {
-            const followUpData = await followUp.json();
+            });
             textResponse = followUpData.choices[0]?.message?.content ?? '';
-        }
+        } catch { /* keep structured result without follow-up text */ }
 
         return {
             text: textResponse,
@@ -298,7 +274,7 @@ export async function generateWeeklyReport(data: {
     highlights: string[];
     correlations: CorrelationInsight[];
 }> {
-    if (!OPENAI_API_KEY) {
+    if (!AI_PROXY_ENABLED) {
         return {
             summary: getOfflineWeeklySummary(data),
             recommendations: getOfflineRecommendations(data),
@@ -339,24 +315,14 @@ Analyze this data and identify patterns, correlations, and recommendations.`,
     ];
 
     try {
-        const response = await fetch(OPENAI_ENDPOINT, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${OPENAI_API_KEY}`,
-            },
-            body: JSON.stringify({
-                model: 'gpt-4o-mini',
-                messages,
-                max_tokens: 1500,
-                temperature: 0.5,
-                response_format: { type: 'json_object' },
-            }),
+        const result = await createOpenAIChatCompletion({
+            model: 'gpt-4o-mini',
+            messages,
+            max_tokens: 1500,
+            temperature: 0.5,
+            response_format: { type: 'json_object' },
         });
 
-        if (!response.ok) throw new Error('API error');
-
-        const result = await response.json();
         const parsed = JSON.parse(result.choices[0]?.message?.content || '{}');
 
         return {
@@ -391,14 +357,14 @@ export async function generateDailyInsight(context: {
     recoveryScore?: number;
     goal: string;
 }): Promise<{ text: string; type: string }> {
-    if (!OPENAI_API_KEY) {
+    if (!AI_PROXY_ENABLED) {
         return getOfflineDailyInsight(context);
     }
 
     const messages: OpenAIMessage[] = [
         {
             role: 'system',
-            content: `You are FitFusion AI. Generate a single concise daily insight (2-3 sentences max) for the user.
+            content: `You are BodyPilot AI. Generate a single concise daily insight (2-3 sentences max) for the user.
 Be specific to their data. Use one relevant emoji. Return JSON: {"text": string, "type": "nutrition"|"workout"|"recovery"|"motivation"|"general"}`,
         },
         {
@@ -412,23 +378,14 @@ ${context.recoveryScore != null ? `Recovery: ${context.recoveryScore}/100` : ''}
     ];
 
     try {
-        const response = await fetch(OPENAI_ENDPOINT, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${OPENAI_API_KEY}`,
-            },
-            body: JSON.stringify({
-                model: 'gpt-4o-mini',
-                messages,
-                max_tokens: 200,
-                temperature: 0.8,
-                response_format: { type: 'json_object' },
-            }),
+        const result = await createOpenAIChatCompletion({
+            model: 'gpt-4o-mini',
+            messages,
+            max_tokens: 200,
+            temperature: 0.8,
+            response_format: { type: 'json_object' },
         });
 
-        if (!response.ok) throw new Error('API error');
-        const result = await response.json();
         const parsed = JSON.parse(result.choices[0]?.message?.content || '{}');
         return { text: parsed.text || '', type: parsed.type || 'general' };
     } catch {

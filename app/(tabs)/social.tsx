@@ -4,6 +4,7 @@ import { LeaderboardRow } from '@/components/social/LeaderboardRow';
 import { UserCard } from '@/components/social/UserCard';
 import { Input } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 import { useAuthStore } from '@/stores/authStore';
 import { useSocialStore } from '@/stores/socialStore';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,6 +24,7 @@ import {
 type SocialTab = 'feed' | 'search' | 'challenges' | 'leaderboard';
 
 export default function SocialScreen() {
+    const { colors } = useTheme();
     const [activeTab, setActiveTab] = useState<SocialTab>('feed');
     const [searchQuery, setSearchQuery] = useState('');
     const [refreshing, setRefreshing] = useState(false);
@@ -78,10 +80,10 @@ export default function SocialScreen() {
     ];
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
             {/* Header */}
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>Community</Text>
+                <Text style={[styles.headerTitle, { color: colors.text }]}>Community</Text>
             </View>
 
             {/* Tab Bar */}
@@ -89,15 +91,15 @@ export default function SocialScreen() {
                 {tabs.map((tab) => (
                     <TouchableOpacity
                         key={tab.key}
-                        style={[styles.tab, activeTab === tab.key && styles.tabActive]}
+                        style={[styles.tab, { backgroundColor: colors.surface }, activeTab === tab.key && styles.tabActive, activeTab === tab.key && { backgroundColor: colors.primary + '18' }]}
                         onPress={() => setActiveTab(tab.key)}
                     >
                         <Ionicons
                             name={tab.icon as any}
                             size={18}
-                            color={activeTab === tab.key ? Colors.primary : Colors.textTertiary}
+                            color={activeTab === tab.key ? colors.primary : Colors.textTertiary}
                         />
-                        <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>
+                        <Text style={[styles.tabText, { color: colors.textTertiary }, activeTab === tab.key && styles.tabTextActive, activeTab === tab.key && { color: colors.primary }]}>
                             {tab.label}
                         </Text>
                     </TouchableOpacity>
@@ -121,11 +123,11 @@ export default function SocialScreen() {
                     onEndReached={loadMoreFeed}
                     onEndReachedThreshold={0.5}
                     refreshControl={
-                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />
+                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
                     }
                     ListEmptyComponent={
                         feedLoading ? (
-                            <ActivityIndicator size="large" color={Colors.primary} style={styles.emptyLoader} />
+                            <ActivityIndicator size="large" color={colors.primary} style={styles.emptyLoader} />
                         ) : (
                             <View style={styles.emptyState}>
                                 <Ionicons name="newspaper-outline" size={48} color={Colors.textTertiary} />
@@ -148,7 +150,7 @@ export default function SocialScreen() {
                         leftIcon={<Ionicons name="search" size={18} color={Colors.textTertiary} />}
                     />
                     {searchLoading ? (
-                        <ActivityIndicator size="small" color={Colors.primary} style={styles.emptyLoader} />
+                        <ActivityIndicator size="small" color={colors.primary} style={styles.emptyLoader} />
                     ) : searchResults.length > 0 ? (
                         searchResults.map((u) => (
                             <UserCard
@@ -189,20 +191,20 @@ export default function SocialScreen() {
                     )}
                     contentContainerStyle={styles.listContent}
                     refreshControl={
-                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />
+                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
                     }
                     ListHeaderComponent={
                         <TouchableOpacity
-                            style={styles.createChallengeBtn}
+                            style={[styles.createChallengeBtn, { borderColor: colors.primary + '40' }]}
                             onPress={() => router.push('/social/create-challenge')}
                         >
-                            <Ionicons name="add-circle" size={20} color={Colors.primary} />
-                            <Text style={styles.createChallengeText}>Create Challenge</Text>
+                            <Ionicons name="add-circle" size={20} color={colors.primary} />
+                            <Text style={[styles.createChallengeText, { color: colors.primary }]}>Create Challenge</Text>
                         </TouchableOpacity>
                     }
                     ListEmptyComponent={
                         challengesLoading ? (
-                            <ActivityIndicator size="large" color={Colors.primary} style={styles.emptyLoader} />
+                            <ActivityIndicator size="large" color={colors.primary} style={styles.emptyLoader} />
                         ) : (
                             <View style={styles.emptyState}>
                                 <Ionicons name="flag-outline" size={48} color={Colors.textTertiary} />
@@ -228,7 +230,7 @@ export default function SocialScreen() {
                     )}
                     contentContainerStyle={styles.listContent}
                     refreshControl={
-                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />
+                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
                     }
                     ListHeaderComponent={
                         <View style={styles.leaderboardHeader}>
@@ -238,7 +240,7 @@ export default function SocialScreen() {
                     }
                     ListEmptyComponent={
                         leaderboardLoading ? (
-                            <ActivityIndicator size="large" color={Colors.primary} style={styles.emptyLoader} />
+                            <ActivityIndicator size="large" color={colors.primary} style={styles.emptyLoader} />
                         ) : (
                             <View style={styles.emptyState}>
                                 <Ionicons name="podium-outline" size={48} color={Colors.textTertiary} />

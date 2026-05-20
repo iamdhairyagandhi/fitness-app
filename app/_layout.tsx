@@ -55,7 +55,10 @@ function RootLayoutContent() {
             // Profile
             if (data.profile) {
                 setUser(data.profile);
-                setOnboarded(true);
+                setOnboarded(!!data.profile.height_cm);
+            } else {
+                setUser(null);
+                setOnboarded(false);
             }
 
             // Workout store
@@ -180,7 +183,7 @@ function RootLayoutContent() {
     if (isLoading) {
         return (
             <View style={[styles.loading, { backgroundColor: '#fff' }]}>
-                <Text style={{ color: '#000', fontSize: 20, marginBottom: 10 }}>Loading FitFusion...</Text>
+                <Text style={{ color: '#000', fontSize: 20, marginBottom: 10 }}>Loading BodyPilot...</Text>
                 <ActivityIndicator size="large" color={Colors.primary} />
             </View>
         );

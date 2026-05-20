@@ -2,6 +2,7 @@ import { Button, Card } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { analyzeCorrelations, generateWeeklyReport } from '@/lib/aiEngine';
 import { fetchWeeklyReports, saveWeeklyReport } from '@/lib/chatDb';
+import { formatVolume } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
 import { useProgressStore } from '@/stores/progressStore';
 import { useRecoveryStore } from '@/stores/recoveryStore';
@@ -194,7 +195,7 @@ export default function WeeklyReportScreen() {
                             <TouchableOpacity key={r.id} style={styles.pastItem}>
                                 <Text style={styles.pastDate}>{r.week_start} → {r.week_end}</Text>
                                 <Text style={styles.pastStats}>
-                                    {r.workouts_completed} workouts • {Math.round(r.total_volume_kg)}kg
+                                    {r.workouts_completed} workouts • {formatVolume(r.total_volume_kg, user?.unit_system)}
                                 </Text>
                             </TouchableOpacity>
                         ))}
@@ -256,7 +257,7 @@ export default function WeeklyReportScreen() {
                         <View style={styles.statsGrid}>
                             {[
                                 { label: 'Workouts', value: report.stats.workouts },
-                                { label: 'Volume', value: `${Math.round(report.stats.totalVolume)}kg` },
+                                { label: 'Volume', value: formatVolume(report.stats.totalVolume, user?.unit_system) },
                                 { label: 'Streak', value: `${report.stats.streak}d` },
                                 { label: 'Recovery', value: `${Math.round(report.stats.recoveryAvg)}%` },
                             ].map((s) => (
