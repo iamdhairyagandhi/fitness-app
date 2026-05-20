@@ -6,9 +6,12 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
 import { useWorkoutStore } from '@/stores/workoutStore';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import {
+    Image,
+    Modal,
     ScrollView,
     StyleSheet,
     Text,
@@ -17,15 +20,35 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+const PROFILE_CHARACTERS = [
+    { id: 'pilot', label: 'Pilot', glyph: '▲', tint: '#9DFF00' },
+    { id: 'power', label: 'Power', glyph: '⚡', tint: '#38BDF8' },
+    { id: 'focus', label: 'Focus', glyph: '◆', tint: '#A78BFA' },
+    { id: 'flame', label: 'Fire', glyph: '🔥', tint: '#FF6B35' },
+    { id: 'iron', label: 'Iron', glyph: '🏋️', tint: '#F8FAFC' },
+    { id: 'runner', label: 'Run', glyph: '🏃', tint: '#34D399' },
+    { id: 'apple', label: 'Fuel', glyph: '🍏', tint: '#84CC16' },
+    { id: 'star', label: 'Star', glyph: '✦', tint: '#FACC15' },
+];
+
+const CHARACTER_PREFIX = 'character:';
+
 export default function ProfileScreen() {
     const insets = useSafeAreaInsets();
     const { colors } = useTheme();
-    const { user, logout } = useAuthStore();
+    const { user, logout, updateUser } = useAuthStore();
     const { recentWorkouts, personalRecords } = useWorkoutStore();
+    const [characterPickerOpen, setCharacterPickerOpen] = useState(false);
 
     const displayName = user?.display_name || 'Athlete';
     const email = user?.email || 'user@bodypilot.app';
     const usernameDisplay = user?.username ? `@${user.username}` : null;
+    const avatarUrl = user?.avatar_url || null;
+    const selectedCharacter = useMemo(() => {
+        if (!avatarUrl?.startsWith(CHARACTER_PREFIX)) return null;
+        const id = avatarUrl.replace(CHARACTER_PREFIX, '');
+        return PROFILE_CHARACTERS.find((character) => character.id === id) || PROFILE_CHARACTERS[0];
+    }, [avatarUrl]);
     const level = user?.level || 1;
     const xp = user?.xp || 0;
     const levelProgress = getLevelProgress(xp);
@@ -45,6 +68,37 @@ export default function ProfileScreen() {
                 router.replace('/(auth)');
             },
         });
+    };
+
+    const handlePickPhoto = async () => {
+        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permission.granted) {
+            toast.info('Permission needed', 'Allow photo library access to choose a profile photo.');
+            return;
+        }
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.85,
+        });
+
+        if (result.canceled || !result.assets[0]?.uri) return;
+
+        updateUser({ avatar_url: result.assets[0].uri });
+        toast.success('Profile updated', 'Your profile photo has been saved.');
+    };
+
+    const handleSelectCharacter = (characterId: string) => {
+        updateUser({ avatar_url: `${CHARACTER_PREFIX}${characterId}` });
+        setCharacterPickerOpen(false);
+        toast.success('Profile updated', 'Your profile character has been saved.');
+    };
+
+    const handleRemoveAvatar = () => {
+        updateUser({ avatar_url: null });
+        toast.success('Profile updated', 'Your avatar has been removed.');
     };
 
     const settingsGroups = [
@@ -71,7 +125,7 @@ export default function ProfileScreen() {
             title: 'Integrations',
             items: [
                 { icon: 'watch-outline' as const, label: 'Wearable Devices', onPress: () => { } },
-                { icon: 'heart-outline' as const, label: 'Apple Health / Google Fit', onPress: () => { } },
+                { icon: 'heart-outline' as const, label: 'Apple Health / Google Fit', onPress: () => router.push('/health') },
             ],
         },
         {
@@ -96,9 +150,45 @@ export default function ProfileScreen() {
                 {/* Profile Card */}
                 <Card style={styles.profileCard}>
                     <View style={[styles.avatar, { backgroundColor: colors.primary, shadowColor: colors.primary }]}>
-                        <Text style={[styles.avatarText, { color: colors.textInverse }]}>
-                            {displayName.charAt(0).toUpperCase()}
-                        </Text>
+                        {selectedCharacter ? (
+                            <Text style={[styles.characterGlyph, { color: selectedCharacter.tint }]}>
+                                {selectedCharacter.glyph}
+                            </Text>
+                        ) : avatarUrl ? (
+                            <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+                        ) : (
+                            <Text style={[styles.avatarText, { color: colors.textInverse }]}>
+                                {displayName.charAt(0).toUpperCase()}
+                            </Text>
+                        )}
+                    </View>
+                    <View style={styles.avatarActions}>
+                        <TouchableOpacity
+                            style={[styles.avatarAction, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}
+                            onPress={handlePickPhoto}
+                            activeOpacity={0.75}
+                        >
+                            <Ionicons name="image-outline" size={16} color={colors.primary} />
+                            <Text style={[styles.avatarActionText, { color: colors.text }]}>Photo</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.avatarAction, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}
+                            onPress={() => setCharacterPickerOpen(true)}
+                            activeOpacity={0.75}
+                        >
+                            <Ionicons name="happy-outline" size={16} color={colors.primary} />
+                            <Text style={[styles.avatarActionText, { color: colors.text }]}>Character</Text>
+                        </TouchableOpacity>
+                        {avatarUrl ? (
+                            <TouchableOpacity
+                                style={[styles.avatarAction, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}
+                                onPress={handleRemoveAvatar}
+                                activeOpacity={0.75}
+                            >
+                                <Ionicons name="trash-outline" size={16} color={colors.error} />
+                                <Text style={[styles.avatarActionText, { color: colors.text }]}>Remove</Text>
+                            </TouchableOpacity>
+                        ) : null}
                     </View>
                     <Text style={[styles.userName, { color: colors.text }]}>{displayName}</Text>
                     {usernameDisplay ? (
@@ -178,6 +268,59 @@ export default function ProfileScreen() {
 
                 <Text style={styles.version}>BodyPilot v4.0.0 (Phase 4)</Text>
             </ScrollView>
+
+            <Modal
+                transparent
+                visible={characterPickerOpen}
+                animationType="fade"
+                onRequestClose={() => setCharacterPickerOpen(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.characterSheet, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                        <View style={styles.characterHeader}>
+                            <View>
+                                <Text style={[styles.characterTitle, { color: colors.text }]}>Choose Character</Text>
+                                <Text style={[styles.characterSubtitle, { color: colors.textSecondary }]}>
+                                    Pick a profile style that fits your training mood.
+                                </Text>
+                            </View>
+                            <TouchableOpacity
+                                style={[styles.modalClose, { backgroundColor: colors.surfaceLight }]}
+                                onPress={() => setCharacterPickerOpen(false)}
+                            >
+                                <Ionicons name="close" size={22} color={colors.text} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.characterGrid}>
+                            {PROFILE_CHARACTERS.map((character) => {
+                                const active = selectedCharacter?.id === character.id;
+                                return (
+                                    <TouchableOpacity
+                                        key={character.id}
+                                        style={[
+                                            styles.characterOption,
+                                            { backgroundColor: colors.surfaceLight, borderColor: colors.border },
+                                            active && { borderColor: colors.primary },
+                                        ]}
+                                        onPress={() => handleSelectCharacter(character.id)}
+                                        activeOpacity={0.82}
+                                    >
+                                        <View style={[styles.characterPreview, { backgroundColor: colors.background }]}>
+                                            <Text style={[styles.characterPreviewGlyph, { color: character.tint }]}>
+                                                {character.glyph}
+                                            </Text>
+                                        </View>
+                                        <Text style={[styles.characterLabel, { color: colors.textSecondary }]}>
+                                            {character.label}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -218,11 +361,40 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.3,
         shadowRadius: 12,
         elevation: 4,
+        overflow: 'hidden',
+    },
+    avatarImage: {
+        width: '100%',
+        height: '100%',
     },
     avatarText: {
         color: Colors.text,
         fontSize: FontSize.xxl,
         fontWeight: FontWeight.heavy,
+    },
+    characterGlyph: {
+        fontSize: 38,
+        fontWeight: FontWeight.heavy,
+    },
+    avatarActions: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'center',
+        gap: Spacing.sm,
+        marginBottom: Spacing.md,
+    },
+    avatarAction: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        borderWidth: 1,
+        borderRadius: BorderRadius.full,
+        paddingHorizontal: Spacing.md,
+        paddingVertical: Spacing.xs,
+    },
+    avatarActionText: {
+        fontSize: FontSize.xs,
+        fontWeight: FontWeight.semibold,
     },
     userName: {
         color: Colors.text,
@@ -346,5 +518,68 @@ const styles = StyleSheet.create({
         marginTop: Spacing.xxl,
         marginBottom: Spacing.lg,
         letterSpacing: 0.5,
+    },
+    modalOverlay: {
+        flex: 1,
+        justifyContent: 'flex-end',
+        backgroundColor: 'rgba(0, 0, 0, 0.62)',
+        padding: Spacing.lg,
+    },
+    characterSheet: {
+        borderWidth: 1,
+        borderRadius: BorderRadius.xl,
+        padding: Spacing.lg,
+    },
+    characterHeader: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        gap: Spacing.md,
+        marginBottom: Spacing.lg,
+    },
+    characterTitle: {
+        fontSize: FontSize.lg,
+        fontWeight: FontWeight.bold,
+    },
+    characterSubtitle: {
+        fontSize: FontSize.sm,
+        marginTop: 4,
+        maxWidth: 250,
+    },
+    modalClose: {
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    characterGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: Spacing.sm,
+    },
+    characterOption: {
+        width: '23%',
+        minWidth: 68,
+        borderWidth: 1,
+        borderRadius: BorderRadius.lg,
+        alignItems: 'center',
+        paddingVertical: Spacing.sm,
+        gap: 6,
+    },
+    characterPreview: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    characterPreviewGlyph: {
+        fontSize: 24,
+        fontWeight: FontWeight.heavy,
+    },
+    characterLabel: {
+        fontSize: FontSize.xxs,
+        fontWeight: FontWeight.semibold,
     },
 });

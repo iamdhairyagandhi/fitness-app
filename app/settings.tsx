@@ -2,6 +2,15 @@ import { Card, toast } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { ThemeScheme, useTheme } from '@/contexts/ThemeContext';
 import { buildMeasurementsExport, buildWorkoutExport, exportData } from '@/lib/export';
+import {
+    DEFAULT_NOTIFICATION_PREFERENCES,
+    NotificationPreferenceKey,
+    NotificationPreferences,
+    clearBodyPilotNotifications,
+    getNotificationState,
+    scheduleBodyPilotNotifications,
+    sendTestNotification,
+} from '@/lib/notifications';
 import { useAuthStore } from '@/stores/authStore';
 import { useProgressStore } from '@/stores/progressStore';
 import { useWorkoutStore } from '@/stores/workoutStore';
@@ -28,23 +37,50 @@ export default function SettingsScreen() {
 
     const [units, setUnits] = useState<UnitSystem>(user?.unit_system || 'metric');
     const [restTimer, setRestTimer] = useState(user?.preferred_rest_seconds || 90);
-    const [notifications, setNotifications] = useState({
-        workoutReminder: true,
-        mealReminder: true,
-        waterReminder: false,
-        weeklyReport: true,
-        achievements: true,
-        socialActivity: false,
-    });
+    const [notifications, setNotifications] = useState<NotificationPreferences>(DEFAULT_NOTIFICATION_PREFERENCES);
+    const [notificationStatus, setNotificationStatus] = useState<string>('unknown');
+    const [notificationBusy, setNotificationBusy] = useState(false);
 
-    const toggleNotif = (key: keyof typeof notifications) => {
-        setNotifications((prev) => ({ ...prev, [key]: !prev[key] }));
+    const syncNotifications = async (next: NotificationPreferences) => {
+        setNotificationBusy(true);
+        try {
+            const state = await scheduleBodyPilotNotifications(next);
+            setNotifications(state.preferences);
+            setNotificationStatus(state.permissionStatus);
+            if (state.permissionStatus === 'granted') {
+                toast.success('Notifications updated', 'BodyPilot reminders are scheduled.');
+            } else if (state.permissionStatus === 'native-unavailable') {
+                toast.info('Rebuild needed', 'Notifications are installed in JS. Rebuild the iOS app to enable native reminders.');
+            } else {
+                toast.info('Permission needed', 'Enable notifications in iOS Settings to receive reminders.');
+            }
+        } catch (error) {
+            console.warn('Notification sync failed:', error);
+            toast.error('Notification Error', 'Could not update notification reminders.');
+        } finally {
+            setNotificationBusy(false);
+        }
+    };
+
+    const toggleNotif = (key: NotificationPreferenceKey) => {
+        const next = { ...notifications, [key]: !notifications[key] };
+        setNotifications(next);
+        syncNotifications(next);
     };
 
     useEffect(() => {
         setUnits(user?.unit_system || 'metric');
         setRestTimer(user?.preferred_rest_seconds || 90);
     }, [user?.preferred_rest_seconds, user?.unit_system]);
+
+    useEffect(() => {
+        getNotificationState()
+            .then((state) => {
+                setNotifications(state.preferences);
+                setNotificationStatus(state.permissionStatus);
+            })
+            .catch(() => { });
+    }, []);
 
     const handleSave = () => {
         updateUser({
@@ -147,21 +183,49 @@ export default function SettingsScreen() {
 
                 {/* Rest Timer Default */}
                 <View style={styles.optionSection}>
-                    <Text style={styles.optionLabel}>⏱️ Default Rest Timer</Text>
+                    <Text style={[styles.optionLabel, { color: colors.textSecondary }]}>⏱️ Default Rest Timer</Text>
                     <View style={styles.restTimerRow}>
-                        <TouchableOpacity style={styles.restBtn} onPress={() => setRestTimer(Math.max(15, restTimer - 15))}>
-                            <Ionicons name="remove" size={20} color={Colors.text} />
+                        <TouchableOpacity style={[styles.restBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => setRestTimer(Math.max(15, restTimer - 15))}>
+                            <Ionicons name="remove" size={20} color={colors.text} />
                         </TouchableOpacity>
-                        <Text style={styles.restValue}>{restTimer}s</Text>
-                        <TouchableOpacity style={styles.restBtn} onPress={() => setRestTimer(Math.min(300, restTimer + 15))}>
-                            <Ionicons name="add" size={20} color={Colors.text} />
+                        <Text style={[styles.restValue, { color: colors.text }]}>{restTimer}s</Text>
+                        <TouchableOpacity style={[styles.restBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => setRestTimer(Math.min(300, restTimer + 15))}>
+                            <Ionicons name="add" size={20} color={colors.text} />
                         </TouchableOpacity>
                     </View>
                 </View>
 
                 {/* Notifications */}
-                <Text style={styles.sectionTitle}>Notifications</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Notifications</Text>
                 <Card>
+                    <View style={styles.notificationHeader}>
+                        <View>
+                            <Text style={[styles.notificationTitle, { color: colors.text }]}>Local reminders</Text>
+                            <Text style={[styles.notificationSubtitle, { color: colors.textTertiary }]}>
+                                Status: {notificationStatus}
+                            </Text>
+                        </View>
+                        <TouchableOpacity
+                            style={[styles.testButton, { borderColor: colors.primary + '40', backgroundColor: colors.primary + '12' }]}
+                            disabled={notificationBusy}
+                            onPress={async () => {
+                                setNotificationBusy(true);
+                                try {
+                                    await sendTestNotification();
+                                    const state = await getNotificationState();
+                                    setNotificationStatus(state.permissionStatus);
+                                    toast.success('Test scheduled', 'A notification should arrive in a couple seconds.');
+                                } catch (error) {
+                                    console.warn('Test notification failed:', error);
+                                    toast.error('Notification Error', 'Could not schedule a test notification.');
+                                } finally {
+                                    setNotificationBusy(false);
+                                }
+                            }}
+                        >
+                            <Text style={[styles.testButtonText, { color: colors.primary }]}>Test</Text>
+                        </TouchableOpacity>
+                    </View>
                     {[
                         { key: 'workoutReminder' as const, label: 'Workout Reminders', icon: '🏋️' },
                         { key: 'mealReminder' as const, label: 'Meal Logging Reminders', icon: '🍽️' },
@@ -170,15 +234,34 @@ export default function SettingsScreen() {
                         { key: 'achievements' as const, label: 'Achievement Alerts', icon: '🏆' },
                         { key: 'socialActivity' as const, label: 'Social Activity', icon: '👥' },
                     ].map((item, idx) => (
-                        <View key={item.key} style={[styles.notifRow, idx > 0 && styles.notifRowBorder]}>
-                            <Text style={styles.notifLabel}>{item.icon} {item.label}</Text>
+                        <View key={item.key} style={[styles.notifRow, idx > 0 && styles.notifRowBorder, idx > 0 && { borderTopColor: colors.border }]}>
+                            <Text style={[styles.notifLabel, { color: colors.text }]}>{item.icon} {item.label}</Text>
                             <Toggle value={notifications[item.key]} onPress={() => toggleNotif(item.key)} />
                         </View>
                     ))}
+                    <TouchableOpacity
+                        style={[styles.clearNotificationsButton, { borderTopColor: colors.border }]}
+                        disabled={notificationBusy}
+                        onPress={async () => {
+                            setNotificationBusy(true);
+                            try {
+                                const state = await clearBodyPilotNotifications();
+                                setNotificationStatus(state.permissionStatus);
+                                toast.success('Cleared', 'All scheduled reminders were cancelled.');
+                            } catch (error) {
+                                console.warn('Clear notifications failed:', error);
+                                toast.error('Notification Error', 'Could not clear scheduled reminders.');
+                            } finally {
+                                setNotificationBusy(false);
+                            }
+                        }}
+                    >
+                        <Text style={[styles.clearNotificationsText, { color: colors.textSecondary }]}>Clear scheduled reminders</Text>
+                    </TouchableOpacity>
                 </Card>
 
                 {/* Quick Links */}
-                <Text style={styles.sectionTitle}>Quick Settings</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick Settings</Text>
                 <Card padding={0}>
                     {[
                         { icon: 'nutrition-outline' as const, label: 'Diet Plan Settings', route: '/nutrition/diet-settings' },
@@ -188,18 +271,18 @@ export default function SettingsScreen() {
                     ].map((item, idx) => (
                         <TouchableOpacity
                             key={item.label}
-                            style={[styles.linkRow, idx > 0 && styles.linkRowBorder]}
+                            style={[styles.linkRow, idx > 0 && styles.linkRowBorder, idx > 0 && { borderTopColor: colors.border }]}
                             onPress={() => router.push(item.route as any)}
                         >
-                            <Ionicons name={item.icon} size={20} color={Colors.textSecondary} />
-                            <Text style={styles.linkLabel}>{item.label}</Text>
-                            <Ionicons name="chevron-forward" size={18} color={Colors.textTertiary} />
+                            <Ionicons name={item.icon} size={20} color={colors.textSecondary} />
+                            <Text style={[styles.linkLabel, { color: colors.text }]}>{item.label}</Text>
+                            <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
                         </TouchableOpacity>
                     ))}
                 </Card>
 
                 {/* Data & Privacy */}
-                <Text style={styles.sectionTitle}>Data & Privacy</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Data & Privacy</Text>
                 <Card padding={0}>
                     {[
                         {
@@ -220,17 +303,17 @@ export default function SettingsScreen() {
                     ].map((item, idx) => (
                         <TouchableOpacity
                             key={item.label}
-                            style={[styles.linkRow, idx > 0 && styles.linkRowBorder]}
+                            style={[styles.linkRow, idx > 0 && styles.linkRowBorder, idx > 0 && { borderTopColor: colors.border }]}
                             onPress={item.action}
                         >
-                            <Ionicons name={item.icon} size={20} color={item.label.includes('Clear') ? Colors.error : Colors.textSecondary} />
-                            <Text style={[styles.linkLabel, item.label.includes('Clear') && { color: Colors.error }]}>{item.label}</Text>
-                            <Ionicons name="chevron-forward" size={18} color={Colors.textTertiary} />
+                            <Ionicons name={item.icon} size={20} color={item.label.includes('Clear') ? colors.error : colors.textSecondary} />
+                            <Text style={[styles.linkLabel, { color: colors.text }, item.label.includes('Clear') && { color: colors.error }]}>{item.label}</Text>
+                            <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
                         </TouchableOpacity>
                     ))}
                 </Card>
 
-                <Text style={styles.version}>BodyPilot v6.0.0 (Phase A)</Text>
+                <Text style={[styles.version, { color: colors.textTertiary }]}>BodyPilot v6.0.0 (Phase A)</Text>
             </ScrollView>
         </View>
     );
@@ -317,6 +400,13 @@ const styles = StyleSheet.create({
     notifRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: Spacing.md },
     notifRowBorder: { borderTopWidth: 1, borderTopColor: Colors.border },
     notifLabel: { color: Colors.text, fontSize: FontSize.sm },
+    notificationHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingBottom: Spacing.md },
+    notificationTitle: { color: Colors.text, fontSize: FontSize.md, fontWeight: FontWeight.bold },
+    notificationSubtitle: { color: Colors.textTertiary, fontSize: FontSize.xs, marginTop: 2, textTransform: 'capitalize' },
+    testButton: { borderWidth: 1, borderRadius: BorderRadius.full, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm },
+    testButtonText: { color: Colors.primary, fontSize: FontSize.sm, fontWeight: FontWeight.bold },
+    clearNotificationsButton: { borderTopWidth: 1, borderTopColor: Colors.border, paddingTop: Spacing.md, marginTop: Spacing.xs },
+    clearNotificationsText: { color: Colors.textSecondary, fontSize: FontSize.sm, fontWeight: FontWeight.semibold, textAlign: 'center' },
 
     linkRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingVertical: Spacing.lg, gap: Spacing.md },
     linkRowBorder: { borderTopWidth: 1, borderTopColor: Colors.border },

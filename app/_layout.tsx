@@ -3,6 +3,7 @@ import { OfflineBanner } from '@/components/ui/OfflineBanner';
 import { Colors } from '@/constants/theme';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { hydrateAllStores } from '@/lib/db';
+import { addNotificationRoutingListener } from '@/lib/notifications';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
 import { useMealPlanStore } from '@/stores/mealPlanStore';
@@ -145,6 +146,8 @@ function RootLayoutContent() {
     }, [setUser, setOnboarded]);
 
     useEffect(() => {
+        const notificationSubscription = addNotificationRoutingListener();
+
         // Safety timeout — never stay on loading screen forever
         const timeout = setTimeout(() => {
             console.warn('Auth check timed out, forcing loading=false');
@@ -177,7 +180,10 @@ function RootLayoutContent() {
             }
         );
 
-        return () => subscription.unsubscribe();
+        return () => {
+            notificationSubscription.remove();
+            subscription.unsubscribe();
+        };
     }, [setSession, setLoading, hydrateFromSupabase]);
 
     if (isLoading) {

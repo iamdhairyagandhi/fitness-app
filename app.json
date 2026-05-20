@@ -22,6 +22,8 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "BodyPilot uses the camera to scan food barcodes and analyze meals",
+        "NSHealthShareUsageDescription": "BodyPilot reads Apple Health data such as steps, workouts, active energy, heart rate, and body weight to personalize fitness, nutrition, and recovery insights.",
+        "NSHealthUpdateUsageDescription": "BodyPilot can write workouts, body weight, and nutrition updates to Apple Health when you choose to sync them.",
         "NSLocationWhenInUseUsageDescription": "BodyPilot uses your location during cardio sessions to calculate distance, pace, and route data.",
         "NSPhotoLibraryUsageDescription": "BodyPilot needs photo access for progress photos and meal logging",
         "NSPhotoLibraryAddUsageDescription": "BodyPilot saves exported reports and progress images when you choose to share them."
@@ -49,6 +51,15 @@
       "expo-camera",
       "expo-image-picker",
       "expo-location",
+      "expo-notifications",
+      [
+        "@kingstinct/react-native-healthkit",
+        {
+          "NSHealthShareUsageDescription": "BodyPilot reads Apple Health data such as steps, workouts, active energy, heart rate, and body weight to personalize fitness, nutrition, and recovery insights.",
+          "NSHealthUpdateUsageDescription": "BodyPilot can write workouts, body weight, and nutrition updates to Apple Health when you choose to sync them.",
+          "background": true
+        }
+      ],
       "expo-secure-store",
       "expo-web-browser"
     ],
