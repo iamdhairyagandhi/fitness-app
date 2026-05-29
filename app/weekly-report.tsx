@@ -2,6 +2,7 @@ import { Button, Card } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { analyzeCorrelations, generateWeeklyReport } from '@/lib/aiEngine';
 import { fetchWeeklyReports, saveWeeklyReport } from '@/lib/chatDb';
+import { requirePremium } from '@/lib/premium';
 import { formatVolume } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
 import { useProgressStore } from '@/stores/progressStore';
@@ -79,6 +80,7 @@ export default function WeeklyReportScreen() {
     }, [loadPastReports]);
 
     const generateReport = async () => {
+        if (!requirePremium('weekly_report')) return;
         setLoading(true);
         setError('');
         try {

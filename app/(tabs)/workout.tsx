@@ -2,24 +2,35 @@ import { Button, Card } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { saveWorkoutTemplate } from '@/lib/db';
+import { requirePremium } from '@/lib/premium';
 import {
     DirectoryExercise,
     EXERCISE_DIRECTORY_SOURCE,
     fetchOpenExerciseDirectory,
 } from '@/lib/openExerciseDirectory';
 import { formatDurationLong, formatVolume, generateId } from '@/lib/utils';
+import {
+    buildWorkoutHistoryInsight,
+    formatMuscle,
+    getWorkoutDurationSeconds,
+    getWorkoutPrCount,
+    getWorkoutSetCount,
+    getWorkoutTopMuscles,
+} from '@/lib/workoutAnalytics';
 import { detectDeload } from '@/lib/workoutIntelligence';
 import { useAuthStore } from '@/stores/authStore';
 import { useRecoveryStore } from '@/stores/recoveryStore';
 import { useWorkoutStore } from '@/stores/workoutStore';
-import type { Exercise, WorkoutSet, WorkoutTemplate, WorkoutTemplateExercise, WorkoutTemplateSet } from '@/types';
+import type { Exercise, WorkoutSession, WorkoutSet, WorkoutTemplate, WorkoutTemplateExercise, WorkoutTemplateSet } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Image,
+    KeyboardAvoidingView,
     Modal,
+    Platform,
     RefreshControl,
     ScrollView,
     StyleSheet,
@@ -87,7 +98,7 @@ function planExercise(
         exercise,
         order,
         target_sets: options?.target_sets ?? 3,
-        target_reps: options?.target_reps ?? '8-12',
+        target_reps: normalizeRepTarget(options?.target_reps ?? '10'),
         target_weight_kg: options?.target_weight_kg ?? null,
         rest_seconds: options?.rest_seconds ?? 90,
         notes: options?.notes ?? null,
@@ -98,7 +109,7 @@ function planExercise(
             id: generateId(),
             set_number: index + 1,
             set_type: options?.set_type ?? 'normal',
-            target_reps: options?.target_reps ?? '8-12',
+            target_reps: normalizeRepTarget(options?.target_reps ?? '10'),
             intensity_percent: options?.intensity_percent ?? 75,
         })),
     };
@@ -127,8 +138,8 @@ const WORKOUT_DIRECTORY: DirectoryTemplate[] = [
         level: 'All levels',
         durationMin: 50,
         exercises: [
-            planExercise(BASE_EXERCISES.bench, 0, { target_sets: 4, target_reps: '6-8', intensity_percent: 80 }),
-            planExercise(BASE_EXERCISES.press, 1, { target_sets: 3, target_reps: '8-10', intensity_percent: 75 }),
+            planExercise(BASE_EXERCISES.bench, 0, { target_sets: 4, target_reps: '7', intensity_percent: 80 }),
+            planExercise(BASE_EXERCISES.press, 1, { target_sets: 3, target_reps: '9', intensity_percent: 75 }),
             planExercise(BASE_EXERCISES.pushup, 2, { target_sets: 3, target_reps: 'AMRAP', set_type: 'failure', intensity_percent: 90 }),
         ],
     },
@@ -141,9 +152,9 @@ const WORKOUT_DIRECTORY: DirectoryTemplate[] = [
         durationMin: 50,
         exercises: [
             planExercise(BASE_EXERCISES.deadlift, 0, { target_sets: 3, target_reps: '5', intensity_percent: 85 }),
-            planExercise(BASE_EXERCISES.row, 1, { target_sets: 3, target_reps: '8-10', intensity_percent: 75 }),
-            planExercise(BASE_EXERCISES.pullup, 2, { target_sets: 3, target_reps: '6-10', intensity_percent: 80 }),
-            planExercise(BASE_EXERCISES.curl, 3, { target_sets: 3, target_reps: '10-12', set_type: 'volume', intensity_percent: 70 }),
+            planExercise(BASE_EXERCISES.row, 1, { target_sets: 3, target_reps: '9', intensity_percent: 75 }),
+            planExercise(BASE_EXERCISES.pullup, 2, { target_sets: 3, target_reps: '8', intensity_percent: 80 }),
+            planExercise(BASE_EXERCISES.curl, 3, { target_sets: 3, target_reps: '11', set_type: 'volume', intensity_percent: 70 }),
         ],
     },
     {
@@ -155,8 +166,8 @@ const WORKOUT_DIRECTORY: DirectoryTemplate[] = [
         durationMin: 45,
         exercises: [
             planExercise(BASE_EXERCISES.squat, 0),
-            planExercise(BASE_EXERCISES.pushup, 1, { target_reps: '10-15', superset_group: 'A' }),
-            planExercise(BASE_EXERCISES.row, 2, { target_reps: '10-12', superset_group: 'A' }),
+            planExercise(BASE_EXERCISES.pushup, 1, { target_reps: '13', superset_group: 'A' }),
+            planExercise(BASE_EXERCISES.row, 2, { target_reps: '11', superset_group: 'A' }),
             planExercise(BASE_EXERCISES.lunge, 3, { target_reps: '10/side' }),
             planExercise(BASE_EXERCISES.plank, 4, { target_reps: '45 sec', set_type: 'volume' }),
         ],
@@ -170,7 +181,7 @@ const WORKOUT_DIRECTORY: DirectoryTemplate[] = [
         durationMin: 35,
         exercises: [
             planExercise(BASE_EXERCISES.pushup, 0, { target_reps: 'AMRAP', set_type: 'failure', intensity_percent: 90 }),
-            planExercise(BASE_EXERCISES.pullup, 1, { target_reps: '5-8', intensity_percent: 82 }),
+            planExercise(BASE_EXERCISES.pullup, 1, { target_reps: '7', intensity_percent: 82 }),
             planExercise(BASE_EXERCISES.lunge, 2, { target_reps: '12/side', set_type: 'volume' }),
             planExercise(BASE_EXERCISES.plank, 3, { target_reps: '60 sec', set_type: 'volume' }),
         ],
@@ -183,7 +194,7 @@ const WORKOUT_DIRECTORY: DirectoryTemplate[] = [
         level: 'All levels',
         durationMin: 30,
         exercises: [
-            planExercise(BASE_EXERCISES.pushup, 0, { target_reps: '12-20', superset_group: 'A' }),
+            planExercise(BASE_EXERCISES.pushup, 0, { target_reps: '16', superset_group: 'A' }),
             planExercise(BASE_EXERCISES.lunge, 1, { target_reps: '12/side', superset_group: 'A' }),
             planExercise(BASE_EXERCISES.plank, 2, { target_reps: '45 sec', set_type: 'volume' }),
         ],
@@ -198,6 +209,7 @@ export default function WorkoutScreen() {
     const templates = useWorkoutStore((s) => s.templates);
     const setTemplates = useWorkoutStore((s) => s.setTemplates);
     const storedExercises = useWorkoutStore((s) => s.exercises);
+    const personalRecords = useWorkoutStore((s) => s.personalRecords);
     const setStoredExercises = useWorkoutStore((s) => s.setExercises);
     const startWorkoutFromTemplate = useWorkoutStore((s) => s.startWorkoutFromTemplate);
     const user = useAuthStore((s) => s.user);
@@ -223,8 +235,16 @@ export default function WorkoutScreen() {
     const [selectedExercise, setSelectedExercise] = useState<DirectoryExercise | null>(null);
     const [refreshing, setRefreshing] = useState(false);
     const onRefresh = useCallback(() => { setRefreshing(true); setTimeout(() => setRefreshing(false), 1000); }, []);
+    const openCreateWorkout = useCallback(() => {
+        if (templates.length >= 3 && !requirePremium('unlimited_custom_templates')) return;
+        setShowCreateWorkout(true);
+    }, [templates.length]);
 
     const deload = useMemo(() => detectDeload(recentWorkouts, recoveryLogs), [recentWorkouts, recoveryLogs]);
+    const historyInsight = useMemo(
+        () => buildWorkoutHistoryInsight(recentWorkouts, personalRecords),
+        [personalRecords, recentWorkouts],
+    );
     const allWorkoutTemplates = useMemo<DirectoryTemplate[]>(() => {
         const customTemplates: DirectoryTemplate[] = templates.map((template) => ({
             id: template.id,
@@ -350,6 +370,10 @@ export default function WorkoutScreen() {
                 order: index,
                 target_sets: exercise.planned_sets.length,
                 target_reps: summarizeReps(exercise.planned_sets),
+                planned_sets: exercise.planned_sets.map((set) => ({
+                    ...set,
+                    target_reps: normalizeRepTarget(set.target_reps),
+                })),
                 set_type: exercise.planned_sets[0]?.set_type || exercise.set_type,
                 intensity_percent: exercise.planned_sets[0]?.intensity_percent ?? exercise.intensity_percent,
             })),
@@ -443,11 +467,15 @@ export default function WorkoutScreen() {
         setBuilderExercises(template.exercises.map((exercise, index) => ({
             ...exercise,
             order: index,
+            target_reps: normalizeRepTarget(exercise.target_reps),
             set_type: exercise.set_type || 'normal',
             intensity_percent: exercise.intensity_percent ?? 75,
             superset_group: exercise.superset_group ?? null,
             planned_sets: exercise.planned_sets?.length
-                ? exercise.planned_sets
+                ? exercise.planned_sets.map((set) => ({
+                    ...set,
+                    target_reps: normalizeRepTarget(set.target_reps),
+                }))
                 : Array.from({ length: Math.max(1, exercise.target_sets) }, (_, setIndex) =>
                     createPlannedSet(
                         setIndex + 1,
@@ -481,11 +509,14 @@ export default function WorkoutScreen() {
     }, []);
 
     const updateBuilderSet = useCallback((exerciseIndex: number, setIndex: number, updates: Partial<WorkoutTemplateSet>) => {
+        const normalizedUpdates = updates.target_reps !== undefined
+            ? { ...updates, target_reps: normalizeRepTarget(updates.target_reps) }
+            : updates;
         setBuilderExercises((current) =>
             current.map((exercise, index) => {
                 if (index !== exerciseIndex) return exercise;
                 const plannedSets = exercise.planned_sets.map((set, currentSetIndex) =>
-                    currentSetIndex === setIndex ? { ...set, ...updates } : set
+                    currentSetIndex === setIndex ? { ...set, ...normalizedUpdates } : set
                 );
                 return {
                     ...exercise,
@@ -524,7 +555,7 @@ export default function WorkoutScreen() {
             {/* Header */}
             <View style={styles.header}>
                 <Text style={[styles.title, { color: colors.text }]}>Workout</Text>
-                <TouchableOpacity style={[styles.addButton, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <TouchableOpacity style={[styles.addButton, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={openCreateWorkout}>
                     <Ionicons name="add" size={24} color={colors.text} />
                 </TouchableOpacity>
             </View>
@@ -603,7 +634,7 @@ export default function WorkoutScreen() {
                                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Workout Directory</Text>
                                 <Text style={[styles.sectionSubtitle, { color: colors.textTertiary }]}>Search proven workouts or create your own</Text>
                             </View>
-                            <TouchableOpacity style={[styles.createSmallButton, { backgroundColor: colors.primary }]} onPress={() => setShowCreateWorkout(true)}>
+                            <TouchableOpacity style={[styles.createSmallButton, { backgroundColor: colors.primary }]} onPress={openCreateWorkout}>
                                 <Ionicons name="add" size={18} color={colors.textInverse} />
                                 <Text style={styles.createSmallButtonText}>Create</Text>
                             </TouchableOpacity>
@@ -686,7 +717,7 @@ export default function WorkoutScreen() {
                             </TouchableOpacity>
                         ))}
 
-                        <TouchableOpacity style={styles.createTemplate} onPress={() => setShowCreateWorkout(true)}>
+                        <TouchableOpacity style={styles.createTemplate} onPress={openCreateWorkout}>
                             <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
                             <Text style={[styles.createTemplateText, { color: colors.primary }]}>Create Custom Template</Text>
                         </TouchableOpacity>
@@ -705,36 +736,58 @@ export default function WorkoutScreen() {
                                 </Text>
                             </View>
                         ) : (
-                            recentWorkouts.map((workout) => (
-                                <Card key={workout.id} style={styles.historyCard}>
-                                    <View style={styles.historyHeader}>
-                                        <Text style={styles.historyName}>{workout.name}</Text>
-                                        <Text style={styles.historyDate}>
-                                            {new Date(workout.started_at).toLocaleDateString()}
-                                        </Text>
-                                    </View>
-                                    <View style={styles.historyStats}>
-                                        <View style={styles.historyStat}>
-                                            <Text style={styles.historyStatValue}>
-                                                {workout.exercises.length}
+                            <>
+                                <Card style={{ ...styles.historyInsightCard, backgroundColor: colors.surface, borderColor: colors.border }}>
+                                    <View style={styles.historyInsightHeader}>
+                                        <View style={styles.historyInsightCopy}>
+                                            <Text style={[styles.historyInsightEyebrow, { color: colors.primary }]}>THIS WEEK</Text>
+                                            <Text style={[styles.historyInsightTitle, { color: colors.text }]}>
+                                                {historyInsight.workoutsThisWeek >= historyInsight.workoutsPreviousWeek
+                                                    ? 'Momentum is moving.'
+                                                    : 'A lighter week so far.'}
                                             </Text>
-                                            <Text style={styles.historyStatLabel}>Exercises</Text>
+                                            <Text style={[styles.historyInsightBody, { color: colors.textSecondary }]}>
+                                                {historyInsight.recommendation}
+                                            </Text>
                                         </View>
-                                        <View style={styles.historyStat}>
-                                            <Text style={styles.historyStatValue}>
-                                                {formatDurationLong(workout.duration_seconds || 0)}
+                                        <View style={[styles.historyTrendBadge, { backgroundColor: colors.primary + '18', borderColor: colors.primary + '33' }]}>
+                                            <Ionicons
+                                                name={historyInsight.weekVolumeDeltaPct >= 0 ? 'trending-up' : 'trending-down'}
+                                                size={18}
+                                                color={colors.primary}
+                                            />
+                                            <Text style={[styles.historyTrendText, { color: colors.primary }]}>
+                                                {historyInsight.weekVolumeDeltaPct >= 0 ? '+' : ''}{historyInsight.weekVolumeDeltaPct}%
                                             </Text>
-                                            <Text style={styles.historyStatLabel}>Duration</Text>
-                                        </View>
-                                        <View style={styles.historyStat}>
-                                            <Text style={styles.historyStatValue}>
-                                                {formatVolume(workout.total_volume_kg, user?.unit_system)}
-                                            </Text>
-                                            <Text style={styles.historyStatLabel}>Volume</Text>
                                         </View>
                                     </View>
+                                    <View style={styles.historyInsightStats}>
+                                        <HistoryInsightStat label="Workouts" value={`${historyInsight.workoutsThisWeek}`} colors={colors} />
+                                        <HistoryInsightStat label="Volume" value={formatVolume(historyInsight.weekVolumeKg, user?.unit_system)} colors={colors} />
+                                        <HistoryInsightStat label="Sets" value={`${historyInsight.weekSets}`} colors={colors} />
+                                    </View>
+                                    {historyInsight.topMuscles.length > 0 && (
+                                        <View style={styles.historyMuscleChips}>
+                                            {historyInsight.topMuscles.slice(0, 3).map((muscle) => (
+                                                <View key={muscle.muscle} style={[styles.historyMuscleChip, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                                                    <Text style={[styles.historyMuscleChipText, { color: colors.textSecondary }]}>
+                                                        {formatMuscle(muscle.muscle)} · {muscle.sets} sets
+                                                    </Text>
+                                                </View>
+                                            ))}
+                                        </View>
+                                    )}
                                 </Card>
-                            ))
+
+                                {recentWorkouts.map((workout) => (
+                                    <WorkoutHistoryCard
+                                        key={workout.id}
+                                        workout={workout}
+                                        unitSystem={user?.unit_system}
+                                        colors={colors}
+                                    />
+                                ))}
+                            </>
                         )}
                     </View>
                 )}
@@ -859,7 +912,12 @@ export default function WorkoutScreen() {
                 presentationStyle="pageSheet"
                 onRequestClose={resetBuilder}
             >
-                <View style={styles.detailContainer}>
+                <KeyboardAvoidingView
+                    style={styles.keyboardAvoidingRoot}
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
+                >
+                    <View style={styles.detailContainer}>
                     <View style={[styles.detailHeader, { paddingTop: insets.top + Spacing.sm }]}>
                         <TouchableOpacity style={styles.detailClose} onPress={resetBuilder}>
                             <Ionicons name="close" size={22} color={Colors.text} />
@@ -894,7 +952,16 @@ export default function WorkoutScreen() {
                             </Text>
                         </TouchableOpacity>
                     </View>
-                    <ScrollView contentContainerStyle={styles.createWorkoutContent}>
+                    <ScrollView
+                        contentContainerStyle={[
+                            styles.createWorkoutContent,
+                            { paddingBottom: insets.bottom + 240 },
+                        ]}
+                        keyboardShouldPersistTaps="handled"
+                        keyboardDismissMode="interactive"
+                        automaticallyAdjustKeyboardInsets
+                        showsVerticalScrollIndicator={false}
+                    >
                         {builderStep === 'details' ? (
                             <>
                                 <Text style={styles.inputLabel}>Workout name</Text>
@@ -1102,12 +1169,9 @@ export default function WorkoutScreen() {
                                                         <Text style={styles.setTypeEmoji}>{getSetTypeDisplay(plannedSet.set_type).emoji}</Text>
                                                         <Text style={styles.setTypeIconLabel}>{getSetTypeDisplay(plannedSet.set_type).label}</Text>
                                                     </TouchableOpacity>
-                                                    <TextInput
+                                                    <RepStepper
                                                         value={plannedSet.target_reps}
-                                                        onChangeText={(value) => updateBuilderSet(index, setIndex, { target_reps: value })}
-                                                        style={styles.setPlanInput}
-                                                        placeholder="8-12"
-                                                        placeholderTextColor={Colors.textTertiary}
+                                                        onChange={(value) => updateBuilderSet(index, setIndex, { target_reps: value })}
                                                     />
                                                     <TextInput
                                                         value={plannedSet.intensity_percent === null ? '' : String(plannedSet.intensity_percent)}
@@ -1168,7 +1232,8 @@ export default function WorkoutScreen() {
                             </>
                         )}
                     </ScrollView>
-                </View>
+                    </View>
+                </KeyboardAvoidingView>
             </Modal>
 
             <Modal
@@ -1234,23 +1299,45 @@ function formatLabel(value: string) {
 function createPlannedSet(
     setNumber: number,
     setType: WorkoutSet['set_type'] = 'normal',
-    reps = '8-12',
+    reps = '10',
     intensityPercent: number | null = 75
 ): WorkoutTemplateSet {
     return {
         id: generateId(),
         set_number: setNumber,
         set_type: setType,
-        target_reps: reps,
+        target_reps: normalizeRepTarget(reps),
         intensity_percent: intensityPercent,
     };
 }
 
 function summarizeReps(sets: WorkoutTemplateSet[]) {
-    const reps = Array.from(new Set(sets.map((set) => set.target_reps).filter(Boolean)));
-    if (reps.length === 0) return '8-12';
+    const reps = Array.from(new Set(sets.map((set) => normalizeRepTarget(set.target_reps)).filter(Boolean)));
+    if (reps.length === 0) return '10';
     if (reps.length === 1) return reps[0];
     return reps.join(', ');
+}
+
+function normalizeRepTarget(value: string | number | null | undefined) {
+    const raw = String(value ?? '').trim();
+    if (!raw) return '10';
+    const range = raw.match(/(\d+)\s*[-–]\s*(\d+)/);
+    if (range) {
+        const low = Number(range[1]);
+        const high = Number(range[2]);
+        return String(Math.max(1, Math.round((low + high) / 2)));
+    }
+    const firstNumber = raw.match(/\d+/)?.[0];
+    if (firstNumber) return String(Math.max(1, Number(firstNumber)));
+    return '10';
+}
+
+function getRepNumber(value: string) {
+    return Number(normalizeRepTarget(value));
+}
+
+function adjustRepTarget(value: string, delta: number) {
+    return String(Math.max(1, getRepNumber(value) + delta));
 }
 
 function matchesBuilderMuscle(exercise: Exercise, filter: (typeof BUILDER_MUSCLE_FILTERS)[number]) {
@@ -1350,6 +1437,38 @@ function BuilderNumberField({ label, value, onChange }: { label: string; value: 
     );
 }
 
+function RepStepper({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+    const numericValue = normalizeRepTarget(value);
+
+    return (
+        <View style={styles.repStepper}>
+            <TouchableOpacity
+                style={styles.repStepperButton}
+                onPress={() => onChange(adjustRepTarget(value, -1))}
+                accessibilityLabel="Decrease reps"
+            >
+                <Ionicons name="remove" size={14} color={Colors.textSecondary} />
+            </TouchableOpacity>
+            <TextInput
+                value={numericValue}
+                onChangeText={(text) => onChange(normalizeRepTarget(text))}
+                keyboardType="number-pad"
+                style={styles.repStepperInput}
+                placeholder="10"
+                placeholderTextColor={Colors.textTertiary}
+                selectTextOnFocus
+            />
+            <TouchableOpacity
+                style={styles.repStepperButton}
+                onPress={() => onChange(adjustRepTarget(value, 1))}
+                accessibilityLabel="Increase reps"
+            >
+                <Ionicons name="add" size={14} color={Colors.textSecondary} />
+            </TouchableOpacity>
+        </View>
+    );
+}
+
 function BuilderTextField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
     return (
         <View style={styles.builderField}>
@@ -1358,7 +1477,7 @@ function BuilderTextField({ label, value, onChange }: { label: string; value: st
                 value={value}
                 onChangeText={onChange}
                 style={styles.builderFieldInput}
-                placeholder="8-12"
+                placeholder="10"
                 placeholderTextColor={Colors.textTertiary}
             />
         </View>
@@ -1376,7 +1495,101 @@ function DetailPill({ icon, label }: { icon: keyof typeof Ionicons.glyphMap; lab
     );
 }
 
+function HistoryInsightStat({ label, value, colors }: { label: string; value: string; colors: ReturnType<typeof useTheme>['colors'] }) {
+    return (
+        <View style={[styles.historyInsightStat, { backgroundColor: colors.background, borderColor: colors.border }]}>
+            <Text style={[styles.historyInsightStatValue, { color: colors.text }]} numberOfLines={1}>{value}</Text>
+            <Text style={[styles.historyInsightStatLabel, { color: colors.textTertiary }]}>{label}</Text>
+        </View>
+    );
+}
+
+function WorkoutHistoryCard({
+    workout,
+    unitSystem,
+    colors,
+}: {
+    workout: WorkoutSession;
+    unitSystem?: 'metric' | 'imperial' | null;
+    colors: ReturnType<typeof useTheme>['colors'];
+}) {
+    const topMuscles = getWorkoutTopMuscles(workout, 3);
+    const prCount = getWorkoutPrCount(workout);
+    const setCount = getWorkoutSetCount(workout);
+    const exercisePreview = workout.exercises.slice(0, 3).map((entry) => entry.exercise?.name).filter(Boolean);
+    const duration = getWorkoutDurationSeconds(workout);
+
+    return (
+        <Card style={{ ...styles.historyCard, backgroundColor: colors.surface, borderColor: colors.border }}>
+            <View style={styles.historyHeader}>
+                <View style={styles.historyTitleBlock}>
+                    <Text style={[styles.historyName, { color: colors.text }]} numberOfLines={1}>{workout.name}</Text>
+                    <Text style={[styles.historyDate, { color: colors.textTertiary }]}>
+                        {formatWorkoutDate(workout.completed_at ?? workout.started_at)}
+                    </Text>
+                </View>
+                {prCount > 0 ? (
+                    <View style={[styles.historyPrBadge, { backgroundColor: colors.primary + '18', borderColor: colors.primary + '33' }]}>
+                        <Ionicons name="trophy" size={13} color={colors.primary} />
+                        <Text style={[styles.historyPrText, { color: colors.primary }]}>{prCount} PR</Text>
+                    </View>
+                ) : (
+                    <View style={[styles.historyPrBadge, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                        <Ionicons name="checkmark-circle" size={13} color={colors.textTertiary} />
+                        <Text style={[styles.historyMutedBadgeText, { color: colors.textTertiary }]}>Logged</Text>
+                    </View>
+                )}
+            </View>
+
+            <View style={styles.historyStats}>
+                <HistoryMetric label="Volume" value={formatVolume(workout.total_volume_kg, unitSystem)} colors={colors} />
+                <HistoryMetric label="Sets" value={`${setCount}`} colors={colors} />
+                <HistoryMetric label="Duration" value={formatDurationLong(duration)} colors={colors} />
+            </View>
+
+            {exercisePreview.length > 0 && (
+                <View style={[styles.historyPreview, { borderTopColor: colors.border }]}>
+                    <Ionicons name="barbell-outline" size={16} color={colors.textTertiary} />
+                    <Text style={[styles.historyPreviewText, { color: colors.textSecondary }]} numberOfLines={1}>
+                        {exercisePreview.join(' · ')}
+                    </Text>
+                </View>
+            )}
+
+            {topMuscles.length > 0 && (
+                <View style={styles.historyMuscleChips}>
+                    {topMuscles.map((muscle) => (
+                        <View key={muscle.muscle} style={[styles.historyMuscleChip, { backgroundColor: colors.primary + '10', borderColor: colors.primary + '22' }]}>
+                            <Text style={[styles.historyMuscleChipText, { color: colors.textSecondary }]}>
+                                {formatMuscle(muscle.muscle)}
+                            </Text>
+                        </View>
+                    ))}
+                </View>
+            )}
+        </Card>
+    );
+}
+
+function HistoryMetric({ label, value, colors }: { label: string; value: string; colors: ReturnType<typeof useTheme>['colors'] }) {
+    return (
+        <View style={[styles.historyMetric, { backgroundColor: colors.background }]}>
+            <Text style={[styles.historyStatValue, { color: colors.text }]} numberOfLines={1}>{value}</Text>
+            <Text style={[styles.historyStatLabel, { color: colors.textTertiary }]}>{label}</Text>
+        </View>
+    );
+}
+
+function formatWorkoutDate(value: string) {
+    const date = new Date(value);
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' · ' +
+        date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+}
+
 const styles = StyleSheet.create({
+    keyboardAvoidingRoot: {
+        flex: 1,
+    },
     container: {
         flex: 1,
         backgroundColor: Colors.background,
@@ -1911,6 +2124,35 @@ const styles = StyleSheet.create({
         paddingVertical: Spacing.sm,
         textAlign: 'center',
     },
+    repStepper: {
+        flex: 1,
+        minWidth: 106,
+        minHeight: 38,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: Colors.surfaceLight,
+        borderRadius: BorderRadius.md,
+        borderWidth: 1,
+        borderColor: Colors.border,
+        overflow: 'hidden',
+    },
+    repStepperButton: {
+        width: 32,
+        minHeight: 38,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: Colors.surface,
+    },
+    repStepperInput: {
+        flex: 1,
+        minWidth: 36,
+        color: Colors.text,
+        fontSize: FontSize.sm,
+        fontWeight: FontWeight.bold,
+        paddingHorizontal: 4,
+        paddingVertical: Spacing.sm,
+        textAlign: 'center',
+    },
     setPlanDelete: {
         width: 30,
         height: 34,
@@ -1960,39 +2202,154 @@ const styles = StyleSheet.create({
     },
 
     // History
+    historyInsightCard: {
+        marginBottom: Spacing.md,
+        borderWidth: 1,
+    },
+    historyInsightHeader: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        gap: Spacing.md,
+    },
+    historyInsightCopy: {
+        flex: 1,
+    },
+    historyInsightEyebrow: {
+        fontSize: FontSize.xs,
+        fontWeight: FontWeight.heavy,
+    },
+    historyInsightTitle: {
+        fontSize: FontSize.xxl,
+        fontWeight: FontWeight.heavy,
+        marginTop: Spacing.xs,
+        lineHeight: 31,
+    },
+    historyInsightBody: {
+        fontSize: FontSize.sm,
+        lineHeight: 20,
+        marginTop: Spacing.sm,
+    },
+    historyTrendBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        borderRadius: BorderRadius.full,
+        borderWidth: 1,
+        paddingHorizontal: Spacing.sm,
+        paddingVertical: 6,
+    },
+    historyTrendText: {
+        fontSize: FontSize.xs,
+        fontWeight: FontWeight.heavy,
+    },
+    historyInsightStats: {
+        flexDirection: 'row',
+        gap: Spacing.sm,
+        marginTop: Spacing.lg,
+    },
+    historyInsightStat: {
+        flex: 1,
+        borderRadius: BorderRadius.md,
+        borderWidth: 1,
+        padding: Spacing.md,
+    },
+    historyInsightStatValue: {
+        fontSize: FontSize.md,
+        fontWeight: FontWeight.heavy,
+    },
+    historyInsightStatLabel: {
+        fontSize: FontSize.xs,
+        marginTop: 2,
+    },
     historyCard: {
         marginBottom: Spacing.md,
+        borderWidth: 1,
     },
     historyHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        gap: Spacing.md,
         marginBottom: Spacing.md,
+    },
+    historyTitleBlock: {
+        flex: 1,
     },
     historyName: {
         color: Colors.text,
-        fontSize: FontSize.md,
-        fontWeight: FontWeight.semibold,
+        fontSize: FontSize.lg,
+        fontWeight: FontWeight.heavy,
     },
     historyDate: {
         color: Colors.textTertiary,
         fontSize: FontSize.sm,
+        marginTop: 2,
+    },
+    historyPrBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        borderRadius: BorderRadius.full,
+        borderWidth: 1,
+        paddingHorizontal: Spacing.sm,
+        paddingVertical: 6,
+    },
+    historyPrText: {
+        fontSize: FontSize.xs,
+        fontWeight: FontWeight.heavy,
+    },
+    historyMutedBadgeText: {
+        fontSize: FontSize.xs,
+        fontWeight: FontWeight.bold,
     },
     historyStats: {
         flexDirection: 'row',
-        justifyContent: 'space-around',
+        gap: Spacing.sm,
     },
-    historyStat: {
-        alignItems: 'center',
+    historyMetric: {
+        flex: 1,
+        borderRadius: BorderRadius.md,
+        paddingVertical: Spacing.md,
+        paddingHorizontal: Spacing.sm,
     },
     historyStatValue: {
         color: Colors.text,
         fontSize: FontSize.md,
-        fontWeight: FontWeight.bold,
+        fontWeight: FontWeight.heavy,
     },
     historyStatLabel: {
         color: Colors.textTertiary,
         fontSize: FontSize.xs,
         marginTop: 2,
+    },
+    historyPreview: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.sm,
+        borderTopWidth: 1,
+        marginTop: Spacing.md,
+        paddingTop: Spacing.md,
+    },
+    historyPreviewText: {
+        flex: 1,
+        fontSize: FontSize.sm,
+    },
+    historyMuscleChips: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: Spacing.sm,
+        marginTop: Spacing.md,
+    },
+    historyMuscleChip: {
+        borderWidth: 1,
+        borderRadius: BorderRadius.full,
+        paddingHorizontal: Spacing.sm,
+        paddingVertical: 6,
+    },
+    historyMuscleChipText: {
+        fontSize: FontSize.xs,
+        fontWeight: FontWeight.bold,
     },
 
     // Exercises

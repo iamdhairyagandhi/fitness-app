@@ -28,9 +28,6 @@
         "privacyPolicyUrl": "https://fudqcomgwnjxcqgocfuw.supabase.co/functions/v1/privacy-policy",
         "privacyChoicesUrl": "https://fudqcomgwnjxcqgocfuw.supabase.co/functions/v1/support",
         "screenshots": {
-          "APP_IPAD_PRO_3GEN_129": [
-            "store/apple/screenshot/en-US/APP_IPAD_PRO_3GEN_129/welcome.png"
-          ],
           "APP_IPHONE_67": [
             "store/apple/screenshot/en-US/APP_IPHONE_67/nutrition.png",
             "store/apple/screenshot/en-US/APP_IPHONE_67/workout.png",
@@ -78,10 +75,10 @@
       "lastName": "Gandhi",
       "email": "dhairya5402@gmail.com",
       "phone": "+1 240 726 3426",
-      "demoUsername": "app-review@fitfusion.app",
+      "demoUsername": "app-review@bodypilot.app",
       "demoPassword": "FitFusionReview2026!",
       "demoRequired": true,
-      "notes": "BodyPilot requires sign-in to review synced workout, nutrition, progress, recovery, AI, and social features. Please use the provided demo account. Account deletion is available in Profile > Account Settings > Delete Account."
+      "notes": "BodyPilot requires sign-in to review workout, nutrition, progress, recovery, AI, and social features. Please use the provided review account. These credentials open reviewer access with onboarding already completed, so no email verification is required. The app is submitted as iPhone only. Home and Nutrition both include easy-to-find Health Sources cards with HHS, CDC, Dietary Guidelines, NIH ODS, and ACSM source links; AI Coach also includes health source links and generated guidance includes a Sources line when relevant. Users must agree to the Terms of Service before signing in or creating an account. The Terms state there is no tolerance for objectionable content or abusive users. In Community, use the menu on any feed post to Report, Hide, or Block user; user search cards also include a block control. Account deletion is available in Profile > Account Settings > Delete Account."
     }
   }
 }

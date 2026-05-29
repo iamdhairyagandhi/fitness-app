@@ -1,19 +1,33 @@
+import { HealthSourcesCard } from '@/components/HealthSourcesCard';
 import { Card, ProgressRing } from '@/components/ui';
 import { WATER_SERVING_ML } from '@/constants/config';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { generateDailyInsight } from '@/lib/aiEngine';
+import { requirePremium } from '@/lib/premium';
 import { displayWeightFromKg, formatNumber, formatVolume, getGreeting, getPercentage } from '@/lib/utils';
+import { useAppleHealthStore } from '@/stores/appleHealthStore';
 import { useAuthStore } from '@/stores/authStore';
+import {
+    ALL_HOME_QUICK_ACTIONS,
+    ALL_HOME_WIDGETS,
+    getDefaultHomeQuickActions,
+    getDefaultHomeWidgetOrder,
+    type HomeQuickActionId,
+    type HomeWidgetId,
+    useHomeDashboardStore,
+} from '@/stores/homeDashboardStore';
 import { useNutritionStore } from '@/stores/nutritionStore';
 import { useProgressStore } from '@/stores/progressStore';
 import { useRecoveryStore } from '@/stores/recoveryStore';
 import { useWorkoutStore } from '@/stores/workoutStore';
+import type { FitnessGoal } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+    Modal,
     RefreshControl,
     ScrollView,
     StyleSheet,
@@ -23,12 +37,95 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+type WidgetMeta = {
+    title: string;
+    description: string;
+    icon: keyof typeof Ionicons.glyphMap;
+};
+
+type QuickActionDefinition = {
+    label: string;
+    description: string;
+    icon: keyof typeof Ionicons.glyphMap;
+    color: string;
+    onPress: () => void;
+};
+
+const GOAL_LABELS: Record<FitnessGoal, string> = {
+    lose_fat: 'Fat loss',
+    maintain: 'Maintain',
+    build_muscle: 'Build muscle',
+    recomp: 'Recomp',
+    strength: 'Strength',
+    endurance: 'Endurance',
+};
+
+const GOAL_FOCUS: Record<FitnessGoal, string> = {
+    lose_fat: 'Keep calories intentional and protein high.',
+    maintain: 'Protect the routine and keep your baseline steady.',
+    build_muscle: 'Make the next lift count and feed recovery.',
+    recomp: 'Win the day with protein, water, and a clean session.',
+    strength: 'Prioritize quality sets and recovery between pushes.',
+    endurance: 'Hydrate early and keep the next session sustainable.',
+};
+
+const WIDGET_META: Record<HomeWidgetId, WidgetMeta> = {
+    flightDeck: {
+        title: 'Flight Deck',
+        description: 'Daily score, focus, and top signals.',
+        icon: 'speedometer-outline',
+    },
+    quickActions: {
+        title: 'Quick Actions',
+        description: 'Your fastest logging shortcuts.',
+        icon: 'flash-outline',
+    },
+    todayPlan: {
+        title: "Today's Plan",
+        description: 'Active or suggested workout.',
+        icon: 'barbell-outline',
+    },
+    wellness: {
+        title: 'Nutrition + Recovery',
+        description: 'Calories, macros, water, and readiness.',
+        icon: 'pulse-outline',
+    },
+    bodyProgress: {
+        title: 'Body Progress',
+        description: 'Weight trend and check-in shortcut.',
+        icon: 'trending-up-outline',
+    },
+    recentActivity: {
+        title: 'Recent Activity',
+        description: 'Latest workouts and training volume.',
+        icon: 'time-outline',
+    },
+    coachBrief: {
+        title: 'Coach Brief',
+        description: 'AI next-step recommendation.',
+        icon: 'sparkles-outline',
+    },
+};
+
+const mergeWidgetOrder = (order: HomeWidgetId[] | null, goal: FitnessGoal) => {
+    const base = order ?? getDefaultHomeWidgetOrder(goal);
+    const clean = base.filter((id, index) => ALL_HOME_WIDGETS.includes(id) && base.indexOf(id) === index);
+    return [...clean, ...ALL_HOME_WIDGETS.filter((id) => !clean.includes(id))];
+};
+
+const mergeQuickActions = (actions: HomeQuickActionId[] | null, goal: FitnessGoal) => {
+    const base = actions ?? getDefaultHomeQuickActions(goal);
+    const clean = base.filter((id, index) => ALL_HOME_QUICK_ACTIONS.includes(id) && base.indexOf(id) === index);
+    return (clean.length ? clean : getDefaultHomeQuickActions(goal)).slice(0, 4);
+};
+
 export default function HomeScreen() {
     const insets = useSafeAreaInsets();
     const { colors } = useTheme();
     const user = useAuthStore((s) => s.user);
     const todaySummary = useNutritionStore((s) => s.todaySummary);
     const logWater = useNutritionStore((s) => s.logWater);
+    const ensureToday = useNutritionStore((s) => s.ensureToday);
     const activeWorkout = useWorkoutStore((s) => s.activeWorkout);
     const isWorkoutActive = useWorkoutStore((s) => s.isWorkoutActive);
     const templates = useWorkoutStore((s) => s.templates);
@@ -39,10 +136,29 @@ export default function HomeScreen() {
     const recoveryLogs = useRecoveryStore((s) => s.recoveryLogs);
     const todayRecovery = useRecoveryStore((s) => s.todayRecovery);
     const weightEntries = useProgressStore((s) => s.weightEntries);
+    const widgetOrderPreference = useHomeDashboardStore((s) => s.widgetOrder);
+    const hiddenWidgets = useHomeDashboardStore((s) => s.hiddenWidgets);
+    const quickActionPreference = useHomeDashboardStore((s) => s.quickActions);
+    const density = useHomeDashboardStore((s) => s.density);
+    const hasCustomized = useHomeDashboardStore((s) => s.hasCustomized);
+    const moveWidget = useHomeDashboardStore((s) => s.moveWidget);
+    const toggleWidget = useHomeDashboardStore((s) => s.toggleWidget);
+    const toggleQuickAction = useHomeDashboardStore((s) => s.toggleQuickAction);
+    const setDensity = useHomeDashboardStore((s) => s.setDensity);
+    const resetForGoal = useHomeDashboardStore((s) => s.resetForGoal);
+    const healthSnapshot = useAppleHealthStore((s) => s.snapshot);
+    const syncAppleHealth = useAppleHealthStore((s) => s.sync);
 
     const [aiInsight, setAiInsight] = useState<{ text: string; type: string } | null>(null);
     const [refreshing, setRefreshing] = useState(false);
+    const [customizeOpen, setCustomizeOpen] = useState(false);
 
+    useEffect(() => {
+        ensureToday();
+    }, [ensureToday]);
+
+    const goal = (user?.goal ?? 'maintain') as FitnessGoal;
+    const isCompact = density === 'compact';
     const calorieTarget = user?.daily_calorie_target || 2200;
     const proteinTarget = user?.protein_target_g || 165;
     const carbsTarget = user?.carbs_target_g || 220;
@@ -51,8 +167,10 @@ export default function HomeScreen() {
     const streak = user?.streak_count || 0;
     const displayName = user?.display_name || 'Athlete';
     const recovery = todayRecovery || recoveryLogs[0] || null;
-    const caloriesRemaining = Math.max(calorieTarget - todaySummary.total_calories, 0);
-    const caloriePct = getPercentage(todaySummary.total_calories, calorieTarget);
+    const activeEnergyKcal = healthSnapshot.status === 'authorized' ? healthSnapshot.activeEnergyKcal : 0;
+    const netCalories = Math.max(todaySummary.total_calories - activeEnergyKcal, 0);
+    const caloriesRemaining = Math.max(calorieTarget - netCalories, 0);
+    const caloriePct = getPercentage(netCalories, calorieTarget);
     const proteinPct = getPercentage(todaySummary.total_protein_g, proteinTarget);
     const waterPct = getPercentage(todaySummary.water_ml, waterTarget);
     const latestWorkout = recentWorkouts[0];
@@ -64,6 +182,21 @@ export default function HomeScreen() {
     const weightUnit = user?.unit_system === 'imperial' ? 'lb' : 'kg';
     const nextTemplate = templates[0] || null;
 
+    const customizeWidgetOrder = useMemo(
+        () => mergeWidgetOrder(widgetOrderPreference, goal),
+        [goal, widgetOrderPreference],
+    );
+
+    const visibleWidgetIds = useMemo(() => {
+        const visible = customizeWidgetOrder.filter((id) => !hiddenWidgets.includes(id));
+        return visible.length ? visible : getDefaultHomeWidgetOrder(goal).slice(0, 1);
+    }, [customizeWidgetOrder, goal, hiddenWidgets]);
+
+    const quickActionIds = useMemo(
+        () => mergeQuickActions(quickActionPreference, goal),
+        [goal, quickActionPreference],
+    );
+
     const pilotScore = useMemo(() => {
         const nutritionScore = Math.min(100, Math.round((caloriePct * 0.45) + (proteinPct * 0.35)));
         const hydrationScore = Math.min(100, Math.round(waterPct));
@@ -73,7 +206,7 @@ export default function HomeScreen() {
             nutritionScore * 0.32 +
             hydrationScore * 0.18 +
             recoveryScore * 0.28 +
-            trainingScore * 0.22
+            trainingScore * 0.22,
         );
     }, [caloriePct, isWorkoutActive, latestWorkout, proteinPct, recovery?.recovery_score, waterPct]);
 
@@ -84,14 +217,17 @@ export default function HomeScreen() {
             ? 'Hydration is the easiest win right now.'
             : isWorkoutActive
                 ? 'Workout is live. Keep the session clean.'
-                : 'Execute the next planned action.';
+                : GOAL_FOCUS[goal];
 
     const onRefresh = useCallback(() => {
+        ensureToday();
         setRefreshing(true);
-        setTimeout(() => setRefreshing(false), 900);
-    }, []);
+        syncAppleHealth().catch(() => { }).finally(() => {
+            setTimeout(() => setRefreshing(false), 500);
+        });
+    }, [ensureToday, syncAppleHealth]);
 
-    const handleStartWorkout = () => {
+    const handleStartWorkout = useCallback(() => {
         if (isWorkoutActive) {
             router.push('/workout/active');
             return;
@@ -102,7 +238,66 @@ export default function HomeScreen() {
             startWorkout('Open Workout');
         }
         router.push('/workout/active');
-    };
+    }, [isWorkoutActive, nextTemplate, startWorkout, startWorkoutFromTemplate]);
+
+    const quickActionDefinitions = useMemo<Record<HomeQuickActionId, QuickActionDefinition>>(() => ({
+        startWorkout: {
+            label: isWorkoutActive ? 'Resume' : 'Start',
+            description: 'Open the next workout.',
+            icon: isWorkoutActive ? 'timer' : 'play',
+            color: colors.primary,
+            onPress: handleStartWorkout,
+        },
+        pilotLog: {
+            label: 'Orbit',
+            description: 'Talk to log anything.',
+            icon: 'hardware-chip',
+            color: colors.calories,
+            onPress: () => {
+                if (requirePremium('ai_quick_log')) router.push('/nutrition/nlp-food-log');
+            },
+        },
+        logWater: {
+            label: 'Water',
+            description: `Add ${WATER_SERVING_ML}ml.`,
+            icon: 'water',
+            color: colors.secondary,
+            onPress: () => logWater(WATER_SERVING_ML),
+        },
+        logFood: {
+            label: 'Food',
+            description: 'Open nutrition.',
+            icon: 'restaurant',
+            color: colors.protein,
+            onPress: () => router.push('/(tabs)/nutrition'),
+        },
+        coach: {
+            label: 'Coach',
+            description: 'Ask BodyPilot.',
+            icon: 'chatbubble-ellipses',
+            color: colors.analytics,
+            onPress: () => {
+                if (requirePremium('ai_coach')) router.push('/chat');
+            },
+        },
+        progress: {
+            label: 'Progress',
+            description: 'Open check-ins.',
+            icon: 'trending-up',
+            color: colors.bodyComp,
+            onPress: () => router.push('/(tabs)/progress'),
+        },
+    }), [
+        colors.analytics,
+        colors.bodyComp,
+        colors.calories,
+        colors.primary,
+        colors.protein,
+        colors.secondary,
+        handleStartWorkout,
+        isWorkoutActive,
+        logWater,
+    ]);
 
     useEffect(() => {
         generateDailyInsight({
@@ -114,225 +309,351 @@ export default function HomeScreen() {
             streak,
             lastWorkout: latestWorkout?.name,
             recoveryScore: recovery?.recovery_score,
-            goal: user?.goal || 'maintain',
+            goal,
         }).then(setAiInsight).catch(() => { });
     }, [
         calorieTarget,
         displayName,
+        goal,
         latestWorkout?.name,
         proteinTarget,
         recovery?.recovery_score,
         streak,
         todaySummary.total_calories,
         todaySummary.total_protein_g,
-        user?.goal,
     ]);
+
+    const renderFlightDeck = () => (
+        <LinearGradient
+            colors={[colors.surfaceElevated, colors.surface, colors.background]}
+            start={{ x: 0.1, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.heroCard, isCompact && styles.heroCardCompact, { borderColor: `${colors.primary}30` }]}
+        >
+            <View style={styles.heroTop}>
+                <View>
+                    <Text style={[styles.heroEyebrow, { color: colors.primary }]}>TODAY'S FLIGHT DECK</Text>
+                    <Text style={[styles.heroTitle, isCompact && styles.heroTitleCompact, { color: colors.text }]}>{pilotTone}</Text>
+                    <Text style={[styles.goalBadgeText, { color: colors.textTertiary }]}>Goal: {GOAL_LABELS[goal]}</Text>
+                </View>
+                <ProgressRing
+                    progress={pilotScore}
+                    size={isCompact ? 78 : 92}
+                    strokeWidth={8}
+                    color={colors.primary}
+                    value={`${pilotScore}`}
+                    label="pilot"
+                    sublabel="score"
+                />
+            </View>
+            <Text style={[styles.heroCopy, isCompact && styles.heroCopyCompact, { color: colors.textSecondary }]}>{dailyFocus}</Text>
+            <View style={styles.heroStats}>
+                <SignalTile icon="nutrition" label="Net calories" value={`${formatNumber(caloriesRemaining)} left`} color={colors.calories} />
+                <SignalTile icon="flame" label="Burned" value={`${formatNumber(activeEnergyKcal)} kcal`} color={colors.primary} />
+                <SignalTile icon="water" label="Water" value={`${Math.round(todaySummary.water_ml / 100) / 10}L`} color={colors.secondary} />
+            </View>
+        </LinearGradient>
+    );
+
+    const renderQuickActions = () => (
+        <View style={[styles.actionRow, isCompact && styles.actionRowCompact]}>
+            {quickActionIds.map((actionId) => (
+                <QuickAction key={actionId} {...quickActionDefinitions[actionId]} />
+            ))}
+        </View>
+    );
+
+    const renderTodayPlan = () => (
+        <View>
+            <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Today’s Plan</Text>
+                <TouchableOpacity onPress={() => router.push('/(tabs)/workout')}>
+                    <Text style={[styles.sectionLink, { color: colors.primary }]}>Workout tab</Text>
+                </TouchableOpacity>
+            </View>
+
+            <Card style={[styles.planCard, isCompact && styles.cardCompact]}>
+                <View style={styles.planHeader}>
+                    <View style={[styles.planIcon, { backgroundColor: `${colors.primary}18` }]}>
+                        <Ionicons name={isWorkoutActive ? 'timer' : 'barbell'} size={22} color={colors.primary} />
+                    </View>
+                    <View style={styles.planTextBlock}>
+                        <Text style={[styles.planTitle, { color: colors.text }]}>
+                            {isWorkoutActive ? activeWorkout?.name : nextTemplate?.name || 'Open Workout'}
+                        </Text>
+                        <Text style={[styles.planSubtitle, { color: colors.textSecondary }]}>
+                            {isWorkoutActive
+                                ? `${activeWorkout?.exercises.length || 0} exercises in progress`
+                                : nextTemplate
+                                    ? `${nextTemplate.exercises.length} exercises - ${nextTemplate.estimated_duration_min} min`
+                                    : 'Start a flexible session and build as you go'}
+                        </Text>
+                    </View>
+                    <TouchableOpacity style={[styles.planStartButton, { backgroundColor: colors.primary }]} onPress={handleStartWorkout}>
+                        <Ionicons name={isWorkoutActive ? 'arrow-forward' : 'play'} size={20} color={colors.textInverse} />
+                    </TouchableOpacity>
+                </View>
+                <View style={styles.planMetrics}>
+                    <MiniMetric label="Recent volume" value={formatVolume(latestWorkout?.total_volume_kg || 0, user?.unit_system)} />
+                    <MiniMetric label="PRs" value={`${personalRecords.length}`} />
+                    <MiniMetric label="Completed" value={`${user?.workouts_completed || recentWorkouts.length}`} />
+                </View>
+            </Card>
+        </View>
+    );
+
+    const renderWellness = () => (
+        <View>
+            <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Daily Signals</Text>
+                <TouchableOpacity onPress={() => router.push('/nutrition/nutrition-insights' as any)}>
+                    <Text style={[styles.sectionLink, { color: colors.primary }]}>Insights</Text>
+                </TouchableOpacity>
+            </View>
+            <View style={styles.grid}>
+                <Card style={[styles.gridCard, isCompact && styles.gridCardCompact]}>
+                    <View style={styles.cardTitleRow}>
+                        <Ionicons name="nutrition" size={18} color={colors.calories} />
+                        <Text style={[styles.cardTitle, { color: colors.text }]}>Nutrition</Text>
+                    </View>
+                    <Text style={[styles.largeValue, { color: colors.text }]}>{formatNumber(netCalories)}</Text>
+                    <Text style={[styles.subValue, { color: colors.textTertiary }]}>
+                        net of {formatNumber(calorieTarget)} kcal
+                    </Text>
+                    <ProgressLine value={caloriePct} color={colors.calories} />
+                    <Text style={[styles.factText, { color: colors.textSecondary }]}>
+                        {formatNumber(todaySummary.total_calories)} eaten - {formatNumber(activeEnergyKcal)} burned
+                    </Text>
+                    <View style={styles.macroMiniRow}>
+                        <MacroPill label="P" value={todaySummary.total_protein_g} target={proteinTarget} color={colors.protein} />
+                        <MacroPill label="C" value={todaySummary.total_carbs_g} target={carbsTarget} color={colors.carbs} />
+                        <MacroPill label="F" value={todaySummary.total_fat_g} target={fatTarget} color={colors.fat} />
+                    </View>
+                </Card>
+
+                <Card style={[styles.gridCard, isCompact && styles.gridCardCompact]}>
+                    <View style={styles.cardTitleRow}>
+                        <Ionicons name="heart" size={18} color={colors.recovery} />
+                        <Text style={[styles.cardTitle, { color: colors.text }]}>Recovery</Text>
+                    </View>
+                    <Text style={[styles.largeValue, { color: colors.text }]}>{recovery?.recovery_score ?? '--'}</Text>
+                    <Text style={[styles.subValue, { color: colors.textTertiary }]}>{recovery ? 'readiness score' : 'check-in needed'}</Text>
+                    <ProgressLine value={recovery?.recovery_score ?? 0} color={colors.recovery} />
+                    <View style={styles.recoveryFacts}>
+                        <Text style={[styles.factText, { color: colors.textSecondary }]}>Sleep {recovery?.sleep_hours ? `${recovery.sleep_hours}h` : '--'}</Text>
+                        <Text style={[styles.factText, { color: colors.textSecondary }]}>Energy {recovery?.energy_level ?? '--'}/5</Text>
+                    </View>
+                </Card>
+            </View>
+        </View>
+    );
+
+    const renderBodyProgress = () => (
+        <Card style={[styles.bodyCard, isCompact && styles.cardCompact]}>
+            <View style={styles.cardTitleRow}>
+                <Ionicons name="trending-up" size={18} color={colors.bodyComp} />
+                <Text style={[styles.cardTitle, { color: colors.text }]}>Body Progress</Text>
+            </View>
+            <View style={styles.bodyRow}>
+                <View style={styles.bodyCopy}>
+                    <Text style={[styles.largeValue, { color: colors.text }]}>{displayWeight ? `${displayWeight.toFixed(1)} ${weightUnit}` : '--'}</Text>
+                    <Text style={[styles.subValue, { color: colors.textTertiary }]}>
+                        {weightDelta !== null && displayWeightDelta !== null
+                            ? `${weightDelta >= 0 ? '+' : '-'}${displayWeightDelta.toFixed(1)} ${weightUnit} since last log`
+                            : 'log weight to track trend'}
+                    </Text>
+                </View>
+                <TouchableOpacity
+                    style={[styles.secondaryButton, { borderColor: `${colors.primary}45`, backgroundColor: `${colors.primary}12` }]}
+                    onPress={() => router.push('/(tabs)/progress')}
+                >
+                    <Text style={[styles.secondaryButtonText, { color: colors.primary }]}>Update</Text>
+                </TouchableOpacity>
+            </View>
+        </Card>
+    );
+
+    const renderRecentActivity = () => (
+        <View>
+            <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent Activity</Text>
+                <TouchableOpacity onPress={() => router.push('/analytics')}>
+                    <Text style={[styles.sectionLink, { color: colors.primary }]}>Analytics</Text>
+                </TouchableOpacity>
+            </View>
+
+            {recentWorkouts.length === 0 && healthSnapshot.workouts.length === 0 ? (
+                <Card style={[styles.emptyCard, isCompact && styles.cardCompact]}>
+                    <Ionicons name="barbell-outline" size={32} color={colors.textTertiary} />
+                    <View style={styles.emptyTextBlock}>
+                        <Text style={[styles.emptyTitle, { color: colors.text }]}>No sessions yet</Text>
+                        <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>BodyPilot and Apple Health workouts will appear here with volume, duration, and calories.</Text>
+                    </View>
+                </Card>
+            ) : (
+                [
+                    ...recentWorkouts.map((workout) => ({
+                        id: workout.id,
+                        title: workout.name,
+                        meta: `${workout.exercises.length} exercises - ${Math.round((workout.duration_seconds || 0) / 60)} min`,
+                        value: formatVolume(workout.total_volume_kg, user?.unit_system),
+                        icon: 'barbell' as const,
+                        color: colors.primary,
+                        date: workout.completed_at ?? workout.started_at,
+                    })),
+                    ...healthSnapshot.workouts.map((workout) => ({
+                        id: `health-${workout.id}`,
+                        title: workout.type,
+                        meta: `Apple Health - ${workout.durationMinutes} min`,
+                        value: workout.calories ? `${formatNumber(workout.calories)} kcal` : 'Health',
+                        icon: 'watch' as const,
+                        color: colors.calories,
+                        date: workout.startDate ?? '',
+                    })),
+                ]
+                    .sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime())
+                    .slice(0, 3)
+                    .map((activity) => (
+                        <TouchableOpacity key={activity.id} activeOpacity={0.85}>
+                            <Card style={[styles.activityCard, isCompact && styles.activityCardCompact]}>
+                                <View style={[styles.activityIcon, { backgroundColor: `${activity.color}18` }]}>
+                                    <Ionicons name={activity.icon} size={18} color={activity.color} />
+                                </View>
+                                <View style={styles.activityInfo}>
+                                    <Text style={[styles.activityTitle, { color: colors.text }]}>{activity.title}</Text>
+                                    <Text style={[styles.activityMeta, { color: colors.textSecondary }]}>{activity.meta}</Text>
+                                </View>
+                                <Text style={[styles.activityValue, { color: colors.text }]}>{activity.value}</Text>
+                            </Card>
+                        </TouchableOpacity>
+                    ))
+            )}
+        </View>
+    );
+
+    const renderCoachBrief = () => (
+        <Card style={[styles.aiCard, isCompact && styles.cardCompact, { borderColor: `${colors.primary}30` }]}>
+            <View style={styles.aiHeader}>
+                <View style={[styles.aiBadge, { backgroundColor: `${colors.primary}14` }]}>
+                    <Ionicons name="sparkles" size={14} color={colors.primary} />
+                    <Text style={[styles.aiBadgeText, { color: colors.primary }]}>BODY PILOT</Text>
+                </View>
+                <TouchableOpacity
+                    onPress={() => {
+                        if (requirePremium('ai_coach')) router.push('/chat');
+                    }}
+                >
+                    <Text style={[styles.sectionLink, { color: colors.primary }]}>Ask</Text>
+                </TouchableOpacity>
+            </View>
+            <Text style={[styles.aiTitle, { color: colors.text }]}>Coach Brief</Text>
+            <Text style={[styles.aiContent, { color: colors.textSecondary }]}>
+                {aiInsight?.text || 'Log one meal, water, and a workout to unlock a sharper daily recommendation.'}
+            </Text>
+            <View style={styles.aiActions}>
+                <CoachButton icon="restaurant-outline" label="AI meals" color={colors.primary} onPress={() => {
+                    if (requirePremium('ai_meal_plan')) router.push('/ai-meal-plan' as any);
+                }} />
+                <CoachButton icon="barbell-outline" label="AI workout" color={colors.primary} onPress={() => {
+                    if (requirePremium('ai_workout')) router.push('/ai-workout' as any);
+                }} />
+                <CoachButton icon="document-text-outline" label="Report" color={colors.primary} onPress={() => {
+                    if (requirePremium('weekly_report')) router.push('/weekly-report' as any);
+                }} />
+            </View>
+        </Card>
+    );
+
+    const renderWidget = (widgetId: HomeWidgetId) => {
+        switch (widgetId) {
+            case 'flightDeck':
+                return renderFlightDeck();
+            case 'quickActions':
+                return renderQuickActions();
+            case 'todayPlan':
+                return renderTodayPlan();
+            case 'wellness':
+                return renderWellness();
+            case 'bodyProgress':
+                return renderBodyProgress();
+            case 'recentActivity':
+                return renderRecentActivity();
+            case 'coachBrief':
+                return renderCoachBrief();
+            default:
+                return null;
+        }
+    };
 
     return (
         <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
             <ScrollView
-                contentContainerStyle={styles.scrollContent}
+                contentContainerStyle={[styles.scrollContent, isCompact && styles.scrollContentCompact]}
                 showsVerticalScrollIndicator={false}
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />
                 }
             >
                 <View style={styles.header}>
-                    <View>
+                    <View style={styles.headerCopy}>
                         <Text style={[styles.greeting, { color: colors.textTertiary }]}>{getGreeting()}</Text>
-                        <Text style={[styles.name, { color: colors.text }]}>{displayName}</Text>
+                        <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>{displayName}</Text>
                     </View>
                     <View style={styles.headerRight}>
-                        <TouchableOpacity style={styles.streakBadge} onPress={() => router.push('/achievements')}>
+                        <TouchableOpacity style={[styles.streakBadge, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/achievements')}>
                             <Ionicons name="flame" size={15} color={colors.primary} />
-                            <Text style={styles.streakCount}>{streak}</Text>
+                            <Text style={[styles.streakCount, { color: colors.text }]}>{streak}</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.iconButton} onPress={() => router.push('/chat')}>
-                            <Ionicons name="sparkles" size={20} color={colors.text} />
-                        </TouchableOpacity>
-                    </View>
-                </View>
-
-                <LinearGradient
-                    colors={[colors.surfaceElevated, colors.surface, colors.background]}
-                    start={{ x: 0.1, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={[styles.heroCard, { borderColor: `${colors.primary}30` }]}
-                >
-                    <View style={styles.heroTop}>
-                        <View>
-                            <Text style={[styles.heroEyebrow, { color: colors.primary }]}>TODAY'S FLIGHT DECK</Text>
-                            <Text style={[styles.heroTitle, { color: colors.text }]}>{pilotTone}</Text>
-                        </View>
-                        <ProgressRing
-                            progress={pilotScore}
-                            size={92}
-                            strokeWidth={8}
-                            color={colors.primary}
-                            value={`${pilotScore}`}
-                            label="pilot"
-                            sublabel="score"
-                        />
-                    </View>
-                    <Text style={[styles.heroCopy, { color: colors.textSecondary }]}>{dailyFocus}</Text>
-                    <View style={styles.heroStats}>
-                        <SignalTile icon="nutrition" label="Calories" value={`${formatNumber(caloriesRemaining)} left`} color={colors.calories} />
-                        <SignalTile icon="water" label="Water" value={`${Math.round(todaySummary.water_ml / 100) / 10}L`} color={colors.secondary} />
-                        <SignalTile icon="heart" label="Recovery" value={`${recovery?.recovery_score ?? '--'}`} color={colors.recovery} />
-                    </View>
-                </LinearGradient>
-
-                <View style={styles.actionRow}>
-                    <QuickAction icon="play" label="Start" color={colors.primary} onPress={handleStartWorkout} />
-                    <QuickAction icon="restaurant" label="Food" color={colors.protein} onPress={() => router.push('/(tabs)/nutrition')} />
-                    <QuickAction icon="water" label="Water" color={colors.secondary} onPress={() => logWater(WATER_SERVING_ML)} />
-                    <QuickAction icon="chatbubble-ellipses" label="Coach" color={colors.analytics} onPress={() => router.push('/chat')} />
-                </View>
-
-                <View style={styles.sectionHeader}>
-                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Today’s Plan</Text>
-                    <TouchableOpacity onPress={() => router.push('/(tabs)/workout')}>
-                        <Text style={[styles.sectionLink, { color: colors.primary }]}>Workout tab</Text>
-                    </TouchableOpacity>
-                </View>
-
-                <Card style={styles.planCard}>
-                    <View style={styles.planHeader}>
-                        <View style={[styles.planIcon, { backgroundColor: `${colors.primary}18` }]}>
-                            <Ionicons name={isWorkoutActive ? 'timer' : 'barbell'} size={22} color={colors.primary} />
-                        </View>
-                        <View style={styles.planTextBlock}>
-                            <Text style={[styles.planTitle, { color: colors.text }]}>
-                                {isWorkoutActive ? activeWorkout?.name : nextTemplate?.name || 'Open Workout'}
-                            </Text>
-                            <Text style={[styles.planSubtitle, { color: colors.textSecondary }]}>
-                                {isWorkoutActive
-                                    ? `${activeWorkout?.exercises.length || 0} exercises in progress`
-                                    : nextTemplate
-                                        ? `${nextTemplate.exercises.length} exercises · ${nextTemplate.estimated_duration_min} min`
-                                        : 'Start a flexible session and build as you go'}
-                            </Text>
-                        </View>
-                        <TouchableOpacity style={[styles.planStartButton, { backgroundColor: colors.primary }]} onPress={handleStartWorkout}>
-                            <Ionicons name={isWorkoutActive ? 'arrow-forward' : 'play'} size={20} color={colors.background} />
-                        </TouchableOpacity>
-                    </View>
-                    <View style={styles.planMetrics}>
-                        <MiniMetric label="Recent volume" value={formatVolume(latestWorkout?.total_volume_kg || 0, user?.unit_system)} />
-                        <MiniMetric label="PRs" value={`${personalRecords.length}`} />
-                        <MiniMetric label="Completed" value={`${user?.workouts_completed || recentWorkouts.length}`} />
-                    </View>
-                </Card>
-
-                <View style={styles.grid}>
-                    <Card style={styles.gridCard}>
-                        <View style={styles.cardTitleRow}>
-                            <Ionicons name="nutrition" size={18} color={colors.calories} />
-                            <Text style={[styles.cardTitle, { color: colors.text }]}>Nutrition</Text>
-                        </View>
-                        <Text style={[styles.largeValue, { color: colors.text }]}>{formatNumber(todaySummary.total_calories)}</Text>
-                        <Text style={[styles.subValue, { color: colors.textTertiary }]}>of {formatNumber(calorieTarget)} kcal</Text>
-                        <ProgressLine value={caloriePct} color={colors.calories} />
-                        <View style={styles.macroMiniRow}>
-                            <MacroPill label="P" value={todaySummary.total_protein_g} target={proteinTarget} color={colors.protein} />
-                            <MacroPill label="C" value={todaySummary.total_carbs_g} target={carbsTarget} color={colors.carbs} />
-                            <MacroPill label="F" value={todaySummary.total_fat_g} target={fatTarget} color={colors.fat} />
-                        </View>
-                    </Card>
-
-                    <Card style={styles.gridCard}>
-                        <View style={styles.cardTitleRow}>
-                            <Ionicons name="heart" size={18} color={colors.recovery} />
-                            <Text style={[styles.cardTitle, { color: colors.text }]}>Recovery</Text>
-                        </View>
-                        <Text style={[styles.largeValue, { color: colors.text }]}>{recovery?.recovery_score ?? '--'}</Text>
-                        <Text style={[styles.subValue, { color: colors.textTertiary }]}>{recovery ? 'readiness score' : 'check-in needed'}</Text>
-                        <ProgressLine value={recovery?.recovery_score ?? 0} color={colors.recovery} />
-                        <View style={styles.recoveryFacts}>
-                            <Text style={styles.factText}>Sleep {recovery?.sleep_hours ? `${recovery.sleep_hours}h` : '--'}</Text>
-                            <Text style={styles.factText}>Energy {recovery?.energy_level ?? '--'}/5</Text>
-                        </View>
-                    </Card>
-                </View>
-
-                <Card style={styles.bodyCard}>
-                    <View style={styles.cardTitleRow}>
-                        <Ionicons name="trending-up" size={18} color={colors.bodyComp} />
-                        <Text style={[styles.cardTitle, { color: colors.text }]}>Body Progress</Text>
-                    </View>
-                    <View style={styles.bodyRow}>
-                        <View>
-                            <Text style={[styles.largeValue, { color: colors.text }]}>{displayWeight ? `${displayWeight.toFixed(1)} ${weightUnit}` : '--'}</Text>
-                            <Text style={[styles.subValue, { color: colors.textTertiary }]}>
-                                {weightDelta !== null && displayWeightDelta !== null
-                                    ? `${weightDelta >= 0 ? '+' : '-'}${displayWeightDelta.toFixed(1)} ${weightUnit} since last log`
-                                    : 'log weight to track trend'}
-                            </Text>
-                        </View>
                         <TouchableOpacity
-                            style={[styles.secondaryButton, { borderColor: `${colors.primary}45`, backgroundColor: `${colors.primary}12` }]}
-                            onPress={() => router.push('/(tabs)/progress')}
+                            style={[styles.iconButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                            onPress={() => setCustomizeOpen(true)}
                         >
-                            <Text style={[styles.secondaryButtonText, { color: colors.primary }]}>Update</Text>
+                            <Ionicons name="options" size={20} color={colors.text} />
                         </TouchableOpacity>
                     </View>
-                </Card>
-
-                <View style={styles.sectionHeader}>
-                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent Activity</Text>
-                    <TouchableOpacity onPress={() => router.push('/analytics')}>
-                        <Text style={[styles.sectionLink, { color: colors.primary }]}>Analytics</Text>
-                    </TouchableOpacity>
                 </View>
 
-                {recentWorkouts.length === 0 ? (
-                    <Card style={styles.emptyCard}>
-                        <Ionicons name="barbell-outline" size={32} color={colors.textTertiary} />
-                        <View style={styles.emptyTextBlock}>
-                            <Text style={[styles.emptyTitle, { color: colors.text }]}>No sessions yet</Text>
-                            <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>Your completed workouts will appear here with volume and duration.</Text>
+                {!hasCustomized && (
+                    <TouchableOpacity
+                        style={[styles.personalizePrompt, { backgroundColor: `${colors.primary}12`, borderColor: `${colors.primary}32` }]}
+                        onPress={() => setCustomizeOpen(true)}
+                    >
+                        <Ionicons name="grid-outline" size={18} color={colors.primary} />
+                        <View style={styles.personalizeCopy}>
+                            <Text style={[styles.personalizeTitle, { color: colors.text }]}>Your home is tuned for {GOAL_LABELS[goal].toLowerCase()}</Text>
+                            <Text style={[styles.personalizeText, { color: colors.textSecondary }]}>Rearrange cards, hide what you do not use, and keep shortcuts easy to reach.</Text>
                         </View>
-                    </Card>
-                ) : (
-                    recentWorkouts.slice(0, 3).map((workout) => (
-                        <TouchableOpacity key={workout.id} activeOpacity={0.85}>
-                            <Card style={styles.activityCard}>
-                                <View style={[styles.activityIcon, { backgroundColor: `${colors.primary}18` }]}>
-                                    <Ionicons name="barbell" size={18} color={colors.primary} />
-                                </View>
-                                <View style={styles.activityInfo}>
-                                    <Text style={[styles.activityTitle, { color: colors.text }]}>{workout.name}</Text>
-                                    <Text style={[styles.activityMeta, { color: colors.textSecondary }]}>
-                                        {workout.exercises.length} exercises · {Math.round((workout.duration_seconds || 0) / 60)} min
-                                    </Text>
-                                </View>
-                                <Text style={[styles.activityValue, { color: colors.text }]}>{formatVolume(workout.total_volume_kg, user?.unit_system)}</Text>
-                            </Card>
-                        </TouchableOpacity>
-                    ))
+                        <Ionicons name="chevron-forward" size={18} color={colors.primary} />
+                    </TouchableOpacity>
                 )}
 
-                <Card style={{ ...styles.aiCard, borderColor: `${colors.primary}30` }}>
-                    <View style={styles.aiHeader}>
-                        <View style={[styles.aiBadge, { backgroundColor: `${colors.primary}14` }]}>
-                            <Ionicons name="sparkles" size={14} color={colors.primary} />
-                            <Text style={[styles.aiBadgeText, { color: colors.primary }]}>BODY PILOT</Text>
-                        </View>
-                        <TouchableOpacity onPress={() => router.push('/chat')}>
-                            <Text style={[styles.sectionLink, { color: colors.primary }]}>Ask</Text>
-                        </TouchableOpacity>
+                {visibleWidgetIds.map((widgetId) => (
+                    <View key={widgetId} style={[styles.widgetBlock, isCompact && styles.widgetBlockCompact]}>
+                        {renderWidget(widgetId)}
                     </View>
-                    <Text style={[styles.aiTitle, { color: colors.text }]}>Coach Brief</Text>
-                    <Text style={[styles.aiContent, { color: colors.textSecondary }]}>
-                        {aiInsight?.text || 'Log one meal, water, and a workout to unlock a sharper daily recommendation.'}
-                    </Text>
-                    <View style={styles.aiActions}>
-                        <CoachButton icon="restaurant-outline" label="AI meals" color={colors.primary} onPress={() => router.push('/ai-meal-plan' as any)} />
-                        <CoachButton icon="barbell-outline" label="AI workout" color={colors.primary} onPress={() => router.push('/ai-workout' as any)} />
-                        <CoachButton icon="document-text-outline" label="Report" color={colors.primary} onPress={() => router.push('/weekly-report' as any)} />
-                    </View>
-                </Card>
+                ))}
+
+                <View style={[styles.widgetBlock, isCompact && styles.widgetBlockCompact]}>
+                    <HealthSourcesCard title="Home Health Sources" />
+                </View>
             </ScrollView>
+
+            <HomeCustomizeModal
+                visible={customizeOpen}
+                onClose={() => setCustomizeOpen(false)}
+                insetsBottom={insets.bottom}
+                goal={goal}
+                widgetRows={customizeWidgetOrder}
+                hiddenWidgets={hiddenWidgets}
+                quickActionIds={quickActionIds}
+                quickActionDefinitions={quickActionDefinitions}
+                density={density}
+                onMoveWidget={moveWidget}
+                onToggleWidget={toggleWidget}
+                onToggleQuickAction={toggleQuickAction}
+                onSetDensity={setDensity}
+                onReset={resetForGoal}
+            />
         </View>
     );
 }
@@ -341,7 +662,7 @@ function SignalTile({ icon, label, value, color }: { icon: keyof typeof Ionicons
     const { colors } = useTheme();
 
     return (
-        <View style={styles.signalTile}>
+        <View style={[styles.signalTile, { backgroundColor: colors.surfaceLight }]}>
             <Ionicons name={icon} size={16} color={color} />
             <Text style={[styles.signalLabel, { color: colors.textSecondary }]}>{label}</Text>
             <Text style={[styles.signalValue, { color: colors.text }]}>{value}</Text>
@@ -349,7 +670,7 @@ function SignalTile({ icon, label, value, color }: { icon: keyof typeof Ionicons
     );
 }
 
-function QuickAction({ icon, label, color, onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; color: string; onPress: () => void }) {
+function QuickAction({ icon, label, color, onPress }: QuickActionDefinition) {
     const { colors } = useTheme();
 
     return (
@@ -403,6 +724,164 @@ function CoachButton({ icon, label, color, onPress }: { icon: keyof typeof Ionic
     );
 }
 
+function HomeCustomizeModal({
+    visible,
+    onClose,
+    insetsBottom,
+    goal,
+    widgetRows,
+    hiddenWidgets,
+    quickActionIds,
+    quickActionDefinitions,
+    density,
+    onMoveWidget,
+    onToggleWidget,
+    onToggleQuickAction,
+    onSetDensity,
+    onReset,
+}: {
+    visible: boolean;
+    onClose: () => void;
+    insetsBottom: number;
+    goal: FitnessGoal;
+    widgetRows: HomeWidgetId[];
+    hiddenWidgets: HomeWidgetId[];
+    quickActionIds: HomeQuickActionId[];
+    quickActionDefinitions: Record<HomeQuickActionId, QuickActionDefinition>;
+    density: 'comfortable' | 'compact';
+    onMoveWidget: (widgetId: HomeWidgetId, direction: 'up' | 'down', goal?: FitnessGoal) => void;
+    onToggleWidget: (widgetId: HomeWidgetId, goal?: FitnessGoal) => void;
+    onToggleQuickAction: (actionId: HomeQuickActionId, goal?: FitnessGoal) => void;
+    onSetDensity: (density: 'comfortable' | 'compact') => void;
+    onReset: (goal?: FitnessGoal) => void;
+}) {
+    const { colors } = useTheme();
+
+    return (
+        <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+            <View style={styles.modalRoot}>
+                <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onClose} />
+                <View style={[styles.customizePanel, { backgroundColor: colors.surface, paddingBottom: Math.max(insetsBottom, Spacing.lg) }]}>
+                    <View style={styles.customizeHeader}>
+                        <View>
+                            <Text style={[styles.customizeTitle, { color: colors.text }]}>Customize Home</Text>
+                            <Text style={[styles.customizeSubtitle, { color: colors.textSecondary }]}>Goal preset: {GOAL_LABELS[goal]}</Text>
+                        </View>
+                        <TouchableOpacity style={[styles.closeButton, { backgroundColor: colors.surfaceLight }]} onPress={onClose}>
+                            <Ionicons name="close" size={22} color={colors.text} />
+                        </TouchableOpacity>
+                    </View>
+
+                    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.customizeScroll}>
+                        <View style={styles.customizeSection}>
+                            <Text style={[styles.customizeSectionTitle, { color: colors.text }]}>Readability</Text>
+                            <View style={[styles.segmentRow, { backgroundColor: colors.surfaceLight }]}>
+                                {(['comfortable', 'compact'] as const).map((option) => {
+                                    const active = density === option;
+                                    return (
+                                        <TouchableOpacity
+                                            key={option}
+                                            style={[styles.segmentButton, active && { backgroundColor: colors.primary }]}
+                                            onPress={() => onSetDensity(option)}
+                                        >
+                                            <Text style={[styles.segmentText, { color: active ? colors.textInverse : colors.textSecondary }]}>
+                                                {option === 'comfortable' ? 'Comfortable' : 'Compact'}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
+                        </View>
+
+                        <View style={styles.customizeSection}>
+                            <View style={styles.customizeSectionHeader}>
+                                <Text style={[styles.customizeSectionTitle, { color: colors.text }]}>Shortcuts</Text>
+                                <Text style={[styles.customizeHint, { color: colors.textTertiary }]}>Choose up to 4</Text>
+                            </View>
+                            <View style={styles.actionPickerGrid}>
+                                {ALL_HOME_QUICK_ACTIONS.map((actionId) => {
+                                    const active = quickActionIds.includes(actionId);
+                                    const action = quickActionDefinitions[actionId];
+                                    return (
+                                        <TouchableOpacity
+                                            key={actionId}
+                                            style={[
+                                                styles.actionPickerChip,
+                                                {
+                                                    backgroundColor: active ? `${action.color}18` : colors.surfaceLight,
+                                                    borderColor: active ? action.color : colors.border,
+                                                },
+                                            ]}
+                                            onPress={() => onToggleQuickAction(actionId, goal)}
+                                        >
+                                            <Ionicons name={action.icon} size={18} color={active ? action.color : colors.textTertiary} />
+                                            <View style={styles.actionPickerCopy}>
+                                                <Text style={[styles.actionPickerLabel, { color: active ? action.color : colors.textSecondary }]}>{action.label}</Text>
+                                                <Text style={[styles.actionPickerDescription, { color: colors.textTertiary }]}>{action.description}</Text>
+                                            </View>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
+                        </View>
+
+                        <View style={styles.customizeSection}>
+                            <View style={styles.customizeSectionHeader}>
+                                <Text style={[styles.customizeSectionTitle, { color: colors.text }]}>Dashboard Cards</Text>
+                                <Text style={[styles.customizeHint, { color: colors.textTertiary }]}>Reorder or hide</Text>
+                            </View>
+                            <View style={styles.widgetList}>
+                                {widgetRows.map((widgetId, index) => {
+                                    const meta = WIDGET_META[widgetId];
+                                    const hidden = hiddenWidgets.includes(widgetId);
+                                    return (
+                                        <View key={widgetId} style={[styles.widgetRow, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}>
+                                            <View style={[styles.widgetRowIcon, { backgroundColor: hidden ? colors.surface : `${colors.primary}16` }]}>
+                                                <Ionicons name={meta.icon} size={18} color={hidden ? colors.textTertiary : colors.primary} />
+                                            </View>
+                                            <View style={styles.widgetRowCopy}>
+                                                <Text style={[styles.widgetRowTitle, { color: hidden ? colors.textTertiary : colors.text }]}>{meta.title}</Text>
+                                                <Text style={[styles.widgetRowDescription, { color: colors.textTertiary }]} numberOfLines={1}>{meta.description}</Text>
+                                            </View>
+                                            <View style={styles.widgetRowControls}>
+                                                <TouchableOpacity
+                                                    style={[styles.reorderButton, { opacity: index === 0 ? 0.35 : 1 }]}
+                                                    onPress={() => onMoveWidget(widgetId, 'up', goal)}
+                                                    disabled={index === 0}
+                                                >
+                                                    <Ionicons name="chevron-up" size={18} color={colors.textSecondary} />
+                                                </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    style={[styles.reorderButton, { opacity: index === widgetRows.length - 1 ? 0.35 : 1 }]}
+                                                    onPress={() => onMoveWidget(widgetId, 'down', goal)}
+                                                    disabled={index === widgetRows.length - 1}
+                                                >
+                                                    <Ionicons name="chevron-down" size={18} color={colors.textSecondary} />
+                                                </TouchableOpacity>
+                                                <TouchableOpacity style={styles.reorderButton} onPress={() => onToggleWidget(widgetId, goal)}>
+                                                    <Ionicons name={hidden ? 'eye-off' : 'eye'} size={18} color={hidden ? colors.textTertiary : colors.primary} />
+                                                </TouchableOpacity>
+                                            </View>
+                                        </View>
+                                    );
+                                })}
+                            </View>
+                        </View>
+
+                        <TouchableOpacity
+                            style={[styles.resetButton, { borderColor: colors.border, backgroundColor: colors.surfaceLight }]}
+                            onPress={() => onReset(goal)}
+                        >
+                            <Ionicons name="refresh" size={17} color={colors.primary} />
+                            <Text style={[styles.resetButtonText, { color: colors.primary }]}>Reset to {GOAL_LABELS[goal]} preset</Text>
+                        </TouchableOpacity>
+                    </ScrollView>
+                </View>
+            </View>
+        </Modal>
+    );
+}
+
 const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -412,12 +891,20 @@ const styles = StyleSheet.create({
         paddingHorizontal: Spacing.lg,
         paddingBottom: 110,
     },
+    scrollContentCompact: {
+        paddingHorizontal: Spacing.md,
+        paddingBottom: 100,
+    },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingTop: Spacing.lg,
         paddingBottom: Spacing.lg,
+        gap: Spacing.md,
+    },
+    headerCopy: {
+        flex: 1,
     },
     greeting: {
         color: Colors.textTertiary,
@@ -465,13 +952,43 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: Colors.border,
     },
+    personalizePrompt: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.md,
+        borderWidth: 1,
+        borderRadius: BorderRadius.lg,
+        padding: Spacing.md,
+        marginBottom: Spacing.lg,
+    },
+    personalizeCopy: {
+        flex: 1,
+    },
+    personalizeTitle: {
+        fontSize: FontSize.sm,
+        fontWeight: FontWeight.heavy,
+    },
+    personalizeText: {
+        fontSize: FontSize.xs,
+        lineHeight: 18,
+        marginTop: 2,
+    },
+    widgetBlock: {
+        marginBottom: Spacing.lg,
+    },
+    widgetBlockCompact: {
+        marginBottom: Spacing.md,
+    },
     heroCard: {
         borderRadius: BorderRadius.xxl,
         padding: Spacing.lg,
-        marginBottom: Spacing.lg,
         borderWidth: 1,
         borderColor: Colors.primary + '18',
         overflow: 'hidden',
+    },
+    heroCardCompact: {
+        padding: Spacing.md,
+        borderRadius: BorderRadius.xl,
     },
     heroTop: {
         flexDirection: 'row',
@@ -494,12 +1011,26 @@ const styles = StyleSheet.create({
         letterSpacing: 0,
         maxWidth: 205,
     },
+    heroTitleCompact: {
+        fontSize: FontSize.xxl,
+        lineHeight: 30,
+    },
+    goalBadgeText: {
+        fontSize: FontSize.xs,
+        fontWeight: FontWeight.bold,
+        marginTop: Spacing.xs,
+    },
     heroCopy: {
         color: Colors.textSecondary,
         fontSize: FontSize.md,
         lineHeight: 22,
         marginTop: Spacing.md,
         marginBottom: Spacing.lg,
+    },
+    heroCopyCompact: {
+        marginTop: Spacing.sm,
+        marginBottom: Spacing.md,
+        fontSize: FontSize.sm,
     },
     heroStats: {
         flexDirection: 'row',
@@ -527,7 +1058,9 @@ const styles = StyleSheet.create({
     actionRow: {
         flexDirection: 'row',
         gap: Spacing.sm,
-        marginBottom: Spacing.xl,
+    },
+    actionRowCompact: {
+        gap: Spacing.xs,
     },
     quickAction: {
         flex: 1,
@@ -538,6 +1071,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: Colors.border,
         paddingVertical: Spacing.md,
+        minHeight: 96,
     },
     quickActionIcon: {
         width: 42,
@@ -550,6 +1084,7 @@ const styles = StyleSheet.create({
         color: Colors.textSecondary,
         fontSize: FontSize.xs,
         fontWeight: FontWeight.bold,
+        textAlign: 'center',
     },
     sectionHeader: {
         flexDirection: 'row',
@@ -567,9 +1102,10 @@ const styles = StyleSheet.create({
         fontSize: FontSize.xs,
         fontWeight: FontWeight.bold,
     },
-    planCard: {
-        marginBottom: Spacing.lg,
+    cardCompact: {
+        padding: Spacing.md,
     },
+    planCard: {},
     planHeader: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -629,11 +1165,14 @@ const styles = StyleSheet.create({
     grid: {
         flexDirection: 'row',
         gap: Spacing.md,
-        marginBottom: Spacing.lg,
     },
     gridCard: {
         flex: 1,
         minHeight: 198,
+    },
+    gridCardCompact: {
+        minHeight: 174,
+        padding: Spacing.md,
     },
     cardTitleRow: {
         flexDirection: 'row',
@@ -700,14 +1239,15 @@ const styles = StyleSheet.create({
         fontSize: FontSize.xs,
         fontWeight: FontWeight.bold,
     },
-    bodyCard: {
-        marginBottom: Spacing.xl,
-    },
+    bodyCard: {},
     bodyRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         gap: Spacing.md,
+    },
+    bodyCopy: {
+        flex: 1,
     },
     secondaryButton: {
         borderRadius: BorderRadius.full,
@@ -726,7 +1266,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: Spacing.md,
-        marginBottom: Spacing.lg,
     },
     emptyTextBlock: {
         flex: 1,
@@ -747,6 +1286,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: Spacing.md,
         marginBottom: Spacing.sm,
+    },
+    activityCardCompact: {
+        padding: Spacing.md,
     },
     activityIcon: {
         width: 38,
@@ -775,8 +1317,6 @@ const styles = StyleSheet.create({
         fontWeight: FontWeight.heavy,
     },
     aiCard: {
-        marginTop: Spacing.md,
-        marginBottom: Spacing.xl,
         borderColor: Colors.primary + '18',
         borderWidth: 1,
     },
@@ -831,5 +1371,155 @@ const styles = StyleSheet.create({
         color: Colors.primary,
         fontSize: FontSize.xs,
         fontWeight: FontWeight.bold,
+    },
+    modalRoot: {
+        flex: 1,
+        justifyContent: 'flex-end',
+    },
+    modalBackdrop: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(0,0,0,0.58)',
+    },
+    customizePanel: {
+        maxHeight: '88%',
+        borderTopLeftRadius: BorderRadius.xxl,
+        borderTopRightRadius: BorderRadius.xxl,
+        paddingTop: Spacing.lg,
+        paddingHorizontal: Spacing.lg,
+    },
+    customizeHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: Spacing.md,
+        marginBottom: Spacing.md,
+    },
+    customizeTitle: {
+        fontSize: FontSize.xl,
+        fontWeight: FontWeight.heavy,
+    },
+    customizeSubtitle: {
+        fontSize: FontSize.sm,
+        marginTop: 2,
+    },
+    closeButton: {
+        width: 42,
+        height: 42,
+        borderRadius: BorderRadius.full,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    customizeScroll: {
+        paddingBottom: Spacing.xl,
+    },
+    customizeSection: {
+        marginTop: Spacing.lg,
+    },
+    customizeSectionHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: Spacing.sm,
+    },
+    customizeSectionTitle: {
+        fontSize: FontSize.md,
+        fontWeight: FontWeight.heavy,
+    },
+    customizeHint: {
+        fontSize: FontSize.xs,
+        fontWeight: FontWeight.bold,
+    },
+    segmentRow: {
+        flexDirection: 'row',
+        borderRadius: BorderRadius.full,
+        padding: 4,
+        gap: 4,
+        marginTop: Spacing.sm,
+    },
+    segmentButton: {
+        flex: 1,
+        borderRadius: BorderRadius.full,
+        paddingVertical: Spacing.sm,
+        alignItems: 'center',
+    },
+    segmentText: {
+        fontSize: FontSize.xs,
+        fontWeight: FontWeight.bold,
+    },
+    actionPickerGrid: {
+        gap: Spacing.sm,
+    },
+    actionPickerChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.md,
+        borderWidth: 1,
+        borderRadius: BorderRadius.lg,
+        padding: Spacing.md,
+    },
+    actionPickerCopy: {
+        flex: 1,
+    },
+    actionPickerLabel: {
+        fontSize: FontSize.sm,
+        fontWeight: FontWeight.heavy,
+    },
+    actionPickerDescription: {
+        fontSize: FontSize.xs,
+        marginTop: 2,
+    },
+    widgetList: {
+        gap: Spacing.sm,
+    },
+    widgetRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.md,
+        borderWidth: 1,
+        borderRadius: BorderRadius.lg,
+        padding: Spacing.md,
+    },
+    widgetRowIcon: {
+        width: 38,
+        height: 38,
+        borderRadius: BorderRadius.md,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    widgetRowCopy: {
+        flex: 1,
+    },
+    widgetRowTitle: {
+        fontSize: FontSize.sm,
+        fontWeight: FontWeight.heavy,
+    },
+    widgetRowDescription: {
+        fontSize: FontSize.xs,
+        marginTop: 2,
+    },
+    widgetRowControls: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 2,
+    },
+    reorderButton: {
+        width: 30,
+        height: 34,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    resetButton: {
+        marginTop: Spacing.lg,
+        borderWidth: 1,
+        borderRadius: BorderRadius.full,
+        paddingVertical: Spacing.md,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: Spacing.sm,
+    },
+    resetButtonText: {
+        fontSize: FontSize.sm,
+        fontWeight: FontWeight.heavy,
     },
 });

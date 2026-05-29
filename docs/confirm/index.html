@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Confirm your BodyPilot account</title>
+    <meta name="description" content="Confirm your BodyPilot account and continue in the app.">
+    <link rel="icon" href="../assets/favicon.png">
+    <link rel="stylesheet" href="../styles.css">
+  </head>
+  <body>
+    <main class="confirm-wrap">
+      <section class="confirm-card">
+        <img src="../assets/bodypilot-wordmark-white.png" alt="BodyPilot">
+        <h1>Account confirmed.</h1>
+        <p>
+          Your email has been verified. Continue in BodyPilot to finish signing in and start using your account.
+        </p>
+        <div class="actions">
+          <a class="button primary" id="open-app" href="bodypilot://auth/callback">Open BodyPilot</a>
+          <a class="button" href="https://apps.apple.com/app/id6770682935">Get the app</a>
+        </div>
+        <div class="note" id="status">
+          Opening BodyPilot automatically. If nothing happens, tap Open BodyPilot.
+        </div>
+      </section>
+    </main>
+
+    <script>
+      (function () {
+        var authParams = window.location.search + window.location.hash;
+        var appUrl = 'bodypilot://auth/callback' + authParams;
+        var openApp = document.getElementById('open-app');
+        var status = document.getElementById('status');
+
+        openApp.href = appUrl;
+
+        window.setTimeout(function () {
+          status.textContent = 'If BodyPilot did not open, tap Open BodyPilot. Keep this page available until the app finishes signing you in.';
+          window.location.href = appUrl;
+        }, 500);
+      })();
+    </script>
+  </body>
+</html>

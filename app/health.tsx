@@ -3,10 +3,8 @@ import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants
 import { useTheme } from '@/contexts/ThemeContext';
 import {
     AppleHealthSnapshot,
-    getAppleHealthStatus,
-    readAppleHealthSnapshot,
-    requestAppleHealthAccess,
 } from '@/lib/appleHealth';
+import { useAppleHealthStore } from '@/stores/appleHealthStore';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -19,17 +17,6 @@ import {
     View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-const EMPTY_SNAPSHOT: AppleHealthSnapshot = {
-    status: 'available',
-    connectedAt: null,
-    lastSyncedAt: null,
-    steps: 0,
-    activeEnergyKcal: 0,
-    currentWeightKg: null,
-    latestHeartRateBpm: null,
-    workouts: [],
-};
 
 function formatDate(value: string | null) {
     if (!value) return 'Not synced yet';
@@ -52,19 +39,17 @@ function statusCopy(status: AppleHealthSnapshot['status']) {
 export default function HealthScreen() {
     const insets = useSafeAreaInsets();
     const { colors } = useTheme();
-    const [snapshot, setSnapshot] = useState<AppleHealthSnapshot>(EMPTY_SNAPSHOT);
+    const snapshot = useAppleHealthStore((s) => s.snapshot);
+    const isSyncing = useAppleHealthStore((s) => s.isSyncing);
+    const refreshStatus = useAppleHealthStore((s) => s.refreshStatus);
+    const requestAccess = useAppleHealthStore((s) => s.requestAccess);
+    const syncAppleHealth = useAppleHealthStore((s) => s.sync);
     const [loading, setLoading] = useState(true);
-    const [connecting, setConnecting] = useState(false);
 
     const loadSnapshot = async () => {
         setLoading(true);
         try {
-            const status = await getAppleHealthStatus();
-            if (status === 'authorized') {
-                setSnapshot(await readAppleHealthSnapshot());
-            } else {
-                setSnapshot({ ...EMPTY_SNAPSHOT, status });
-            }
+            await refreshStatus();
         } finally {
             setLoading(false);
         }
@@ -75,32 +60,26 @@ export default function HealthScreen() {
     }, []);
 
     const handleConnect = async () => {
-        setConnecting(true);
         try {
-            const status = await requestAppleHealthAccess();
-            if (status === 'authorized') {
-                const nextSnapshot = await readAppleHealthSnapshot();
-                setSnapshot(nextSnapshot);
+            const nextSnapshot = await requestAccess();
+            if (nextSnapshot.status === 'authorized') {
                 toast.success('Apple Health connected', 'BodyPilot can now read your Health data.');
-            } else if (status === 'native-unavailable') {
-                setSnapshot({ ...EMPTY_SNAPSHOT, status });
+            } else if (nextSnapshot.status === 'native-unavailable') {
                 toast.info('Rebuild needed', 'Rebuild the iOS app to enable native Apple Health.');
             } else {
-                setSnapshot({ ...EMPTY_SNAPSHOT, status });
                 toast.info('Apple Health unavailable', 'Health permissions were not granted.');
             }
-        } finally {
-            setConnecting(false);
+        } catch {
+            toast.info('Apple Health unavailable', 'Health permissions were not granted.');
         }
     };
 
     const handleSync = async () => {
-        setConnecting(true);
         try {
-            setSnapshot(await readAppleHealthSnapshot());
+            await syncAppleHealth();
             toast.success('Synced', 'Latest Apple Health data loaded.');
-        } finally {
-            setConnecting(false);
+        } catch {
+            toast.error('Sync failed', 'BodyPilot could not read Apple Health right now.');
         }
     };
 
@@ -149,7 +128,7 @@ export default function HealthScreen() {
                     <Button
                         title={snapshot.status === 'authorized' ? 'Sync Now' : 'Connect Apple Health'}
                         onPress={snapshot.status === 'authorized' ? handleSync : handleConnect}
-                        loading={connecting}
+                        loading={isSyncing}
                         icon={<Ionicons name={snapshot.status === 'authorized' ? 'sync' : 'link'} size={18} color={colors.textInverse} />}
                         style={styles.primaryButton}
                     />

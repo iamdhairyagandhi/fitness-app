@@ -1,7 +1,7 @@
 import { Button, Input, toast } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { fetchProfile } from '@/lib/db';
-import { signInWithApple, signInWithGoogle } from '@/lib/auth';
+import { EMAIL_CONFIRM_REDIRECT_URL, signInWithApple, signInWithGoogle } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,6 +24,7 @@ export default function SignUpScreen() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
+    const [acceptedTerms, setAcceptedTerms] = useState(false);
     const { setSession, setUser, setOnboarded } = useAuthStore();
 
     const finishSocialSignIn = async (session: Session) => {
@@ -44,6 +45,11 @@ export default function SignUpScreen() {
     };
 
     const handleSignUp = async () => {
+        if (!acceptedTerms) {
+            toast.error('Terms required', 'Please agree to the Terms before creating an account.');
+            return;
+        }
+
         if (!name.trim() || !email.trim() || !password.trim()) {
             toast.error('Error', 'Please fill in all fields');
             return;
@@ -59,6 +65,7 @@ export default function SignUpScreen() {
             email: email.trim(),
             password,
             options: {
+                emailRedirectTo: EMAIL_CONFIRM_REDIRECT_URL,
                 data: { display_name: name.trim() },
             },
         });
@@ -74,7 +81,7 @@ export default function SignUpScreen() {
             setSession({ access_token: data.session.access_token });
             router.replace('/onboarding' as any);
         } else {
-            const msg = 'Check your email for a confirmation link, then come back and log in.';
+            const msg = 'Check your email for a confirmation link. It will bring you back to BodyPilot automatically.';
             toast.info('Check your email', msg);
             setMessage(msg);
         }
@@ -82,6 +89,11 @@ export default function SignUpScreen() {
     };
 
     const handleSocialSignUp = async (signIn: () => Promise<any>, label: 'Google' | 'Apple') => {
+        if (!acceptedTerms) {
+            toast.error('Terms required', `Please agree to the Terms before continuing with ${label}.`);
+            return;
+        }
+
         setMessage('');
         setLoading(true);
         try {
@@ -149,10 +161,13 @@ export default function SignUpScreen() {
                         leftIcon={<Ionicons name="lock-closed-outline" size={20} color={Colors.textTertiary} />}
                     />
 
+                    <TermsAcceptance accepted={acceptedTerms} onToggle={() => setAcceptedTerms((value) => !value)} />
+
                     <Button
                         title="Create Account"
                         onPress={handleSignUp}
                         loading={loading}
+                        disabled={!acceptedTerms}
                         size="lg"
                     />
 
@@ -176,14 +191,16 @@ export default function SignUpScreen() {
 
                     <View style={styles.socialButtons}>
                         <TouchableOpacity
-                            style={styles.socialButton}
+                            style={[styles.socialButton, !acceptedTerms && styles.socialButtonDisabled]}
                             onPress={() => handleSocialSignUp(signInWithGoogle, 'Google')}
+                            disabled={!acceptedTerms || loading}
                         >
                             <Ionicons name="logo-google" size={22} color={Colors.text} />
                         </TouchableOpacity>
                         <TouchableOpacity
-                            style={styles.socialButton}
+                            style={[styles.socialButton, !acceptedTerms && styles.socialButtonDisabled]}
                             onPress={() => handleSocialSignUp(signInWithApple, 'Apple')}
+                            disabled={!acceptedTerms || loading}
                         >
                             <Ionicons name="logo-apple" size={22} color={Colors.text} />
                         </TouchableOpacity>
@@ -198,6 +215,25 @@ export default function SignUpScreen() {
                 </View>
             </ScrollView>
         </KeyboardAvoidingView>
+    );
+}
+
+function TermsAcceptance({ accepted, onToggle }: { accepted: boolean; onToggle: () => void }) {
+    return (
+        <View style={styles.termsWrap}>
+            <TouchableOpacity style={styles.termsRow} onPress={onToggle} activeOpacity={0.78}>
+                <View style={[styles.checkbox, accepted && styles.checkboxActive]}>
+                    {accepted ? <Ionicons name="checkmark" size={15} color={Colors.textInverse} /> : null}
+                </View>
+                <Text style={styles.termsText}>
+                    I agree to the{' '}
+                    <Text style={styles.termsLink} onPress={() => router.push('/terms' as any)}>
+                        Terms of Service
+                    </Text>
+                    , including the no-tolerance policy for objectionable content and abusive users.
+                </Text>
+            </TouchableOpacity>
+        </View>
     );
 }
 
@@ -266,6 +302,41 @@ const styles = StyleSheet.create({
         borderColor: Colors.border,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    socialButtonDisabled: {
+        opacity: 0.45,
+    },
+    termsWrap: {
+        marginBottom: Spacing.lg,
+    },
+    termsRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: Spacing.sm,
+    },
+    checkbox: {
+        width: 22,
+        height: 22,
+        borderRadius: 6,
+        borderWidth: 1.5,
+        borderColor: Colors.borderLight,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 1,
+    },
+    checkboxActive: {
+        backgroundColor: Colors.primary,
+        borderColor: Colors.primary,
+    },
+    termsText: {
+        flex: 1,
+        color: Colors.textSecondary,
+        fontSize: FontSize.xs,
+        lineHeight: 18,
+    },
+    termsLink: {
+        color: Colors.primary,
+        fontWeight: FontWeight.bold,
     },
     footer: {
         flexDirection: 'row',

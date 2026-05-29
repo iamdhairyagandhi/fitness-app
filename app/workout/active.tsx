@@ -12,7 +12,9 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
     Alert,
     Image,
+    KeyboardAvoidingView,
     Modal,
+    Platform,
     ScrollView,
     StyleSheet,
     Text,
@@ -67,6 +69,7 @@ export default function ActiveWorkoutScreen() {
     const [exerciseNotes, setExerciseNotes] = useState<Record<string, string>>({});
     const [showModePicker, setShowModePicker] = useState(false);
     const [progressionResults, setProgressionResults] = useState<ProgressionSuggestion[] | null>(null);
+    const [weightInputDrafts, setWeightInputDrafts] = useState<Record<string, string>>({});
     const [showSupersetPicker, setShowSupersetPicker] = useState(false);
     const [supersetSelection, setSupersetSelection] = useState<number[]>([]);
     // Circuit round counter
@@ -85,6 +88,32 @@ export default function ActiveWorkoutScreen() {
 
     const currentMode = activeWorkout?.workout_mode ?? 'standard';
     const weightUnit = getWeightUnit(user?.unit_system);
+
+    const getSetWeightInputValue = (setId: string, weightKg: number | null | undefined) => {
+        if (weightInputDrafts[setId] !== undefined) return weightInputDrafts[setId];
+        return formatWorkoutWeightInput(weightKg, user?.unit_system);
+    };
+
+    const handleSetWeightFocus = (setId: string, weightKg: number | null | undefined) => {
+        setWeightInputDrafts((current) => {
+            if (current[setId] !== undefined) return current;
+            return { ...current, [setId]: formatWorkoutWeightInput(weightKg, user?.unit_system) };
+        });
+    };
+
+    const handleSetWeightChange = (setId: string, value: string, exerciseIndex: number, setIndex: number) => {
+        setWeightInputDrafts((current) => ({ ...current, [setId]: sanitizeWorkoutWeightDraft(value) }));
+        updateSet(exerciseIndex, setIndex, {
+            weight_kg: parseWorkoutWeightInput(value, user?.unit_system),
+        });
+    };
+
+    const handleSetWeightBlur = (setId: string) => {
+        setWeightInputDrafts((current) => {
+            const { [setId]: _removed, ...rest } = current;
+            return rest;
+        });
+    };
 
     // Start workout if not already active
     useEffect(() => {
@@ -460,10 +489,21 @@ export default function ActiveWorkoutScreen() {
                 </TouchableOpacity>
             )}
 
-            <ScrollView
-                contentContainerStyle={styles.scrollContent}
-                showsVerticalScrollIndicator={false}
+            <KeyboardAvoidingView
+                style={styles.keyboardAvoidingRoot}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
             >
+                <ScrollView
+                    contentContainerStyle={[
+                        styles.scrollContent,
+                        { paddingBottom: insets.bottom + 220 },
+                    ]}
+                    showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
+                    keyboardDismissMode="interactive"
+                    automaticallyAdjustKeyboardInsets
+                >
                 {/* Exercises */}
                 {activeWorkout?.exercises.map((exercise, exIdx) => {
                     const supersetGroup = (activeWorkout.superset_groups ?? []).find(
@@ -570,22 +610,21 @@ export default function ActiveWorkoutScreen() {
                                     <Text style={[styles.setPrev, { flex: 1 }]}>—</Text>
                                     <TextInput
                                         style={styles.setInput}
-                                        value={set.weight_kg ? displayWeightFromKg(set.weight_kg, user?.unit_system).toString() : ''}
-                                        onChangeText={(v) =>
-                                            updateSet(exIdx, setIdx, {
-                                                weight_kg: v ? inputWeightToKg(parseFloat(v), user?.unit_system) : null,
-                                            })
-                                        }
+                                        value={getSetWeightInputValue(set.id, set.weight_kg)}
+                                        onFocus={() => handleSetWeightFocus(set.id, set.weight_kg)}
+                                        onChangeText={(v) => handleSetWeightChange(set.id, v, exIdx, setIdx)}
+                                        onBlur={() => handleSetWeightBlur(set.id)}
                                         keyboardType="decimal-pad"
                                         placeholder="0"
                                         placeholderTextColor={Colors.textTertiary}
+                                        selectTextOnFocus
                                     />
                                     <TextInput
                                         style={styles.setInput}
                                         value={set.reps?.toString() || ''}
                                         onChangeText={(v) =>
                                             updateSet(exIdx, setIdx, {
-                                                reps: v ? parseInt(v, 10) : null,
+                                                reps: parseWorkoutRepsInput(v),
                                             })
                                         }
                                         keyboardType="number-pad"
@@ -754,7 +793,8 @@ export default function ActiveWorkoutScreen() {
                         )}
                     </Card>
                 )}
-            </ScrollView>
+                </ScrollView>
+            </KeyboardAvoidingView>
 
             {/* Post-Workout Progression Modal */}
             {progressionResults && (
@@ -868,6 +908,31 @@ function formatLabel(value: string) {
     return value.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+function sanitizeWorkoutWeightDraft(value: string) {
+    const normalized = value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
+    const [whole, ...decimalParts] = normalized.split('.');
+    if (decimalParts.length === 0) return whole;
+    return `${whole}.${decimalParts.join('')}`;
+}
+
+function formatWorkoutWeightInput(weightKg: number | null | undefined, unitSystem?: 'metric' | 'imperial' | null) {
+    if (!weightKg) return '';
+    const display = displayWeightFromKg(weightKg, unitSystem, 1);
+    return Number.isInteger(display) ? String(display) : display.toFixed(1);
+}
+
+function parseWorkoutWeightInput(value: string, unitSystem?: 'metric' | 'imperial' | null) {
+    const normalized = sanitizeWorkoutWeightDraft(value);
+    const parsed = Number.parseFloat(normalized);
+    if (!Number.isFinite(parsed)) return null;
+    return inputWeightToKg(parsed, unitSystem);
+}
+
+function parseWorkoutRepsInput(value: string) {
+    const parsed = Number.parseInt(value.replace(/[^0-9]/g, ''), 10);
+    return Number.isFinite(parsed) ? parsed : null;
+}
+
 function matchesMuscleFilter(exercise: Exercise, filter: (typeof MUSCLE_FILTERS)[number]) {
     const groups = exercise.muscle_groups;
     switch (filter) {
@@ -914,6 +979,9 @@ function matchesEquipmentFilter(exercise: Exercise, filter: (typeof EQUIPMENT_FI
 }
 
 const styles = StyleSheet.create({
+    keyboardAvoidingRoot: {
+        flex: 1,
+    },
     container: {
         flex: 1,
         backgroundColor: Colors.background,

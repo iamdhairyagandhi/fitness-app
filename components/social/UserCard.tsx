@@ -10,9 +10,10 @@ interface UserCardProps {
     onPress: (userId: string) => void;
     onFollow: (userId: string) => void;
     onUnfollow: (userId: string) => void;
+    onBlock?: (userId: string) => void;
 }
 
-export function UserCard({ user, onPress, onFollow, onUnfollow }: UserCardProps) {
+export function UserCard({ user, onPress, onFollow, onUnfollow, onBlock }: UserCardProps) {
     const { colors } = useTheme();
 
     return (
@@ -38,22 +39,39 @@ export function UserCard({ user, onPress, onFollow, onUnfollow }: UserCardProps)
                 </View>
             </View>
 
-            {user.is_following ? (
-                <TouchableOpacity
-                    style={[styles.unfollowBtn, { borderColor: colors.border }]}
-                    onPress={() => onUnfollow(user.id)}
-                >
-                    <Text style={[styles.unfollowText, { color: colors.textSecondary }]}>Following</Text>
-                </TouchableOpacity>
-            ) : (
-                <TouchableOpacity
-                    style={[styles.followBtn, { backgroundColor: colors.primary }]}
-                    onPress={() => onFollow(user.id)}
-                >
-                    <Ionicons name="person-add" size={14} color={colors.textInverse} />
-                    <Text style={[styles.followText, { color: colors.textInverse }]}>Follow</Text>
-                </TouchableOpacity>
-            )}
+            <View style={styles.actions}>
+                {user.follow_status === 'pending' ? (
+                    <View
+                        style={[styles.unfollowBtn, { borderColor: colors.border }]}
+                    >
+                        <Text style={[styles.unfollowText, { color: colors.textSecondary }]}>Requested</Text>
+                    </View>
+                ) : user.is_following ? (
+                    <TouchableOpacity
+                        style={[styles.unfollowBtn, { borderColor: colors.border }]}
+                        onPress={() => onUnfollow(user.id)}
+                    >
+                        <Text style={[styles.unfollowText, { color: colors.textSecondary }]}>Following</Text>
+                    </TouchableOpacity>
+                ) : (
+                    <TouchableOpacity
+                        style={[styles.followBtn, { backgroundColor: colors.primary }]}
+                        onPress={() => onFollow(user.id)}
+                    >
+                        <Ionicons name="person-add" size={14} color={colors.textInverse} />
+                        <Text style={[styles.followText, { color: colors.textInverse }]}>Follow</Text>
+                    </TouchableOpacity>
+                )}
+                {onBlock ? (
+                    <TouchableOpacity
+                        accessibilityLabel={`Block ${user.display_name}`}
+                        style={[styles.blockBtn, { borderColor: colors.border }]}
+                        onPress={() => onBlock(user.id)}
+                    >
+                        <Ionicons name="ban-outline" size={16} color={Colors.error} />
+                    </TouchableOpacity>
+                ) : null}
+            </View>
         </TouchableOpacity>
     );
 }
@@ -85,6 +103,11 @@ const styles = StyleSheet.create({
     info: {
         flex: 1,
         marginLeft: Spacing.md,
+    },
+    actions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.xs,
     },
     name: {
         color: Colors.text,
@@ -135,5 +158,14 @@ const styles = StyleSheet.create({
         color: Colors.textSecondary,
         fontSize: FontSize.sm,
         fontWeight: FontWeight.medium,
+    },
+    blockBtn: {
+        width: 36,
+        height: 36,
+        borderRadius: BorderRadius.md,
+        borderWidth: 1,
+        borderColor: Colors.border,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
 });

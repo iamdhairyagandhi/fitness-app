@@ -3,7 +3,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import type { ActivityFeedItem, ReactionType } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const ACTIVITY_ICONS: Record<string, { icon: string; color: string }> = {
     workout_completed: { icon: 'barbell', color: Colors.primary },
@@ -14,6 +14,11 @@ const ACTIVITY_ICONS: Record<string, { icon: string; color: string }> = {
     challenge_completed: { icon: 'checkmark-circle', color: Colors.recovery },
     weight_milestone: { icon: 'scale', color: Colors.mealPlan },
     level_up: { icon: 'arrow-up-circle', color: Colors.fasting },
+    manual_post: { icon: 'chatbox-ellipses', color: Colors.primary },
+    progress_photo: { icon: 'camera', color: Colors.analytics },
+    body_milestone: { icon: 'body', color: Colors.bodyComp },
+    recipe_shared: { icon: 'restaurant', color: Colors.recipes },
+    shared_activity: { icon: 'repeat', color: Colors.mealPlan },
 };
 
 const REACTION_EMOJIS: Record<ReactionType, string> = {
@@ -40,12 +45,41 @@ interface FeedCardProps {
     onReact: (activityId: string, type: ReactionType) => void;
     onComment: (activityId: string) => void;
     onProfile: (userId: string) => void;
+    onSave?: (activityId: string, shouldSave: boolean) => void;
+    onHide?: (activityId: string) => void;
+    onReport?: (activityId: string, targetUserId: string, reason?: string) => void;
+    onBlock?: (targetUserId: string) => void;
 }
 
-export function FeedCard({ item, onReact, onComment, onProfile }: FeedCardProps) {
+export function FeedCard({ item, onReact, onComment, onProfile, onSave, onHide, onReport, onBlock }: FeedCardProps) {
     const { colors } = useTheme();
     const actConfig = ACTIVITY_ICONS[item.activity_type] || ACTIVITY_ICONS.workout_completed;
     const activityColor = item.activity_type === 'workout_completed' ? colors.primary : actConfig.color;
+    const visibility = item.visibility || (item.is_public ? 'public' : 'followers');
+
+    const openPostMenu = () => {
+        Alert.alert(item.title, 'Choose what to do with this update.', [
+            {
+                text: item.is_saved ? 'Unsave' : 'Save',
+                onPress: () => onSave?.(item.id, !item.is_saved),
+            },
+            {
+                text: 'Hide from feed',
+                onPress: () => onHide?.(item.id),
+            },
+            {
+                text: 'Report',
+                style: 'destructive',
+                onPress: () => onReport?.(item.id, item.user_id, 'inappropriate'),
+            },
+            {
+                text: 'Block user',
+                style: 'destructive',
+                onPress: () => onBlock?.(item.user_id),
+            },
+            { text: 'Cancel', style: 'cancel' },
+        ]);
+    };
 
     return (
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -71,10 +105,40 @@ export function FeedCard({ item, onReact, onComment, onProfile }: FeedCardProps)
                         <Text style={[styles.time, { color: colors.textTertiary }]}>{timeAgo(item.created_at)}</Text>
                     </View>
                 </TouchableOpacity>
-                <View style={[styles.typeBadge, { backgroundColor: activityColor + '20' }]}>
-                    <Ionicons name={actConfig.icon as any} size={14} color={activityColor} />
+                <View style={styles.headerActions}>
+                    <View style={[styles.visibilityPill, { backgroundColor: colors.surfaceLight, borderColor: colors.border }]}>
+                        <Ionicons
+                            name={visibility === 'public' ? 'globe-outline' : visibility === 'followers' ? 'people-outline' : 'lock-closed-outline'}
+                            size={12}
+                            color={colors.textTertiary}
+                        />
+                        <Text style={[styles.visibilityText, { color: colors.textTertiary }]}>
+                            {visibility === 'followers' ? 'Friends' : visibility}
+                        </Text>
+                    </View>
+                    <View style={[styles.typeBadge, { backgroundColor: activityColor + '20' }]}>
+                        <Ionicons name={actConfig.icon as any} size={14} color={activityColor} />
+                    </View>
                 </View>
+                <TouchableOpacity style={styles.moreButton} onPress={openPostMenu}>
+                    <Ionicons name="ellipsis-horizontal" size={18} color={colors.textTertiary} />
+                </TouchableOpacity>
             </View>
+
+            {item.activity_type !== 'manual_post' && (
+                <View style={[styles.shareCardHeader, { backgroundColor: activityColor + '14', borderColor: activityColor + '2C' }]}>
+                    <Ionicons name={actConfig.icon as any} size={16} color={activityColor} />
+                    <Text style={[styles.shareCardHeaderText, { color: activityColor }]}>
+                        {item.activity_type === 'workout_completed'
+                            ? 'Workout logged'
+                            : item.activity_type === 'personal_record'
+                                ? 'Personal record'
+                                : item.activity_type === 'challenge_completed'
+                                    ? 'Challenge win'
+                                    : 'Milestone'}
+                    </Text>
+                </View>
+            )}
 
             {/* Content */}
             <View style={styles.content}>
@@ -100,15 +164,15 @@ export function FeedCard({ item, onReact, onComment, onProfile }: FeedCardProps)
                         </View>
                     ) : null}
                     {item.metadata.exercise_name ? (
-                        <View style={styles.metaChip}>
-                            <Ionicons name="fitness-outline" size={12} color={Colors.textSecondary} />
-                            <Text style={styles.metaText}>{String(item.metadata.exercise_name)}</Text>
+                        <View style={[styles.metaChip, { backgroundColor: colors.surfaceLight }]}>
+                            <Ionicons name="fitness-outline" size={12} color={colors.textSecondary} />
+                            <Text style={[styles.metaText, { color: colors.textSecondary }]}>{String(item.metadata.exercise_name)}</Text>
                         </View>
                     ) : null}
                     {item.metadata.weight_kg ? (
-                        <View style={styles.metaChip}>
-                            <Ionicons name="trending-up-outline" size={12} color={Colors.textSecondary} />
-                            <Text style={styles.metaText}>{String(item.metadata.weight_kg)}kg × {String(item.metadata.reps || 1)}</Text>
+                        <View style={[styles.metaChip, { backgroundColor: colors.surfaceLight }]}>
+                            <Ionicons name="trending-up-outline" size={12} color={colors.textSecondary} />
+                            <Text style={[styles.metaText, { color: colors.textSecondary }]}>{String(item.metadata.weight_kg)}kg × {String(item.metadata.reps || 1)}</Text>
                         </View>
                     ) : null}
                 </View>
@@ -142,6 +206,12 @@ export function FeedCard({ item, onReact, onComment, onProfile }: FeedCardProps)
                     {item.comments_count > 0 ? (
                         <Text style={[styles.countText, { color: colors.textSecondary }]}>{item.comments_count}</Text>
                     ) : null}
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={styles.commentBtn}
+                    onPress={() => onSave?.(item.id, !item.is_saved)}
+                >
+                    <Ionicons name={item.is_saved ? 'bookmark' : 'bookmark-outline'} size={16} color={item.is_saved ? activityColor : colors.textSecondary} />
                 </TouchableOpacity>
             </View>
         </View>
@@ -200,6 +270,46 @@ const styles = StyleSheet.create({
         borderRadius: BorderRadius.full,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    headerActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.xs,
+    },
+    visibilityPill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        borderRadius: BorderRadius.full,
+        borderWidth: 1,
+        paddingHorizontal: Spacing.sm,
+        paddingVertical: 5,
+    },
+    visibilityText: {
+        fontSize: FontSize.xxs,
+        fontWeight: FontWeight.bold,
+        textTransform: 'capitalize',
+    },
+    moreButton: {
+        padding: Spacing.xs,
+        marginLeft: Spacing.xs,
+    },
+    shareCardHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        alignSelf: 'flex-start',
+        gap: Spacing.xs,
+        borderWidth: 1,
+        borderRadius: BorderRadius.full,
+        paddingHorizontal: Spacing.sm,
+        paddingVertical: 5,
+        marginBottom: Spacing.sm,
+    },
+    shareCardHeaderText: {
+        fontSize: FontSize.xs,
+        fontWeight: FontWeight.bold,
+        textTransform: 'uppercase',
+        letterSpacing: 0.4,
     },
     content: {
         marginBottom: Spacing.sm,

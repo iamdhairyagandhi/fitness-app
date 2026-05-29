@@ -1,11 +1,11 @@
 /** Convert kg to lbs */
 export function kgToLbs(kg: number): number {
-    return Math.round(kg * 2.20462 * 10) / 10;
+    return kg * 2.20462;
 }
 
 /** Convert lbs to kg */
 export function lbsToKg(lbs: number): number {
-    return Math.round(lbs / 2.20462 * 10) / 10;
+    return lbs / 2.20462;
 }
 
 /** Convert cm to feet and inches string */

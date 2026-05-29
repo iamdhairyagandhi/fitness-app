@@ -18,9 +18,62 @@ import {
     View,
 } from 'react-native';
 
-const STEPS = ['body', 'goal', 'training', 'nutrition', 'lifestyle', 'plan'] as const;
-type Step = (typeof STEPS)[number];
 type UnitSystem = 'metric' | 'imperial';
+type Gender = 'male' | 'female' | 'other';
+type Pace = 'steady' | 'balanced' | 'aggressive';
+type Motivation = 'appearance' | 'performance' | 'health' | 'confidence';
+type Equipment = 'gym' | 'home' | 'bodyweight' | 'mixed';
+type DietStyle = 'balanced' | 'high_protein' | 'vegetarian' | 'low_carb';
+type TrackingStyle = 'simple' | 'macro' | 'photo';
+type StressLevel = 'low' | 'medium' | 'high';
+type QuestionId =
+    | 'units'
+    | 'gender'
+    | 'age'
+    | 'height'
+    | 'weight'
+    | 'goal'
+    | 'targetWeight'
+    | 'pace'
+    | 'motivation'
+    | 'experience'
+    | 'trainingDays'
+    | 'sessionMinutes'
+    | 'equipment'
+    | 'dietStyle'
+    | 'mealsPerDay'
+    | 'trackingStyle'
+    | 'activity'
+    | 'sleep'
+    | 'stress'
+    | 'planBaseline'
+    | 'planStrategy'
+    | 'planNutrition';
+
+const QUESTIONS: QuestionId[] = [
+    'units',
+    'gender',
+    'age',
+    'height',
+    'weight',
+    'goal',
+    'targetWeight',
+    'pace',
+    'motivation',
+    'experience',
+    'trainingDays',
+    'sessionMinutes',
+    'equipment',
+    'dietStyle',
+    'mealsPerDay',
+    'trackingStyle',
+    'activity',
+    'sleep',
+    'stress',
+    'planBaseline',
+    'planStrategy',
+    'planNutrition',
+];
 
 const goalLabels: Record<FitnessGoal, string> = {
     lose_fat: 'Lose fat',
@@ -29,14 +82,6 @@ const goalLabels: Record<FitnessGoal, string> = {
     recomp: 'Recomposition',
     strength: 'Get stronger',
     endurance: 'Improve endurance',
-};
-
-const activityLabels: Record<ActivityLevel, string> = {
-    sedentary: 'Mostly seated',
-    light: 'Light movement',
-    moderate: 'Moderate',
-    active: 'Active',
-    very_active: 'Very active',
 };
 
 const experienceLabels: Record<ExperienceLevel, string> = {
@@ -67,38 +112,34 @@ function cmToFeetParts(cm: number) {
 }
 
 export default function OnboardingScreen() {
-    const [step, setStep] = useState(0);
-    const [planSlide, setPlanSlide] = useState(0);
+    const [questionIndex, setQuestionIndex] = useState(0);
     const [saving, setSaving] = useState(false);
     const { setOnboarded, setUser } = useAuthStore();
 
-    const [unitSystem, setUnitSystem] = useState<UnitSystem>('metric');
-    const [gender, setGender] = useState<'male' | 'female' | 'other' | null>(null);
+    const [unitSystem, setUnitSystem] = useState<UnitSystem>('imperial');
+    const [gender, setGender] = useState<Gender | null>(null);
     const [age, setAge] = useState('');
     const [heightCm, setHeightCm] = useState('');
     const [heightFt, setHeightFt] = useState('');
     const [heightIn, setHeightIn] = useState('');
     const [weight, setWeight] = useState('');
     const [targetWeight, setTargetWeight] = useState('');
-
     const [goal, setGoal] = useState<FitnessGoal | null>(null);
-    const [pace, setPace] = useState<'steady' | 'balanced' | 'aggressive'>('balanced');
-    const [motivation, setMotivation] = useState<'appearance' | 'performance' | 'health' | 'confidence' | null>(null);
-
+    const [pace, setPace] = useState<Pace>('balanced');
+    const [motivation, setMotivation] = useState<Motivation | null>(null);
     const [experience, setExperience] = useState<ExperienceLevel | null>(null);
     const [trainingDays, setTrainingDays] = useState('');
     const [sessionMinutes, setSessionMinutes] = useState('');
-    const [equipment, setEquipment] = useState<'gym' | 'home' | 'bodyweight' | 'mixed' | null>(null);
-
-    const [dietStyle, setDietStyle] = useState<'balanced' | 'high_protein' | 'vegetarian' | 'low_carb' | null>(null);
+    const [equipment, setEquipment] = useState<Equipment | null>(null);
+    const [dietStyle, setDietStyle] = useState<DietStyle | null>(null);
     const [mealsPerDay, setMealsPerDay] = useState('');
-    const [trackingStyle, setTrackingStyle] = useState<'simple' | 'macro' | 'photo' | null>(null);
-
+    const [trackingStyle, setTrackingStyle] = useState<TrackingStyle | null>(null);
     const [activity, setActivity] = useState<ActivityLevel | null>(null);
     const [sleepHours, setSleepHours] = useState('');
-    const [stressLevel, setStressLevel] = useState<'low' | 'medium' | 'high' | null>(null);
+    const [stressLevel, setStressLevel] = useState<StressLevel | null>(null);
 
-    const currentStep = STEPS[step];
+    const currentQuestion = QUESTIONS[questionIndex];
+    const isPlanQuestion = currentQuestion.startsWith('plan');
 
     const measurements = useMemo(() => {
         const weightKg = unitSystem === 'metric' ? numberFrom(weight, 75) : lbsToKg(numberFrom(weight, 165));
@@ -109,6 +150,7 @@ export default function OnboardingScreen() {
             : null;
         const height = unitSystem === 'metric' ? numberFrom(heightCm, 175) : feetInchesToCm(heightFt, heightIn) || 175;
         const ageYears = numberFrom(age, 25);
+
         return {
             ageYears,
             height,
@@ -134,10 +176,8 @@ export default function OnboardingScreen() {
         const sessionMinutesNum = clamp(Math.round(numberFrom(sessionMinutes, 50)), 25, 120);
         const mealsNum = clamp(Math.round(numberFrom(mealsPerDay, 3)), 2, 6);
         const sleepNum = clamp(numberFrom(sleepHours, 7), 4, 10);
-
         const bmr = calculateBMR(measurements.weightKg, measurements.height, measurements.ageYears, gender || 'male');
         const tdee = calculateTDEE(bmr, selectedActivity);
-
         const paceAdjustments = { steady: 0.9, balanced: 1, aggressive: 1.1 };
         const paceMultiplier = paceAdjustments[pace];
 
@@ -156,82 +196,66 @@ export default function OnboardingScreen() {
         if (dietStyle === 'low_carb') { proteinPct = 0.35; carbsPct = 0.25; fatPct = 0.4; }
         if (dietStyle === 'high_protein') { proteinPct = Math.max(proteinPct, 0.36); carbsPct = 0.37; fatPct = 0.27; }
 
-        const protein = Math.round((calorieTarget * proteinPct) / 4);
-        const carbs = Math.round((calorieTarget * carbsPct) / 4);
-        const fat = Math.round((calorieTarget * fatPct) / 9);
-        const waterMl = Math.round(measurements.weightKg * (selectedActivity === 'very_active' ? 42 : 36));
-        const restSeconds = selectedExperience === 'beginner' ? 90 : selectedGoal === 'strength' ? 150 : 75;
-
-        const weeklyFocus = selectedGoal === 'lose_fat'
-            ? 'calorie consistency, protein, and repeatable training'
-            : selectedGoal === 'build_muscle'
-                ? 'progressive overload, enough food, and recovery'
-                : selectedGoal === 'strength'
-                    ? 'heavy compounds, longer rests, and tracking PRs'
-                    : selectedGoal === 'endurance'
-                        ? 'cardio capacity, hydration, and sustainable volume'
-                        : 'balanced habits and trend tracking';
-
-        const recoveryFlag = sleepNum < 6.5 || stressLevel === 'high'
-            ? 'Recovery needs attention, so BodyPilot will bias toward sustainable targets.'
-            : 'Recovery looks workable, so your plan can progress steadily.';
-
         return {
             bmr,
             tdee,
             calorieTarget,
-            protein,
-            carbs,
-            fat,
-            waterMl,
-            restSeconds,
+            protein: Math.round((calorieTarget * proteinPct) / 4),
+            carbs: Math.round((calorieTarget * carbsPct) / 4),
+            fat: Math.round((calorieTarget * fatPct) / 9),
+            waterMl: Math.round(measurements.weightKg * (selectedActivity === 'very_active' ? 42 : 36)),
+            restSeconds: selectedExperience === 'beginner' ? 90 : selectedGoal === 'strength' ? 150 : 75,
             trainingDaysNum,
             sessionMinutesNum,
             mealsNum,
             sleepNum,
-            weeklyFocus,
-            recoveryFlag,
+            weeklyFocus: selectedGoal === 'lose_fat'
+                ? 'calorie consistency, protein, and repeatable training'
+                : selectedGoal === 'build_muscle'
+                    ? 'progressive overload, enough food, and recovery'
+                    : selectedGoal === 'strength'
+                        ? 'heavy compounds, longer rests, and tracking PRs'
+                        : selectedGoal === 'endurance'
+                            ? 'cardio capacity, hydration, and sustainable volume'
+                            : 'balanced habits and trend tracking',
+            recoveryFlag: sleepNum < 6.5 || stressLevel === 'high'
+                ? 'Recovery needs attention, so BodyPilot will bias toward sustainable targets.'
+                : 'Recovery looks workable, so your plan can progress steadily.',
         };
     }, [activity, dietStyle, experience, gender, goal, measurements, mealsPerDay, pace, sessionMinutes, sleepHours, stressLevel, trainingDays]);
 
     const canProceed = () => {
-        switch (currentStep) {
-            case 'body':
-                return !!gender && !!age && !!weight && (unitSystem === 'metric' ? !!heightCm : !!heightFt);
-            case 'goal':
-                return !!goal && !!motivation;
-            case 'training':
-                return !!experience && !!trainingDays && !!sessionMinutes && !!equipment;
-            case 'nutrition':
-                return !!dietStyle && !!mealsPerDay && !!trackingStyle;
-            case 'lifestyle':
-                return !!activity && !!sleepHours && !!stressLevel;
-            case 'plan':
-                return true;
-            default:
-                return false;
+        switch (currentQuestion) {
+            case 'gender': return !!gender;
+            case 'age': return !!age;
+            case 'height': return unitSystem === 'metric' ? !!heightCm : !!heightFt;
+            case 'weight': return !!weight;
+            case 'goal': return !!goal;
+            case 'motivation': return !!motivation;
+            case 'experience': return !!experience;
+            case 'trainingDays': return !!trainingDays;
+            case 'sessionMinutes': return !!sessionMinutes;
+            case 'equipment': return !!equipment;
+            case 'dietStyle': return !!dietStyle;
+            case 'mealsPerDay': return !!mealsPerDay;
+            case 'trackingStyle': return !!trackingStyle;
+            case 'activity': return !!activity;
+            case 'sleep': return !!sleepHours;
+            case 'stress': return !!stressLevel;
+            default: return true;
         }
     };
 
     const handleNext = () => {
-        if (currentStep === 'plan') {
-            if (planSlide < 2) {
-                setPlanSlide(planSlide + 1);
-            } else {
-                handleComplete();
-            }
+        if (questionIndex < QUESTIONS.length - 1) {
+            setQuestionIndex((index) => index + 1);
             return;
         }
-
-        setStep(step + 1);
+        handleComplete();
     };
 
     const handleBack = () => {
-        if (currentStep === 'plan' && planSlide > 0) {
-            setPlanSlide(planSlide - 1);
-            return;
-        }
-        setStep(Math.max(0, step - 1));
+        setQuestionIndex((index) => Math.max(0, index - 1));
     };
 
     const handleComplete = async () => {
@@ -324,94 +348,40 @@ export default function OnboardingScreen() {
         </TouchableOpacity>
     );
 
-    const renderPlanSlide = () => {
-        if (planSlide === 0) {
-            return (
-                <View>
-                    <Text style={styles.eyebrow}>Your baseline</Text>
-                    <Text style={styles.title}>Here is the starting map</Text>
-                    <Text style={styles.subtitle}>These numbers anchor your plan. They can be adjusted later as your data improves.</Text>
-                    <View style={styles.metricGrid}>
-                        <Metric label="BMR" value={`${plan.bmr}`} detail="cal/day" color={Colors.calories} />
-                        <Metric label="TDEE" value={`${plan.tdee}`} detail="cal/day" color={Colors.secondary} />
-                        <Metric label="Height" value={measurements.heightLabel} detail="recorded" color={Colors.recovery} />
-                        <Metric label="Weight" value={measurements.weightLabel} detail="current" color={Colors.bodyComp} />
-                    </View>
-                </View>
-            );
-        }
-
-        if (planSlide === 1) {
-            return (
-                <View>
-                    <Text style={styles.eyebrow}>Goal strategy</Text>
-                    <Text style={styles.title}>{goalLabels[goal || 'maintain']} with a {pace} pace</Text>
-                    <Text style={styles.subtitle}>{plan.weeklyFocus}. {plan.recoveryFlag}</Text>
-                    <View style={styles.timeline}>
-                        <TimelineRow icon="calendar-outline" title={`${plan.trainingDaysNum} training days/week`} detail={`${plan.sessionMinutesNum} minute sessions, ${equipment || 'mixed'} setup`} />
-                        <TimelineRow icon="barbell-outline" title={`${experienceLabels[experience || 'intermediate']} progression`} detail={`Rest target around ${plan.restSeconds}s between key sets`} />
-                        <TimelineRow icon="moon-outline" title={`${plan.sleepNum}h sleep baseline`} detail={`${stressLevel || 'medium'} stress context factored into the pace`} />
-                    </View>
-                </View>
-            );
-        }
-
-        return (
-            <View>
-                <Text style={styles.eyebrow}>Nutrition targets</Text>
-                <Text style={styles.title}>Your first daily targets</Text>
-                <Text style={styles.subtitle}>A practical starting point for {trackingStyle || 'macro'} tracking across {plan.mealsNum} meals per day.</Text>
-                <View style={styles.caloriePanel}>
-                    <Text style={styles.calorieValue}>{plan.calorieTarget}</Text>
-                    <Text style={styles.calorieLabel}>calories/day</Text>
-                </View>
-                <View style={styles.macroBars}>
-                    <Macro label="Protein" value={plan.protein} color={Colors.protein} max={Math.max(plan.protein, plan.carbs, plan.fat)} />
-                    <Macro label="Carbs" value={plan.carbs} color={Colors.carbs} max={Math.max(plan.protein, plan.carbs, plan.fat)} />
-                    <Macro label="Fat" value={plan.fat} color={Colors.fat} max={Math.max(plan.protein, plan.carbs, plan.fat)} />
-                </View>
-                <Text style={styles.waterText}>Hydration target: {Math.round(plan.waterMl / 100) / 10} L/day</Text>
-            </View>
-        );
-    };
-
-    return (
-        <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-            <View style={styles.progressContainer}>
-                <View style={styles.progressBar}>
-                    <View style={[styles.progressFill, { width: `${((step + 1) / STEPS.length) * 100}%` }]} />
-                </View>
-                <Text style={styles.stepText}>{step + 1}/{STEPS.length}</Text>
-            </View>
-
-            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                {currentStep === 'body' && (
-                    <View>
-                        <Text style={styles.eyebrow}>Body profile</Text>
-                        <Text style={styles.title}>Tell us how to measure progress</Text>
-                        <Text style={styles.subtitle}>Choose the units you use every day. BodyPilot stores the math cleanly in the background.</Text>
-
+    const renderQuestion = () => {
+        switch (currentQuestion) {
+            case 'units':
+                return (
+                    <>
+                        <QuestionHeader eyebrow="Body profile" title="Which units do you use?" subtitle="This controls how BodyPilot asks for weight and height." />
                         <View style={styles.segmentRow}>
-                            {renderChip('metric', unitSystem, setUnitSystem, 'cm / kg')}
                             {renderChip('imperial', unitSystem, setUnitSystem, 'ft / lb')}
+                            {renderChip('metric', unitSystem, setUnitSystem, 'cm / kg')}
                         </View>
-
-                        <Text style={styles.sectionLabel}>Gender</Text>
-                        <View style={styles.threeColumn}>
-                            {(['male', 'female', 'other'] as const).map((item) => (
-                                <TouchableOpacity
-                                    key={item}
-                                    style={[styles.smallChoice, gender === item && styles.smallChoiceActive]}
-                                    onPress={() => setGender(item)}
-                                >
-                                    <Text style={[styles.smallChoiceText, gender === item && styles.smallChoiceTextActive]}>
-                                        {item.charAt(0).toUpperCase() + item.slice(1)}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
+                    </>
+                );
+            case 'gender':
+                return (
+                    <>
+                        <QuestionHeader eyebrow="Body profile" title="What should we use for baseline calculations?" subtitle="This helps estimate BMR and calorie targets." />
+                        <View style={styles.options}>
+                            {renderChoice('male', gender, setGender, 'Male', 'Use male BMR assumptions.', 'male-outline')}
+                            {renderChoice('female', gender, setGender, 'Female', 'Use female BMR assumptions.', 'female-outline')}
+                            {renderChoice('other', gender, setGender, 'Other', 'Use a neutral starting point.', 'person-outline')}
                         </View>
-
+                    </>
+                );
+            case 'age':
+                return (
+                    <>
+                        <QuestionHeader eyebrow="Body profile" title="How old are you?" subtitle="Age helps personalize energy and recovery estimates." />
                         <Input label="Age" placeholder="25" value={age} onChangeText={setAge} keyboardType="number-pad" maxLength={3} />
+                    </>
+                );
+            case 'height':
+                return (
+                    <>
+                        <QuestionHeader eyebrow="Body profile" title="What is your height?" subtitle="We use this for calorie estimates and body composition context." />
                         {unitSystem === 'metric' ? (
                             <Input label="Height (cm)" placeholder="175" value={heightCm} onChangeText={setHeightCm} keyboardType="number-pad" maxLength={3} />
                         ) : (
@@ -424,95 +394,131 @@ export default function OnboardingScreen() {
                                 </View>
                             </View>
                         )}
+                    </>
+                );
+            case 'weight':
+                return (
+                    <>
+                        <QuestionHeader eyebrow="Body profile" title="What is your current weight?" subtitle="This is your starting point. You can update it anytime." />
                         <Input label={`Current weight (${unitSystem === 'metric' ? 'kg' : 'lb'})`} placeholder={unitSystem === 'metric' ? '75' : '165'} value={weight} onChangeText={setWeight} keyboardType="decimal-pad" maxLength={5} />
-                    </View>
-                )}
-
-                {currentStep === 'goal' && (
-                    <View>
-                        <Text style={styles.eyebrow}>Goal design</Text>
-                        <Text style={styles.title}>What are we building toward?</Text>
-                        <Text style={styles.subtitle}>Your answer shapes calories, macros, training emphasis, and the insights you see first.</Text>
+                    </>
+                );
+            case 'goal':
+                return (
+                    <>
+                        <QuestionHeader eyebrow="Goal design" title="What are we building toward?" subtitle="This shapes calories, macros, training emphasis, and insights." />
                         <View style={styles.options}>
                             {renderChoice('lose_fat', goal, setGoal, 'Lose fat', 'Lean down while preserving muscle and energy.', 'flame-outline')}
                             {renderChoice('build_muscle', goal, setGoal, 'Build muscle', 'Prioritize growth, strength, and enough food.', 'barbell-outline')}
                             {renderChoice('recomp', goal, setGoal, 'Recomposition', 'Improve muscle and body composition together.', 'body-outline')}
-                            {renderChoice('strength', goal, setGoal, 'Get stronger', 'Focus on PRs, compounds, and recovery between heavy sessions.', 'trophy-outline')}
-                            {renderChoice('endurance', goal, setGoal, 'Improve endurance', 'Build stamina, consistency, and cardio capacity.', 'pulse-outline')}
+                            {renderChoice('strength', goal, setGoal, 'Get stronger', 'Focus on PRs, compounds, and recovery.', 'trophy-outline')}
+                            {renderChoice('endurance', goal, setGoal, 'Improve endurance', 'Build stamina and cardio capacity.', 'pulse-outline')}
                             {renderChoice('maintain', goal, setGoal, 'Maintain', 'Keep healthy habits stable and measurable.', 'shield-checkmark-outline')}
                         </View>
-                        <Input label={`Target weight (${unitSystem === 'metric' ? 'kg' : 'lb'}, optional)`} placeholder={unitSystem === 'metric' ? '72' : '158'} value={targetWeight} onChangeText={setTargetWeight} keyboardType="decimal-pad" maxLength={5} />
-                        <Text style={styles.sectionLabel}>Preferred pace</Text>
+                    </>
+                );
+            case 'targetWeight':
+                return (
+                    <>
+                        <QuestionHeader eyebrow="Goal design" title="Do you have a target weight?" subtitle="Optional. Skip this if your goal is performance or consistency first." />
+                        <Input label={`Target weight (${unitSystem === 'metric' ? 'kg' : 'lb'})`} placeholder={unitSystem === 'metric' ? '72' : '158'} value={targetWeight} onChangeText={setTargetWeight} keyboardType="decimal-pad" maxLength={5} />
+                    </>
+                );
+            case 'pace':
+                return (
+                    <>
+                        <QuestionHeader eyebrow="Goal design" title="How hard should the first plan push?" subtitle="You can adjust this later after real logs come in." />
                         <View style={styles.segmentRow}>
                             {renderChip('steady', pace, setPace, 'Steady')}
                             {renderChip('balanced', pace, setPace, 'Balanced')}
                             {renderChip('aggressive', pace, setPace, 'Focused')}
                         </View>
-                        <Text style={styles.sectionLabel}>Primary motivation</Text>
+                    </>
+                );
+            case 'motivation':
+                return (
+                    <>
+                        <QuestionHeader eyebrow="Goal design" title="What matters most right now?" subtitle="This helps BodyPilot choose the right tone and reminders." />
                         <View style={styles.options}>
                             {renderChoice('appearance', motivation, setMotivation, 'Look different', 'Body composition, confidence, and photos.', 'sparkles-outline')}
                             {renderChoice('performance', motivation, setMotivation, 'Perform better', 'Strength, stamina, sports, or gym progress.', 'flash-outline')}
                             {renderChoice('health', motivation, setMotivation, 'Feel healthier', 'Energy, habits, mobility, and longevity.', 'heart-outline')}
-                            {renderChoice('confidence', motivation, setMotivation, 'Build confidence', 'Consistency and visible proof that you are improving.', 'person-circle-outline')}
+                            {renderChoice('confidence', motivation, setMotivation, 'Build confidence', 'Consistency and visible proof.', 'person-circle-outline')}
                         </View>
-                    </View>
-                )}
-
-                {currentStep === 'training' && (
-                    <View>
-                        <Text style={styles.eyebrow}>Training setup</Text>
-                        <Text style={styles.title}>Make the plan fit your real week</Text>
-                        <Text style={styles.subtitle}>A good plan is not heroic. It fits the equipment, time, and experience you actually have.</Text>
+                    </>
+                );
+            case 'experience':
+                return (
+                    <>
+                        <QuestionHeader eyebrow="Training setup" title="What is your training experience?" subtitle="This changes progression speed and rest guidance." />
                         <View style={styles.options}>
                             {renderChoice('beginner', experience, setExperience, 'Beginner', 'New or returning after a long break.', 'leaf-outline')}
                             {renderChoice('intermediate', experience, setExperience, 'Intermediate', 'You know the basics and train consistently.', 'trending-up-outline')}
                             {renderChoice('advanced', experience, setExperience, 'Advanced', 'You track performance and manage fatigue.', 'analytics-outline')}
                             {renderChoice('elite', experience, setExperience, 'Elite', 'Highly experienced or competitive.', 'ribbon-outline')}
                         </View>
-                        <View style={styles.inputRow}>
-                            <View style={styles.inputHalf}>
-                                <Input label="Days/week" placeholder="4" value={trainingDays} onChangeText={setTrainingDays} keyboardType="number-pad" maxLength={1} />
-                            </View>
-                            <View style={styles.inputHalf}>
-                                <Input label="Minutes/session" placeholder="50" value={sessionMinutes} onChangeText={setSessionMinutes} keyboardType="number-pad" maxLength={3} />
-                            </View>
-                        </View>
-                        <Text style={styles.sectionLabel}>Equipment access</Text>
+                    </>
+                );
+            case 'trainingDays':
+                return (
+                    <>
+                        <QuestionHeader eyebrow="Training setup" title="How many days per week can you train?" subtitle="Pick the number you can actually repeat." />
+                        <Input label="Training days per week" placeholder="4" value={trainingDays} onChangeText={setTrainingDays} keyboardType="number-pad" maxLength={1} />
+                    </>
+                );
+            case 'sessionMinutes':
+                return (
+                    <>
+                        <QuestionHeader eyebrow="Training setup" title="How long is a normal workout?" subtitle="This keeps workouts realistic instead of bloated." />
+                        <Input label="Minutes per session" placeholder="50" value={sessionMinutes} onChangeText={setSessionMinutes} keyboardType="number-pad" maxLength={3} />
+                    </>
+                );
+            case 'equipment':
+                return (
+                    <>
+                        <QuestionHeader eyebrow="Training setup" title="What equipment do you have?" subtitle="A good plan fits your real setup." />
                         <View style={styles.options}>
                             {renderChoice('gym', equipment, setEquipment, 'Full gym', 'Barbells, machines, cables, cardio equipment.', 'business-outline')}
                             {renderChoice('home', equipment, setEquipment, 'Home setup', 'Dumbbells, bands, bench, or a small setup.', 'home-outline')}
                             {renderChoice('bodyweight', equipment, setEquipment, 'Bodyweight', 'Minimal equipment and movement-first plans.', 'accessibility-outline')}
                             {renderChoice('mixed', equipment, setEquipment, 'Mixed', 'Some gym days, some home or travel days.', 'shuffle-outline')}
                         </View>
-                    </View>
-                )}
-
-                {currentStep === 'nutrition' && (
-                    <View>
-                        <Text style={styles.eyebrow}>Nutrition style</Text>
-                        <Text style={styles.title}>Choose tracking that you will keep using</Text>
-                        <Text style={styles.subtitle}>We will start with targets, then adjust based on logs and progress trends.</Text>
+                    </>
+                );
+            case 'dietStyle':
+                return (
+                    <>
+                        <QuestionHeader eyebrow="Nutrition style" title="Which nutrition style fits you?" subtitle="This changes macro defaults and meal guidance." />
                         <View style={styles.options}>
                             {renderChoice('balanced', dietStyle, setDietStyle, 'Balanced', 'Flexible meals with protein, carbs, and fats.', 'restaurant-outline')}
                             {renderChoice('high_protein', dietStyle, setDietStyle, 'High protein', 'More protein-forward targets and reminders.', 'egg-outline')}
                             {renderChoice('vegetarian', dietStyle, setDietStyle, 'Vegetarian', 'Plant-forward meals with protein support.', 'leaf-outline')}
-                            {renderChoice('low_carb', dietStyle, setDietStyle, 'Lower carb', 'Higher fat and protein, lower carbohydrate target.', 'nutrition-outline')}
+                            {renderChoice('low_carb', dietStyle, setDietStyle, 'Lower carb', 'Higher fat and protein, lower carbohydrates.', 'nutrition-outline')}
                         </View>
+                    </>
+                );
+            case 'mealsPerDay':
+                return (
+                    <>
+                        <QuestionHeader eyebrow="Nutrition style" title="How many meals do you usually eat?" subtitle="This helps split targets into something usable." />
                         <Input label="Meals per day" placeholder="3" value={mealsPerDay} onChangeText={setMealsPerDay} keyboardType="number-pad" maxLength={1} />
-                        <Text style={styles.sectionLabel}>Tracking preference</Text>
+                    </>
+                );
+            case 'trackingStyle':
+                return (
+                    <>
+                        <QuestionHeader eyebrow="Nutrition style" title="How do you want to track food?" subtitle="BodyPilot can start simple and get more detailed later." />
                         <View style={styles.options}>
                             {renderChoice('simple', trackingStyle, setTrackingStyle, 'Simple targets', 'Calories, protein, and water first.', 'checkmark-done-outline')}
                             {renderChoice('macro', trackingStyle, setTrackingStyle, 'Macro detail', 'Protein, carbs, fats, and daily totals.', 'pie-chart-outline')}
                             {renderChoice('photo', trackingStyle, setTrackingStyle, 'Photo assisted', 'Use scans/photos when logging feels tedious.', 'camera-outline')}
                         </View>
-                    </View>
-                )}
-
-                {currentStep === 'lifestyle' && (
-                    <View>
-                        <Text style={styles.eyebrow}>Recovery context</Text>
-                        <Text style={styles.title}>How much load can your week handle?</Text>
-                        <Text style={styles.subtitle}>Sleep, stress, and activity help BodyPilot avoid plans that look perfect on paper and collapse by Friday.</Text>
+                    </>
+                );
+            case 'activity':
+                return (
+                    <>
+                        <QuestionHeader eyebrow="Recovery context" title="How active are you outside workouts?" subtitle="This helps estimate real daily calorie burn." />
                         <View style={styles.options}>
                             {renderChoice('sedentary', activity, setActivity, 'Mostly seated', 'Desk job, low daily movement.', 'desktop-outline')}
                             {renderChoice('light', activity, setActivity, 'Light movement', 'Some walking or errands most days.', 'walk-outline')}
@@ -520,32 +526,89 @@ export default function OnboardingScreen() {
                             {renderChoice('active', activity, setActivity, 'Active', 'Physical job or consistently high steps.', 'trail-sign-outline')}
                             {renderChoice('very_active', activity, setActivity, 'Very active', 'Athletic schedule or highly physical work.', 'flame-outline')}
                         </View>
+                    </>
+                );
+            case 'sleep':
+                return (
+                    <>
+                        <QuestionHeader eyebrow="Recovery context" title="How much do you sleep?" subtitle="Recovery affects how aggressive the plan should be." />
                         <Input label="Average sleep (hours)" placeholder="7" value={sleepHours} onChangeText={setSleepHours} keyboardType="decimal-pad" maxLength={4} />
-                        <Text style={styles.sectionLabel}>Stress level</Text>
+                    </>
+                );
+            case 'stress':
+                return (
+                    <>
+                        <QuestionHeader eyebrow="Recovery context" title="What is your stress level?" subtitle="This helps avoid plans that collapse by Friday." />
                         <View style={styles.segmentRow}>
                             {renderChip('low', stressLevel || 'medium', (v) => setStressLevel(v), 'Low')}
                             {renderChip('medium', stressLevel || 'medium', (v) => setStressLevel(v), 'Medium')}
                             {renderChip('high', stressLevel || 'medium', (v) => setStressLevel(v), 'High')}
                         </View>
-                    </View>
-                )}
-
-                {currentStep === 'plan' && (
-                    <View>
-                        {renderPlanSlide()}
-                        <View style={styles.slideDots}>
-                            {[0, 1, 2].map((dot) => <View key={dot} style={[styles.dot, planSlide === dot && styles.dotActive]} />)}
+                    </>
+                );
+            case 'planBaseline':
+                return (
+                    <>
+                        <QuestionHeader eyebrow="Your baseline" title="Here is the starting map" subtitle="These numbers anchor your plan. They can be adjusted later as your data improves." />
+                        <View style={styles.metricGrid}>
+                            <Metric label="BMR" value={`${plan.bmr}`} detail="cal/day" color={Colors.calories} />
+                            <Metric label="TDEE" value={`${plan.tdee}`} detail="cal/day" color={Colors.secondary} />
+                            <Metric label="Height" value={measurements.heightLabel} detail="recorded" color={Colors.recovery} />
+                            <Metric label="Weight" value={measurements.weightLabel} detail="current" color={Colors.bodyComp} />
                         </View>
-                    </View>
-                )}
+                    </>
+                );
+            case 'planStrategy':
+                return (
+                    <>
+                        <QuestionHeader eyebrow="Goal strategy" title={`${goalLabels[goal || 'maintain']} with a ${pace} pace`} subtitle={`${plan.weeklyFocus}. ${plan.recoveryFlag}`} />
+                        <View style={styles.timeline}>
+                            <TimelineRow icon="calendar-outline" title={`${plan.trainingDaysNum} training days/week`} detail={`${plan.sessionMinutesNum} minute sessions, ${equipment || 'mixed'} setup`} />
+                            <TimelineRow icon="barbell-outline" title={`${experienceLabels[experience || 'intermediate']} progression`} detail={`Rest target around ${plan.restSeconds}s between key sets`} />
+                            <TimelineRow icon="moon-outline" title={`${plan.sleepNum}h sleep baseline`} detail={`${stressLevel || 'medium'} stress context factored into the pace`} />
+                        </View>
+                    </>
+                );
+            case 'planNutrition':
+                return (
+                    <>
+                        <QuestionHeader eyebrow="Nutrition targets" title="Your first daily targets" subtitle={`A practical starting point for ${trackingStyle || 'macro'} tracking across ${plan.mealsNum} meals per day.`} />
+                        <View style={styles.caloriePanel}>
+                            <Text style={styles.calorieValue}>{plan.calorieTarget}</Text>
+                            <Text style={styles.calorieLabel}>calories/day</Text>
+                        </View>
+                        <View style={styles.macroBars}>
+                            <Macro label="Protein" value={plan.protein} color={Colors.protein} max={Math.max(plan.protein, plan.carbs, plan.fat)} />
+                            <Macro label="Carbs" value={plan.carbs} color={Colors.carbs} max={Math.max(plan.protein, plan.carbs, plan.fat)} />
+                            <Macro label="Fat" value={plan.fat} color={Colors.fat} max={Math.max(plan.protein, plan.carbs, plan.fat)} />
+                        </View>
+                        <Text style={styles.waterText}>Hydration target: {Math.round(plan.waterMl / 100) / 10} L/day</Text>
+                    </>
+                );
+            default:
+                return null;
+        }
+    };
+
+    return (
+        <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+            <View style={styles.progressContainer}>
+                <View style={styles.progressBar}>
+                    <View style={[styles.progressFill, { width: `${((questionIndex + 1) / QUESTIONS.length) * 100}%` }]} />
+                </View>
+                <Text style={styles.stepText}>{questionIndex + 1}/{QUESTIONS.length}</Text>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                {renderQuestion()}
             </ScrollView>
 
             <View style={styles.navButtons}>
-                {step > 0 && (
+                {questionIndex > 0 && (
                     <Button title="Back" onPress={handleBack} variant="ghost" fullWidth={false} style={styles.backButton} />
                 )}
                 <Button
-                    title={currentStep === 'plan' ? (planSlide < 2 ? 'Next insight' : 'Start my plan') : 'Continue'}
+                    title={questionIndex === QUESTIONS.length - 1 ? 'Start my plan' : isPlanQuestion ? 'Next insight' : 'Next'}
                     onPress={handleNext}
                     disabled={!canProceed() || saving}
                     loading={saving}
@@ -554,6 +617,16 @@ export default function OnboardingScreen() {
                 />
             </View>
         </KeyboardAvoidingView>
+    );
+}
+
+function QuestionHeader({ eyebrow, title, subtitle }: { eyebrow: string; title: string; subtitle: string }) {
+    return (
+        <View>
+            <Text style={styles.eyebrow}>{eyebrow}</Text>
+            <Text style={styles.title}>{title}</Text>
+            <Text style={styles.subtitle}>{subtitle}</Text>
+        </View>
     );
 }
 
@@ -621,13 +694,14 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.primary,
     },
     stepText: {
-        width: 34,
+        width: 50,
         color: Colors.textSecondary,
         fontSize: FontSize.sm,
         fontWeight: FontWeight.medium,
         textAlign: 'right',
     },
     scrollContent: {
+        flexGrow: 1,
         paddingHorizontal: Spacing.xxl,
         paddingBottom: Spacing.huge,
     },
@@ -649,14 +723,7 @@ const styles = StyleSheet.create({
         color: Colors.textSecondary,
         fontSize: FontSize.md,
         lineHeight: 22,
-        marginBottom: Spacing.xxl,
-    },
-    sectionLabel: {
-        color: Colors.textSecondary,
-        fontSize: FontSize.sm,
-        fontWeight: FontWeight.semibold,
-        marginTop: Spacing.sm,
-        marginBottom: Spacing.sm,
+        marginBottom: Spacing.xxxl,
     },
     segmentRow: {
         flexDirection: 'row',
@@ -665,7 +732,7 @@ const styles = StyleSheet.create({
     },
     segment: {
         flex: 1,
-        minHeight: 44,
+        minHeight: 48,
         alignItems: 'center',
         justifyContent: 'center',
         borderRadius: BorderRadius.md,
@@ -686,33 +753,6 @@ const styles = StyleSheet.create({
     },
     segmentTextActive: {
         color: Colors.textInverse,
-    },
-    threeColumn: {
-        flexDirection: 'row',
-        gap: Spacing.sm,
-        marginBottom: Spacing.xl,
-    },
-    smallChoice: {
-        flex: 1,
-        minHeight: 46,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderRadius: BorderRadius.md,
-        backgroundColor: Colors.surface,
-        borderWidth: 1,
-        borderColor: Colors.borderLight,
-    },
-    smallChoiceActive: {
-        borderColor: Colors.primary,
-        backgroundColor: Colors.surfaceLight,
-    },
-    smallChoiceText: {
-        color: Colors.textSecondary,
-        fontSize: FontSize.md,
-        fontWeight: FontWeight.semibold,
-    },
-    smallChoiceTextActive: {
-        color: Colors.primary,
     },
     inputRow: {
         flexDirection: 'row',
@@ -893,22 +933,6 @@ const styles = StyleSheet.create({
         fontSize: FontSize.md,
         textAlign: 'center',
         marginTop: Spacing.xl,
-    },
-    slideDots: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        gap: Spacing.sm,
-        marginTop: Spacing.xxxl,
-    },
-    dot: {
-        width: 8,
-        height: 8,
-        borderRadius: BorderRadius.full,
-        backgroundColor: Colors.borderLight,
-    },
-    dotActive: {
-        width: 24,
-        backgroundColor: Colors.primary,
     },
     navButtons: {
         flexDirection: 'row',

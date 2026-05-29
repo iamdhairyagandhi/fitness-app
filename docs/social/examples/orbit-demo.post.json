@@ -1,0 +1,23 @@
+{
+  "id": "BP-001",
+  "status": "Draft",
+  "platforms": ["instagram", "tiktok"],
+  "accounts": {
+    "instagram": "bodypilot.ai",
+    "tiktok": "bodypilot.ai"
+  },
+  "contentType": "reel",
+  "mediaUrl": "https://example.com/bodypilot-orbit-demo.mp4",
+  "caption": "Stop tracking fitness in five different places. BodyPilot brings workouts, macros, progress, recovery, and AI coaching into one app.\n\n#fitnessapp #workouttracker #nutritiontracker #gymtok #fitnesstech #aifitness",
+  "instagram": {
+    "shareToFeed": true
+  },
+  "tiktok": {
+    "privacyLevel": "PUBLIC_TO_EVERYONE",
+    "disableDuet": false,
+    "disableComment": false,
+    "disableStitch": false,
+    "brandOrganicToggle": true,
+    "isAigc": false
+  }
+}

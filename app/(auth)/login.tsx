@@ -1,7 +1,9 @@
 import { Button, Input, toast } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
-import { signInWithApple, signInWithGoogle } from '@/lib/auth';
+import { isReviewerDemoLogin, signInWithApple, signInWithGoogle } from '@/lib/auth';
 import { hydrateAllStores } from '@/lib/db';
+import { getLocalDateKey } from '@/lib/date';
+import { buildNutritionSummary } from '@/lib/nutritionSummary';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
 import { useMealPlanStore } from '@/stores/mealPlanStore';
@@ -9,7 +11,6 @@ import { useNutritionStore } from '@/stores/nutritionStore';
 import { useProgressStore } from '@/stores/progressStore';
 import { useRecoveryStore } from '@/stores/recoveryStore';
 import { useWorkoutStore } from '@/stores/workoutStore';
-import type { FoodLogEntry, MealType } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import type { Session } from '@supabase/supabase-js';
 import { router } from 'expo-router';
@@ -30,6 +31,7 @@ export default function LoginScreen() {
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
+    const [acceptedTerms, setAcceptedTerms] = useState(false);
     const { setSession, setUser, setOnboarded } = useAuthStore();
 
     const finishLogin = async (session: Session) => {
@@ -56,20 +58,9 @@ export default function LoginScreen() {
                 if (hydrated.templates.length) ws.setTemplates(hydrated.templates);
                 if (hydrated.personalRecords.length) ws.setPersonalRecords(hydrated.personalRecords);
 
-                if (hydrated.foodLogs.length || hydrated.waterLogs.length) {
-                    const meals: Record<MealType, FoodLogEntry[]> = { breakfast: [], lunch: [], dinner: [], snack: [] };
-                    let cal = 0, p = 0, c = 0, f = 0;
-                    for (const fl of hydrated.foodLogs) {
-                        meals[fl.meal_type].push(fl);
-                        cal += fl.calories; p += fl.protein_g; c += fl.carbs_g; f += fl.fat_g;
-                    }
-                    const water = hydrated.waterLogs.reduce((s, w) => s + w.amount_ml, 0);
-                    useNutritionStore.getState().setTodaySummary({
-                        date: new Date().toISOString().split('T')[0],
-                        total_calories: cal, total_protein_g: p, total_carbs_g: c, total_fat_g: f, total_fiber_g: 0,
-                        water_ml: water, meals,
-                    });
-                }
+                const nutritionStore = useNutritionStore.getState();
+                nutritionStore.setNutritionHistory(hydrated.nutritionHistory);
+                nutritionStore.setTodaySummary(buildNutritionSummary(getLocalDateKey(), hydrated.foodLogs, hydrated.waterLogs));
 
                 const ps = useProgressStore.getState();
                 if (hydrated.weightEntries.length) ps.setWeightEntries(hydrated.weightEntries);
@@ -106,8 +97,52 @@ export default function LoginScreen() {
         }
     };
 
+    const startReviewerDemo = () => {
+        const now = new Date().toISOString();
+        setSession({ access_token: 'review-demo-session' });
+        setUser({
+            id: 'review-demo-user',
+            email: 'app-review@bodypilot.app',
+            display_name: 'Apple Reviewer',
+            username: 'apple_reviewer',
+            avatar_url: 'character:bolt',
+            bio: 'BodyPilot review demo account',
+            phone_number: null,
+            date_of_birth: null,
+            gender: null,
+            height_cm: 178,
+            weight_kg: 78,
+            current_weight_kg: 78,
+            activity_level: 'moderate',
+            goal: 'recomp',
+            experience_level: 'intermediate',
+            daily_calorie_target: 2200,
+            protein_target_g: 165,
+            carbs_target_g: 230,
+            fat_target_g: 70,
+            water_goal_ml: 2800,
+            unit_system: 'imperial',
+            preferred_rest_seconds: 90,
+            created_at: now,
+            updated_at: now,
+            streak_count: 4,
+            xp: 620,
+            level: 3,
+            workouts_completed: 8,
+            last_workout_date: now,
+        });
+        setOnboarded(true);
+        toast.success('Review Access', 'Reviewer account is ready.');
+        router.replace('/(tabs)');
+    };
+
     const handleLogin = async () => {
         setErrorMsg('');
+        if (!acceptedTerms) {
+            setErrorMsg('Please agree to the Terms before signing in.');
+            return;
+        }
+
         if (!email.trim() || !password.trim()) {
             setErrorMsg('Please fill in all fields');
             return;
@@ -115,6 +150,11 @@ export default function LoginScreen() {
 
         setLoading(true);
         try {
+            if (isReviewerDemoLogin(email, password)) {
+                startReviewerDemo();
+                return;
+            }
+
             const { data, error } = await supabase.auth.signInWithPassword({
                 email: email.trim(),
                 password,
@@ -143,6 +183,11 @@ export default function LoginScreen() {
 
     const handleSocialLogin = async (signIn: () => Promise<any>, label: 'Google' | 'Apple') => {
         setErrorMsg('');
+        if (!acceptedTerms) {
+            setErrorMsg(`Please agree to the Terms before continuing with ${label}.`);
+            return;
+        }
+
         setLoading(true);
         try {
             const result = await signIn();
@@ -215,10 +260,13 @@ export default function LoginScreen() {
                         <Text style={styles.forgotPasswordText}>Forgot password?</Text>
                     </TouchableOpacity>
 
+                    <TermsAcceptance accepted={acceptedTerms} onToggle={() => setAcceptedTerms((value) => !value)} />
+
                     <Button
                         title="Sign In"
                         onPress={handleLogin}
                         loading={loading}
+                        disabled={!acceptedTerms}
                         size="lg"
                     />
 
@@ -236,14 +284,16 @@ export default function LoginScreen() {
                     {/* Social buttons */}
                     <View style={styles.socialButtons}>
                         <TouchableOpacity
-                            style={styles.socialButton}
+                            style={[styles.socialButton, !acceptedTerms && styles.socialButtonDisabled]}
                             onPress={() => handleSocialLogin(signInWithGoogle, 'Google')}
+                            disabled={!acceptedTerms || loading}
                         >
                             <Ionicons name="logo-google" size={22} color={Colors.text} />
                         </TouchableOpacity>
                         <TouchableOpacity
-                            style={styles.socialButton}
+                            style={[styles.socialButton, !acceptedTerms && styles.socialButtonDisabled]}
                             onPress={() => handleSocialLogin(signInWithApple, 'Apple')}
+                            disabled={!acceptedTerms || loading}
                         >
                             <Ionicons name="logo-apple" size={22} color={Colors.text} />
                         </TouchableOpacity>
@@ -260,6 +310,25 @@ export default function LoginScreen() {
                 </View>
             </ScrollView>
         </KeyboardAvoidingView>
+    );
+}
+
+function TermsAcceptance({ accepted, onToggle }: { accepted: boolean; onToggle: () => void }) {
+    return (
+        <View style={styles.termsWrap}>
+            <TouchableOpacity style={styles.termsRow} onPress={onToggle} activeOpacity={0.78}>
+                <View style={[styles.checkbox, accepted && styles.checkboxActive]}>
+                    {accepted ? <Ionicons name="checkmark" size={15} color={Colors.textInverse} /> : null}
+                </View>
+                <Text style={styles.termsText}>
+                    I agree to the{' '}
+                    <Text style={styles.termsLink} onPress={() => router.push('/terms' as any)}>
+                        Terms of Service
+                    </Text>
+                    , including the no-tolerance policy for objectionable content and abusive users.
+                </Text>
+            </TouchableOpacity>
+        </View>
     );
 }
 
@@ -338,6 +407,41 @@ const styles = StyleSheet.create({
         borderColor: Colors.border,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    socialButtonDisabled: {
+        opacity: 0.45,
+    },
+    termsWrap: {
+        marginBottom: Spacing.lg,
+    },
+    termsRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: Spacing.sm,
+    },
+    checkbox: {
+        width: 22,
+        height: 22,
+        borderRadius: 6,
+        borderWidth: 1.5,
+        borderColor: Colors.borderLight,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 1,
+    },
+    checkboxActive: {
+        backgroundColor: Colors.primary,
+        borderColor: Colors.primary,
+    },
+    termsText: {
+        flex: 1,
+        color: Colors.textSecondary,
+        fontSize: FontSize.xs,
+        lineHeight: 18,
+    },
+    termsLink: {
+        color: Colors.primary,
+        fontWeight: FontWeight.bold,
     },
     footer: {
         flexDirection: 'row',

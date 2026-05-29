@@ -39,7 +39,7 @@ const AI_FUNCTIONS = [
                         properties: {
                             exercise_name: { type: 'string' },
                             sets: { type: 'number' },
-                            reps: { type: 'string', description: 'e.g. "8-12" or "5"' },
+                            reps: { type: 'string', description: 'single target rep number only, e.g. "10" or "5"; do not return rep ranges' },
                             rest_seconds: { type: 'number' },
                             notes: { type: 'string' },
                         },
@@ -200,6 +200,7 @@ ${context.focusMuscles?.length ? `Focus muscles: ${context.focusMuscles.join(', 
 ${context.durationMin ? `Target duration: ${context.durationMin} min` : ''}
 ${context.equipment?.length ? `Available equipment: ${context.equipment.join(', ')}` : 'All equipment available'}
 ${context.recentWorkouts?.length ? `Recent workouts (avoid overlap): ${context.recentWorkouts.join(', ')}` : ''}
+Use one exact rep target per exercise. Do not use rep ranges like 8-12.
 
 You MUST call the create_workout function with the workout data.`,
         },

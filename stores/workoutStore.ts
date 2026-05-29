@@ -1,7 +1,7 @@
 import { DEFAULT_REST_SECONDS } from '@/constants/config';
 import { savePersonalRecords, saveWorkoutSession } from '@/lib/db';
 import { applyXPReward, calculateStreak } from '@/lib/gamification';
-import { postActivity } from '@/lib/socialDb';
+import { postActivity, syncWorkoutChallengeProgress } from '@/lib/socialDb';
 import AsyncStorage from '@/lib/storage';
 import { generateId } from '@/lib/utils';
 import type {
@@ -20,6 +20,10 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { useAuthStore } from './authStore';
 
 function parseTargetReps(targetReps: string): number | null {
+    const range = targetReps.match(/(\d+)\s*[-–]\s*(\d+)/);
+    if (range) {
+        return Math.max(1, Math.round((Number(range[1]) + Number(range[2])) / 2));
+    }
     const firstNumber = targetReps.match(/\d+/)?.[0];
     return firstNumber ? Number(firstNumber) : null;
 }
@@ -41,6 +45,11 @@ interface WorkoutState {
     startWorkout: (name: string, templateId?: string, mode?: WorkoutMode) => void;
     startWorkoutFromTemplate: (template: WorkoutTemplate) => void;
     finishWorkout: () => WorkoutSession | null;
+    logCompletedWorkout: (input: {
+        name: string;
+        durationMinutes?: number | null;
+        notes?: string | null;
+    }) => WorkoutSession;
     discardWorkout: () => void;
     addExerciseToWorkout: (exercise: Exercise) => void;
     removeExerciseFromWorkout: (exerciseIndex: number) => void;
@@ -256,6 +265,7 @@ export const useWorkoutStore = create<WorkoutState>()(
                     `${finished.exercises.length} exercises · ${durationMin}min · ${Math.round(totalVolume)}kg volume`,
                     { duration_min: durationMin, volume_kg: Math.round(totalVolume), exercise_count: finished.exercises.length },
                 ).catch(() => { });
+                syncWorkoutChallengeProgress({ totalVolumeKg: totalVolume, workoutCount: 1 }).catch(() => { });
 
                 if (newPRs.length > 0) {
                     for (const pr of newPRs) {
@@ -308,6 +318,84 @@ export const useWorkoutStore = create<WorkoutState>()(
                     // Update weekly challenge progress
                     const challenges = recoveryState.challenges;
                     const activeChallenge = challenges.find((c: { status: string }) => c.status === 'active');
+                    if (activeChallenge) {
+                        recoveryState.updateChallengeProgress(activeChallenge.id, 1);
+                    }
+                }
+
+                return finished;
+            },
+
+            logCompletedWorkout: ({ name, durationMinutes, notes }) => {
+                const completedAt = new Date();
+                const safeDurationMinutes = Math.max(1, Math.round(durationMinutes ?? 30));
+                const startedAt = new Date(completedAt.getTime() - safeDurationMinutes * 60 * 1000);
+
+                const finished: WorkoutSession = {
+                    id: generateId(),
+                    user_id: '',
+                    template_id: null,
+                    name,
+                    started_at: startedAt.toISOString(),
+                    completed_at: completedAt.toISOString(),
+                    duration_seconds: safeDurationMinutes * 60,
+                    total_volume_kg: 0,
+                    notes: notes ?? 'Logged by Orbit',
+                    mood: null,
+                    exercises: [],
+                    workout_mode: 'standard',
+                    superset_groups: [],
+                };
+
+                set({
+                    recentWorkouts: [finished, ...get().recentWorkouts],
+                });
+
+                saveWorkoutSession(finished).catch(() => { });
+
+                postActivity(
+                    'workout_completed',
+                    `Completed ${finished.name}`,
+                    `${safeDurationMinutes}min · logged by Orbit`,
+                    { duration_min: safeDurationMinutes, volume_kg: 0, exercise_count: 0, source: 'orbit' },
+                ).catch(() => { });
+                syncWorkoutChallengeProgress({ totalVolumeKg: 0, workoutCount: 1 }).catch(() => { });
+
+                const authState = useAuthStore.getState();
+                if (authState.user) {
+                    const user = authState.user;
+                    const isFirst = get().recentWorkouts.length === 1;
+                    const xpUpdate = applyXPReward(user, isFirst ? 'FIRST_WORKOUT' : 'COMPLETE_WORKOUT');
+                    const newStreak = calculateStreak(user.last_workout_date || null, user.streak_count);
+
+                    let mergedUpdate: Partial<UserProfile> = {
+                        ...xpUpdate,
+                        streak_count: newStreak,
+                        workouts_completed: (user.workouts_completed || 0) + 1,
+                        last_workout_date: completedAt.toISOString(),
+                    };
+
+                    if (newStreak > 1) {
+                        const streakUpdate = applyXPReward(
+                            { ...user, ...xpUpdate },
+                            'MAINTAIN_STREAK',
+                        );
+                        mergedUpdate = { ...mergedUpdate, ...streakUpdate };
+                    }
+
+                    authState.updateUser(mergedUpdate);
+
+                    const { useRecoveryStore } = require('./recoveryStore');
+                    const recoveryState = useRecoveryStore.getState();
+                    recoveryState.checkAchievements({
+                        workouts_completed: (user.workouts_completed || 0) + 1,
+                        streak_days: newStreak,
+                        prs_set: get().personalRecords.length,
+                        total_volume: get().recentWorkouts.reduce((s, w) => s + (w.total_volume_kg || 0), 0),
+                        level: (xpUpdate.level || user.level || 1),
+                    });
+
+                    const activeChallenge = recoveryState.challenges.find((c: { status: string }) => c.status === 'active');
                     if (activeChallenge) {
                         recoveryState.updateChallengeProgress(activeChallenge.id, 1);
                     }

@@ -22,6 +22,8 @@ import type {
     WorkoutSession,
     WorkoutTemplate,
 } from '@/types';
+import { getLocalDateKey, getLocalDayBounds, getRecentLocalDateKeys } from './date';
+import { buildNutritionSummary } from './nutritionSummary';
 import { supabase } from './supabase';
 
 // ── Helpers ──────────────────────────────────────────────────
@@ -95,6 +97,15 @@ export async function upsertProfile(profile: Partial<UserProfile> & { id: string
         console.warn('upsertProfile error:', error.message);
         throw error;
     }
+}
+
+export async function claimLatestOnboardingLead(): Promise<boolean> {
+    const { data, error } = await supabase.rpc('claim_latest_onboarding_lead');
+    if (error) {
+        console.warn('claimLatestOnboardingLead error:', error.message);
+        return false;
+    }
+    return Boolean(data);
 }
 
 // ── Exercises ────────────────────────────────────────────────
@@ -314,16 +325,14 @@ function mapFoodItem(d: any): FoodItem {
 // ── Food Logs ────────────────────────────────────────────────
 
 export async function fetchFoodLogs(userId: string, date: string): Promise<FoodLogEntry[]> {
-    // date format: 'YYYY-MM-DD'
-    const startOfDay = `${date}T00:00:00`;
-    const endOfDay = `${date}T23:59:59`;
+    const { startIso, endIso } = getLocalDayBounds(date);
 
     const { data, error } = await supabase
         .from('food_log')
         .select('*, food_items(*)')
         .eq('user_id', userId)
-        .gte('logged_at', startOfDay)
-        .lte('logged_at', endOfDay)
+        .gte('logged_at', startIso)
+        .lte('logged_at', endIso)
         .order('logged_at');
 
     if (error || !data) return [];
@@ -352,6 +361,10 @@ export async function fetchFoodLogs(userId: string, date: string): Promise<FoodL
 }
 
 export async function saveFoodLog(entry: FoodLogEntry) {
+    if (entry.food_item.is_custom) {
+        await saveFoodItem(entry.food_item);
+    }
+
     const userId = await getAuthUserId();
     const { error } = await supabase.from('food_log').upsert({
         id: entry.id,
@@ -365,6 +378,7 @@ export async function saveFoodLog(entry: FoodLogEntry) {
         carbs_g: entry.carbs_g,
         fat_g: entry.fat_g,
         notes: entry.notes,
+        photo_uri: entry.photo_uri,
     });
 
     if (error) console.warn('saveFoodLog error:', error.message);
@@ -378,15 +392,14 @@ export async function deleteFoodLog(entryId: string) {
 // ── Water Logs ───────────────────────────────────────────────
 
 export async function fetchWaterLogs(userId: string, date: string): Promise<WaterLog[]> {
-    const startOfDay = `${date}T00:00:00`;
-    const endOfDay = `${date}T23:59:59`;
+    const { startIso, endIso } = getLocalDayBounds(date);
 
     const { data, error } = await supabase
         .from('water_log')
         .select('*')
         .eq('user_id', userId)
-        .gte('logged_at', startOfDay)
-        .lte('logged_at', endOfDay);
+        .gte('logged_at', startIso)
+        .lte('logged_at', endIso);
 
     if (error || !data) return [];
 
@@ -408,6 +421,80 @@ export async function saveWaterLog(log: WaterLog) {
     });
 
     if (error) console.warn('saveWaterLog error:', error.message);
+}
+
+export async function fetchNutritionHistory(userId: string, days = 30) {
+    const dateKeys = getRecentLocalDateKeys(days);
+    const firstDay = dateKeys[0];
+    const lastDay = dateKeys[dateKeys.length - 1];
+    const { startIso } = getLocalDayBounds(firstDay);
+    const { endIso } = getLocalDayBounds(lastDay);
+
+    const [foodResult, waterResult] = await Promise.all([
+        supabase
+            .from('food_log')
+            .select('*, food_items(*)')
+            .eq('user_id', userId)
+            .gte('logged_at', startIso)
+            .lte('logged_at', endIso)
+            .order('logged_at'),
+        supabase
+            .from('water_log')
+            .select('*')
+            .eq('user_id', userId)
+            .gte('logged_at', startIso)
+            .lte('logged_at', endIso)
+            .order('logged_at'),
+    ]);
+
+    if (foodResult.error) console.warn('fetchNutritionHistory food error:', foodResult.error.message);
+    if (waterResult.error) console.warn('fetchNutritionHistory water error:', waterResult.error.message);
+
+    const foodByDate = new Map<string, FoodLogEntry[]>();
+    const waterByDate = new Map<string, WaterLog[]>();
+
+    (foodResult.data || []).forEach((fl) => {
+        const dateKey = getLocalDateKey(new Date(fl.logged_at));
+        const entry: FoodLogEntry = {
+            id: fl.id,
+            user_id: fl.user_id,
+            food_item_id: fl.food_item_id,
+            food_item: fl.food_items ? mapFoodItem(fl.food_items) : {
+                id: fl.food_item_id, name: 'Unknown', brand: null, barcode: null,
+                serving_size_g: 100, serving_unit: 'g', calories: fl.calories,
+                protein_g: fl.protein_g, carbs_g: fl.carbs_g, fat_g: fl.fat_g,
+                fiber_g: null, sugar_g: null, sodium_mg: null, is_custom: false,
+                user_id: null, image_url: null,
+            },
+            meal_type: fl.meal_type,
+            servings: fl.servings,
+            logged_at: fl.logged_at,
+            calories: fl.calories,
+            protein_g: fl.protein_g,
+            carbs_g: fl.carbs_g,
+            fat_g: fl.fat_g,
+            notes: fl.notes,
+            photo_uri: fl.photo_uri || null,
+        };
+        foodByDate.set(dateKey, [...(foodByDate.get(dateKey) || []), entry]);
+    });
+
+    (waterResult.data || []).forEach((w) => {
+        const dateKey = getLocalDateKey(new Date(w.logged_at));
+        const log: WaterLog = {
+            id: w.id,
+            user_id: w.user_id,
+            amount_ml: w.amount_ml,
+            logged_at: w.logged_at,
+        };
+        waterByDate.set(dateKey, [...(waterByDate.get(dateKey) || []), log]);
+    });
+
+    return dateKeys.map((date) => buildNutritionSummary(
+        date,
+        foodByDate.get(date) || [],
+        waterByDate.get(date) || []
+    ));
 }
 
 // ── Weight Entries ───────────────────────────────────────────
@@ -803,6 +890,8 @@ export async function saveSupplementLog(log: SupplementLog) {
 // Call this once after login to load all user data into Zustand
 
 export async function hydrateAllStores(userId: string) {
+    await claimLatestOnboardingLead();
+
     const [
         profile,
         exercises,
@@ -818,6 +907,7 @@ export async function hydrateAllStores(userId: string) {
         dietProfile,
         fastingSessions,
         supplements,
+        nutritionHistory,
     ] = await Promise.all([
         fetchProfile(userId),
         fetchExercises(),
@@ -833,10 +923,11 @@ export async function hydrateAllStores(userId: string) {
         fetchDietProfile(userId),
         fetchFastingSessions(userId),
         fetchSupplements(userId),
+        fetchNutritionHistory(userId, 30),
     ]);
 
     // Also fetch today's nutrition
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateKey();
     const [foodLogs, waterLogs] = await Promise.all([
         fetchFoodLogs(userId, today),
         fetchWaterLogs(userId, today),
@@ -857,6 +948,7 @@ export async function hydrateAllStores(userId: string) {
         dietProfile,
         fastingSessions,
         supplements,
+        nutritionHistory,
         foodLogs,
         waterLogs,
     };

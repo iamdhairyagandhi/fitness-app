@@ -6,6 +6,7 @@
 import type {
     ActivityFeedItem,
     ActivityType,
+    ActivityVisibility,
     ChallengeParticipant,
     Comment,
     FollowRelation,
@@ -23,10 +24,32 @@ async function getAuthUserId(): Promise<string | null> {
     return data.session?.user?.id || null;
 }
 
+async function getFollowingIds(userId: string): Promise<string[]> {
+    const { data, error } = await supabase
+        .from('followers')
+        .select('following_id')
+        .eq('follower_id', userId)
+        .eq('status', 'accepted');
+
+    if (error || !data) return [];
+    return data.map((row) => row.following_id as string);
+}
+
+async function getBlockedIds(userId: string): Promise<string[]> {
+    const { data, error } = await supabase
+        .from('blocked_users')
+        .select('blocked_id')
+        .eq('blocker_id', userId);
+
+    if (error || !data) return [];
+    return data.map((row) => row.blocked_id as string);
+}
+
 // ── Profile Search ───────────────────────────────────────────
 
 export async function searchUsers(query: string): Promise<PublicProfile[]> {
     const userId = await getAuthUserId();
+    const blockedIds = userId ? await getBlockedIds(userId) : [];
     const { data, error } = await supabase
         .from('profiles')
         .select('id, display_name, username, avatar_url, bio, is_public, level, xp, streak_count, workouts_completed')
@@ -38,7 +61,7 @@ export async function searchUsers(query: string): Promise<PublicProfile[]> {
 
     // Check follow status for each result
     const enriched: PublicProfile[] = [];
-    for (const p of data) {
+    for (const p of data.filter((profile) => !blockedIds.includes(profile.id))) {
         let follow_status: 'none' | 'pending' | 'accepted' = 'none';
         if (userId) {
             const { data: rel } = await supabase
@@ -104,10 +127,16 @@ export async function followUser(targetUserId: string): Promise<boolean> {
     const userId = await getAuthUserId();
     if (!userId) return false;
 
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_public')
+        .eq('id', targetUserId)
+        .single();
+
     const { error } = await supabase.from('followers').insert({
         follower_id: userId,
         following_id: targetUserId,
-        status: 'accepted', // Auto-accept for now; change to 'pending' for private profiles
+        status: profile?.is_public === false ? 'pending' : 'accepted',
     });
     return !error;
 }
@@ -154,35 +183,53 @@ export async function fetchFollowing(targetUserId: string): Promise<FollowRelati
 
 // ── Activity Feed ────────────────────────────────────────────
 
-export async function fetchActivityFeed(page = 0, limit = 20): Promise<ActivityFeedItem[]> {
+export async function fetchActivityFeed(
+    page = 0,
+    limit = 20,
+    mode: 'following' | 'discover' = 'following',
+): Promise<ActivityFeedItem[]> {
     const userId = await getAuthUserId();
     const offset = page * limit;
+    const followingIds = userId ? await getFollowingIds(userId) : [];
+    const blockedIds = userId ? await getBlockedIds(userId) : [];
 
-    const { data, error } = await supabase
+    if (mode === 'following' && followingIds.length === 0) return [];
+
+    let query = supabase
         .from('activity_feed')
         .select(`
             id, user_id, activity_type, title, description, metadata, is_public, created_at,
             profiles!activity_feed_user_id_fkey(display_name, username, avatar_url, level)
         `)
-        .order('created_at', { ascending: false })
-        .range(offset, offset + limit - 1);
+        .order('created_at', { ascending: false });
+
+    if (mode === 'following') {
+        query = query.in('user_id', followingIds);
+    } else {
+        query = query.eq('is_public', true);
+        if (followingIds.length > 0) query = query.not('user_id', 'in', `(${followingIds.join(',')})`);
+    }
+    if (blockedIds.length > 0) query = query.not('user_id', 'in', `(${blockedIds.join(',')})`);
+
+    const { data, error } = await query.range(offset, offset + limit - 1);
 
     if (error || !data) return [];
 
     // Enrich with reaction/comment counts + user's reaction
     const items: ActivityFeedItem[] = [];
     for (const row of data as any[]) {
-        const { data: rxCount } = await supabase
+        const { count: reactionsCount } = await supabase
             .from('reactions')
             .select('id', { count: 'exact', head: true })
             .eq('activity_id', row.id);
 
-        const { data: cmtCount } = await supabase
+        const { count: commentsCount } = await supabase
             .from('comments')
             .select('id', { count: 'exact', head: true })
             .eq('activity_id', row.id);
 
         let user_reaction: ReactionType | null = null;
+        let is_saved = false;
         if (userId) {
             const { data: myRx } = await supabase
                 .from('reactions')
@@ -191,6 +238,14 @@ export async function fetchActivityFeed(page = 0, limit = 20): Promise<ActivityF
                 .eq('user_id', userId)
                 .single();
             if (myRx) user_reaction = myRx.reaction_type as ReactionType;
+
+            const { data: saved } = await supabase
+                .from('saved_activities')
+                .select('id')
+                .eq('activity_id', row.id)
+                .eq('user_id', userId)
+                .single();
+            is_saved = !!saved;
         }
 
         items.push({
@@ -201,11 +256,13 @@ export async function fetchActivityFeed(page = 0, limit = 20): Promise<ActivityF
             description: row.description,
             metadata: row.metadata || {},
             is_public: row.is_public,
+            visibility: (row.metadata?.visibility || (row.is_public ? 'public' : 'followers')) as ActivityVisibility,
             created_at: row.created_at,
             profile: row.profiles || undefined,
-            reactions_count: (rxCount as any)?.length ?? 0,
-            comments_count: (cmtCount as any)?.length ?? 0,
+            reactions_count: reactionsCount || 0,
+            comments_count: commentsCount || 0,
             user_reaction,
+            is_saved,
         });
     }
     return items;
@@ -245,24 +302,95 @@ export async function postActivity(
     title: string,
     description?: string,
     metadata?: Record<string, unknown>,
+    visibility: ActivityVisibility = 'public',
 ): Promise<string | null> {
     const userId = await getAuthUserId();
     if (!userId) return null;
 
+    const basePayload = {
+        user_id: userId,
+        activity_type: activityType,
+        title,
+        description: description || null,
+        metadata: { ...(metadata || {}), visibility },
+        is_public: visibility === 'public',
+    };
+
     const { data, error } = await supabase
         .from('activity_feed')
         .insert({
-            user_id: userId,
-            activity_type: activityType,
-            title,
-            description: description || null,
-            metadata: metadata || {},
+            ...basePayload,
+            visibility,
         })
         .select('id')
         .single();
 
+    if (error?.message?.includes('visibility')) {
+        const fallback = await supabase
+            .from('activity_feed')
+            .insert(basePayload)
+            .select('id')
+            .single();
+        if (fallback.error || !fallback.data) return null;
+        return fallback.data.id;
+    }
+
     if (error || !data) return null;
     return data.id;
+}
+
+export async function toggleSavedActivity(activityId: string, shouldSave: boolean): Promise<boolean> {
+    const userId = await getAuthUserId();
+    if (!userId) return false;
+
+    if (!shouldSave) {
+        const { error } = await supabase
+            .from('saved_activities')
+            .delete()
+            .eq('activity_id', activityId)
+            .eq('user_id', userId);
+        return !error;
+    }
+
+    const { error } = await supabase
+        .from('saved_activities')
+        .upsert({ activity_id: activityId, user_id: userId }, { onConflict: 'user_id,activity_id' });
+    return !error;
+}
+
+export async function reportActivity(
+    activityId: string,
+    targetUserId: string,
+    reason = 'inappropriate',
+    details?: string,
+): Promise<boolean> {
+    const userId = await getAuthUserId();
+    if (!userId) return false;
+
+    const { error } = await supabase.from('activity_reports').upsert({
+        reporter_id: userId,
+        activity_id: activityId,
+        target_user_id: targetUserId,
+        reason,
+        details: details || null,
+    }, { onConflict: 'reporter_id,activity_id' });
+    return !error;
+}
+
+export async function blockUser(targetUserId: string): Promise<boolean> {
+    const userId = await getAuthUserId();
+    if (!userId || userId === targetUserId) return false;
+
+    const { error } = await supabase
+        .from('blocked_users')
+        .upsert({ blocker_id: userId, blocked_id: targetUserId }, { onConflict: 'blocker_id,blocked_id' });
+
+    if (!error) {
+        await supabase.from('followers').delete().eq('follower_id', userId).eq('following_id', targetUserId);
+        await supabase.from('followers').delete().eq('follower_id', targetUserId).eq('following_id', userId);
+    }
+
+    return !error;
 }
 
 // ── Reactions ────────────────────────────────────────────────
@@ -476,6 +604,80 @@ export async function updateChallengeProgress(challengeId: string, value: number
         .eq('challenge_id', challengeId)
         .eq('user_id', userId);
     return !error;
+}
+
+export async function syncWorkoutChallengeProgress({
+    totalVolumeKg,
+    workoutCount = 1,
+}: {
+    totalVolumeKg: number;
+    workoutCount?: number;
+}): Promise<void> {
+    const userId = await getAuthUserId();
+    if (!userId) return;
+
+    const { data, error } = await supabase
+        .from('challenge_participants')
+        .select(`
+            id, challenge_id, current_value, status,
+            social_challenges!inner(id, title, challenge_type, target_value, unit, end_date)
+        `)
+        .eq('user_id', userId)
+        .eq('status', 'active');
+
+    if (error || !data) return;
+
+    for (const participant of data as any[]) {
+        const challenge = participant.social_challenges;
+        if (!challenge) continue;
+        if (new Date(challenge.end_date).getTime() < Date.now()) continue;
+
+        let increment = 0;
+        if (challenge.challenge_type === 'workout_count') increment = workoutCount;
+        if (challenge.challenge_type === 'total_volume') increment = Math.round(totalVolumeKg);
+        if (increment <= 0) continue;
+
+        const suspicious = challenge.challenge_type === 'workout_count'
+            ? increment > 2
+            : increment > 75000;
+
+        if (suspicious) {
+            await supabase.from('challenge_audit_events').insert({
+                challenge_id: challenge.id,
+                user_id: userId,
+                reason: challenge.challenge_type === 'workout_count'
+                    ? 'More than two completed workouts attempted in one sync event.'
+                    : 'Workout volume jump exceeded the high-confidence automatic sync limit.',
+                metadata: {
+                    challenge_type: challenge.challenge_type,
+                    attempted_increment: increment,
+                    current_value: participant.current_value,
+                },
+            });
+            increment = challenge.challenge_type === 'workout_count' ? 2 : 75000;
+        }
+
+        const nextValue = Number(participant.current_value || 0) + increment;
+        const completed = nextValue >= Number(challenge.target_value || 0);
+
+        await supabase
+            .from('challenge_participants')
+            .update({
+                current_value: nextValue,
+                ...(completed ? { status: 'completed', completed_at: new Date().toISOString() } : {}),
+            })
+            .eq('id', participant.id);
+
+        if (completed) {
+            await postActivity(
+                'challenge_completed',
+                `Completed challenge: ${challenge.title}`,
+                `${Math.round(nextValue)} / ${challenge.target_value} ${challenge.unit}`,
+                { challenge_id: challenge.id, target_value: challenge.target_value, current_value: nextValue },
+                'public',
+            );
+        }
+    }
 }
 
 // ── Leaderboard ──────────────────────────────────────────────

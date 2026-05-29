@@ -1,5 +1,6 @@
 import { Card } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { getDayName, getLocalDateKey, getRecentLocalDateKeys } from '@/lib/date';
 import { displayWeightFromKg, getWeightUnit } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
 import { useNutritionStore } from '@/stores/nutritionStore';
@@ -7,7 +8,7 @@ import { useRecoveryStore } from '@/stores/recoveryStore';
 import { useWorkoutStore } from '@/stores/workoutStore';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
     ScrollView,
     StyleSheet,
@@ -19,15 +20,17 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type TabType = 'overview' | 'volume' | 'nutrition' | 'correlations';
 
-const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
 export default function AnalyticsDashboard() {
     const insets = useSafeAreaInsets();
     const [tab, setTab] = useState<TabType>('overview');
     const { recentWorkouts, personalRecords } = useWorkoutStore();
-    const { todaySummary } = useNutritionStore();
+    const { todaySummary, nutritionHistory, ensureToday } = useNutritionStore();
     const { recoveryLogs } = useRecoveryStore();
     const user = useAuthStore((s) => s.user);
+
+    useEffect(() => {
+        ensureToday();
+    }, [ensureToday]);
 
     // Derive weekly volume from recentWorkouts (last 7 days)
     const weeklyVolume = useMemo(() => {
@@ -35,10 +38,10 @@ export default function AnalyticsDashboard() {
         const days: { day: string; volume: number }[] = [];
         for (let i = 6; i >= 0; i--) {
             const d = new Date(now.getTime() - i * 86400000);
-            const dayStr = d.toISOString().split('T')[0];
-            const dayName = DAY_NAMES[d.getDay()];
+            const dayStr = getLocalDateKey(d);
+            const dayName = getDayName(dayStr);
             const vol = recentWorkouts
-                .filter((w) => w.completed_at?.startsWith(dayStr))
+                .filter((w) => w.completed_at && getLocalDateKey(new Date(w.completed_at)) === dayStr)
                 .reduce((s, w) => s + (w.total_volume_kg || 0), 0);
             days.push({ day: dayName, volume: Math.round(vol) });
         }
@@ -73,21 +76,22 @@ export default function AnalyticsDashboard() {
         ];
     }, [recentWorkouts]);
 
-    // Nutrition: use today's data
+    // Nutrition: real 7-day log history from Supabase/local store.
     const nutritionWeek = useMemo(() => {
         const calorieTarget = user?.daily_calorie_target || 2200;
-        const proteinTarget = user?.protein_target_g || 150;
-        // Show today's real data + demo for past days (since we only store today in-memory)
-        const today = DAY_NAMES[new Date().getDay()];
-        return DAY_NAMES.map((day) => {
-            if (day === today && todaySummary.total_calories > 0) {
-                return { day, cals: todaySummary.total_calories, target: calorieTarget, protein: Math.round(todaySummary.total_protein_g) };
-            }
-            // Simulated past data
-            const base = calorieTarget + Math.round((Math.random() - 0.5) * 400);
-            return { day, cals: base, target: calorieTarget, protein: Math.round(proteinTarget + (Math.random() - 0.5) * 40) };
+        const byDate = new Map(nutritionHistory.map((summary) => [summary.date, summary]));
+        byDate.set(todaySummary.date, todaySummary);
+        return getRecentLocalDateKeys(7).map((date) => {
+            const summary = byDate.get(date);
+            return {
+                date,
+                day: getDayName(date),
+                cals: summary?.total_calories || 0,
+                target: calorieTarget,
+                protein: Math.round(summary?.total_protein_g || 0),
+            };
         });
-    }, [todaySummary, user]);
+    }, [nutritionHistory, todaySummary, user]);
 
     // Recovery stats
     const avgSleep = useMemo(() => {
@@ -118,8 +122,13 @@ export default function AnalyticsDashboard() {
     const displayTotalVolume = displayWeightFromKg(totalVolume, user?.unit_system, 0);
     const weightUnit = getWeightUnit(user?.unit_system);
     const maxVolume = Math.max(...weeklyVolume.map((d) => d.volume), 1);
-    const avgCals = Math.round(nutritionWeek.reduce((s, d) => s + d.cals, 0) / 7);
-    const avgProtein = Math.round(nutritionWeek.reduce((s, d) => s + d.protein, 0) / 7);
+    const loggedNutritionDays = nutritionWeek.filter((d) => d.cals > 0 || d.protein > 0);
+    const avgCals = loggedNutritionDays.length
+        ? Math.round(loggedNutritionDays.reduce((s, d) => s + d.cals, 0) / loggedNutritionDays.length)
+        : 0;
+    const avgProtein = loggedNutritionDays.length
+        ? Math.round(loggedNutritionDays.reduce((s, d) => s + d.protein, 0) / loggedNutritionDays.length)
+        : 0;
     const maxMuscleFreq = Math.max(...muscleFrequency.map((m) => m.sessions), 1);
 
     return (

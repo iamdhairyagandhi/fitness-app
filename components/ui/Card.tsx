@@ -1,13 +1,13 @@
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import React from 'react';
-import { StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 
 interface CardProps {
     children: React.ReactNode;
     title?: string;
     subtitle?: string;
-    style?: ViewStyle;
+    style?: StyleProp<ViewStyle>;
     padding?: number;
     variant?: 'default' | 'elevated' | 'outlined';
 }

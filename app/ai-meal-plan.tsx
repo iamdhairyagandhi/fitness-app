@@ -1,6 +1,7 @@
 import { Button, Card } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { generateMealPlan } from '@/lib/aiEngine';
+import { requirePremium } from '@/lib/premium';
 import { useAuthStore } from '@/stores/authStore';
 import { useMealPlanStore } from '@/stores/mealPlanStore';
 import type { AIGeneratedMealPlan } from '@/types';
@@ -30,6 +31,7 @@ export default function AIMealPlanScreen() {
     const [expandedDay, setExpandedDay] = useState<number | null>(0);
 
     const handleGenerate = async () => {
+        if (!requirePremium('ai_meal_plan')) return;
         setLoading(true);
         setError('');
         setResult(null);

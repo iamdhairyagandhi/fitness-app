@@ -1,0 +1,19 @@
+{
+  "id": "IG-002",
+  "status": "Approved",
+  "platforms": ["instagram"],
+  "accounts": {
+    "instagram": "bodypilot.ai"
+  },
+  "contentType": "reel",
+  "mediaUrl": "https://tmpfiles.org/dl/wBw7wm0f8zGx/bodypilot-viral-reel.mp4",
+  "caption": "Your whole fitness week in one app.\n\nBodyPilot brings workouts, nutrition, recovery, progress, and AI logging together so you can stop bouncing between five different trackers.\n\n#fitnessapp #aifitness #workouttracker #nutritiontracker #gymtok #fitnesstech #progressnotperfection",
+  "instagram": {
+    "shareToFeed": true
+  },
+  "published": {
+    "instagramMediaId": "18066406328413149",
+    "permalink": "https://www.instagram.com/reel/DYx_OiWEWmj/",
+    "timestamp": "2026-05-26T00:03:50+0000"
+  }
+}

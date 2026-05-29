@@ -104,6 +104,7 @@ export const useProgressStore = create<ProgressState>()(
             partialize: (state) => ({
                 weightEntries: state.weightEntries,
                 measurements: state.measurements,
+                progressPhotos: state.progressPhotos,
                 goals: state.goals,
             }),
         }

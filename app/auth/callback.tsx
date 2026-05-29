@@ -1,4 +1,5 @@
 import { Colors } from '@/constants/theme';
+import { claimLatestOnboardingLead, fetchProfile } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -6,9 +7,8 @@ import React, { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 /**
- * OAuth callback handler.
- * Supabase redirects here after Google/Apple sign-in.
- * It extracts tokens from the URL fragment and sets the session.
+ * Supabase auth callback handler.
+ * Handles OAuth redirects and email confirmation links.
  */
 export default function AuthCallbackScreen() {
     const params = useLocalSearchParams<{
@@ -18,7 +18,7 @@ export default function AuthCallbackScreen() {
         error?: string;
         error_description?: string;
     }>();
-    const { setSession } = useAuthStore();
+    const { setOnboarded, setSession, setUser } = useAuthStore();
 
     useEffect(() => {
         async function handleCallback() {
@@ -46,7 +46,20 @@ export default function AuthCallbackScreen() {
                 const { data: { session } } = await supabase.auth.getSession();
                 if (session) {
                     setSession({ access_token: session.access_token });
-                    router.replace('/(tabs)');
+                    await claimLatestOnboardingLead();
+
+                    const profile = await fetchProfile(session.user.id);
+                    if (profile) {
+                        setUser(profile);
+                    }
+
+                    if (profile?.height_cm) {
+                        setOnboarded(true);
+                        router.replace('/(tabs)');
+                    } else {
+                        setOnboarded(false);
+                        router.replace('/(auth)/onboarding');
+                    }
                 } else {
                     router.replace('/login' as any);
                 }
@@ -56,12 +69,12 @@ export default function AuthCallbackScreen() {
         }
 
         handleCallback();
-    }, [params, setSession]);
+    }, [params, setOnboarded, setSession, setUser]);
 
     return (
         <View style={styles.container}>
             <ActivityIndicator size="large" color={Colors.primary} />
-            <Text style={styles.text}>Signing you in...</Text>
+            <Text style={styles.text}>Confirming your account...</Text>
         </View>
     );
 }

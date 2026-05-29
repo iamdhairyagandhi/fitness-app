@@ -2,6 +2,7 @@ import { Button, Card, toast } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { getLevelProgress } from '@/lib/gamification';
+import { imageOnlyPickerOptions, requestPhotoLibraryAccess } from '@/lib/imagePickerPermissions';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
 import { useWorkoutStore } from '@/stores/workoutStore';
@@ -11,6 +12,7 @@ import { router } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import {
     Image,
+    Linking,
     Modal,
     ScrollView,
     StyleSheet,
@@ -32,6 +34,8 @@ const PROFILE_CHARACTERS = [
 ];
 
 const CHARACTER_PREFIX = 'character:';
+const SUPPORT_URL = 'https://fudqcomgwnjxcqgocfuw.supabase.co/functions/v1/support';
+const PRIVACY_POLICY_URL = 'https://fudqcomgwnjxcqgocfuw.supabase.co/functions/v1/privacy-policy';
 
 export default function ProfileScreen() {
     const insets = useSafeAreaInsets();
@@ -71,14 +75,11 @@ export default function ProfileScreen() {
     };
 
     const handlePickPhoto = async () => {
-        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (!permission.granted) {
-            toast.info('Permission needed', 'Allow photo library access to choose a profile photo.');
-            return;
-        }
+        const hasAccess = await requestPhotoLibraryAccess();
+        if (!hasAccess) return;
 
         const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            ...imageOnlyPickerOptions,
             allowsEditing: true,
             aspect: [1, 1],
             quality: 0.85,
@@ -101,11 +102,23 @@ export default function ProfileScreen() {
         toast.success('Profile updated', 'Your avatar has been removed.');
     };
 
+    const handleOpenUrl = async (url: string, label: string) => {
+        try {
+            const canOpen = await Linking.canOpenURL(url);
+            if (!canOpen) throw new Error(`Cannot open ${url}`);
+            await Linking.openURL(url);
+        } catch (error) {
+            console.warn(`Could not open ${label}:`, error);
+            toast.error('Could Not Open Link', `Please try ${label} again later.`);
+        }
+    };
+
     const settingsGroups = [
         {
             title: 'Account',
             items: [
                 { icon: 'person-outline' as const, label: 'Edit Profile', onPress: () => router.push('/settings') },
+                { icon: 'sparkles-outline' as const, label: 'BodyPilot Premium', onPress: () => router.push('/premium' as any) },
                 { icon: 'key-outline' as const, label: 'Account Settings', onPress: () => router.push('/account-settings' as any) },
                 { icon: 'fitness-outline' as const, label: 'Fitness Goals', onPress: () => router.push('/progress/create-goal') },
                 { icon: 'nutrition-outline' as const, label: 'Nutrition Targets', onPress: () => router.push('/nutrition/diet-settings') },
@@ -124,17 +137,17 @@ export default function ProfileScreen() {
         {
             title: 'Integrations',
             items: [
-                { icon: 'watch-outline' as const, label: 'Wearable Devices', onPress: () => { } },
+                { icon: 'watch-outline' as const, label: 'Wearable Devices', onPress: () => router.push('/health') },
                 { icon: 'heart-outline' as const, label: 'Apple Health / Google Fit', onPress: () => router.push('/health') },
             ],
         },
         {
             title: 'Support',
             items: [
-                { icon: 'help-circle-outline' as const, label: 'Help & FAQ', onPress: () => { } },
-                { icon: 'chatbubble-outline' as const, label: 'Send Feedback', onPress: () => { } },
-                { icon: 'document-text-outline' as const, label: 'Privacy Policy', onPress: () => { } },
-                { icon: 'information-circle-outline' as const, label: 'About', onPress: () => { } },
+                { icon: 'help-circle-outline' as const, label: 'Help & FAQ', onPress: () => router.push('/help-faq' as any) },
+                { icon: 'chatbubble-outline' as const, label: 'Send Feedback', onPress: () => handleOpenUrl(SUPPORT_URL, 'support') },
+                { icon: 'document-text-outline' as const, label: 'Privacy Policy', onPress: () => handleOpenUrl(PRIVACY_POLICY_URL, 'privacy policy') },
+                { icon: 'information-circle-outline' as const, label: 'About', onPress: () => router.push('/about' as any) },
             ],
         },
     ];

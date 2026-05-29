@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>BodyPilot Plan Questionnaire</title>
+    <meta name="description" content="Answer a quick BodyPilot questionnaire and start with personalized fitness targets.">
+    <link rel="icon" href="../assets/favicon.png">
+    <link rel="stylesheet" href="../styles.css">
+  </head>
+  <body>
+    <main class="page">
+      <nav class="nav" aria-label="Primary navigation">
+        <a class="brand" href="../">
+          <img src="../assets/bodypilot-wordmark-white.png" alt="BodyPilot">
+        </a>
+        <div class="nav-links">
+          <a href="../">Home</a>
+          <a href="https://apps.apple.com/app/id6770682935">App Store</a>
+        </div>
+      </nav>
+
+      <section class="questionnaire">
+        <div class="quiz-card" id="quiz">
+          <div class="quiz-progress">
+            <div class="quiz-track"><div class="quiz-fill" id="progress-fill"></div></div>
+            <span id="progress-text">1/1</span>
+          </div>
+          <h1 id="question-title">Loading...</h1>
+          <p id="question-subtitle"></p>
+          <div id="question-body"></div>
+          <div class="quiz-actions">
+            <button class="button" id="back-button" type="button">Back</button>
+            <button class="button primary" id="next-button" type="button">Next</button>
+          </div>
+          <div class="quiz-message" id="quiz-message"></div>
+        </div>
+      </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./questionnaire.js"></script>
+  </body>
+</html>

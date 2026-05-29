@@ -2,14 +2,14 @@
   "expo": {
     "name": "BodyPilot",
     "slug": "fitfusion",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "scheme": [
-      "fitfusion",
-      "exp+fitfusion"
+      "bodypilot",
+      "exp+bodypilot"
     ],
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -17,16 +17,27 @@
       "backgroundColor": "#0F0F0F"
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
+      "usesAppleSignIn": true,
       "bundleIdentifier": "com.dhairyagandhi.fitfusion",
+      "entitlements": {
+        "aps-environment": "production",
+        "com.apple.developer.applesignin": [
+          "Default"
+        ],
+        "com.apple.developer.healthkit": true,
+        "com.apple.developer.healthkit.background-delivery": true
+      },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSCameraUsageDescription": "BodyPilot uses the camera to scan food barcodes and analyze meals",
+        "NSCameraUsageDescription": "BodyPilot uses the camera when you choose to scan food, barcodes, receipts, or progress photos.",
         "NSHealthShareUsageDescription": "BodyPilot reads Apple Health data such as steps, workouts, active energy, heart rate, and body weight to personalize fitness, nutrition, and recovery insights.",
         "NSHealthUpdateUsageDescription": "BodyPilot can write workouts, body weight, and nutrition updates to Apple Health when you choose to sync them.",
         "NSLocationWhenInUseUsageDescription": "BodyPilot uses your location during cardio sessions to calculate distance, pace, and route data.",
-        "NSPhotoLibraryUsageDescription": "BodyPilot needs photo access for progress photos and meal logging",
-        "NSPhotoLibraryAddUsageDescription": "BodyPilot saves exported reports and progress images when you choose to share them."
+        "NSMicrophoneUsageDescription": "BodyPilot uses the microphone only when you choose to speak food logs into Pilot Log.",
+        "NSPhotoLibraryUsageDescription": "BodyPilot uses your photo library only when you choose an existing meal, receipt, profile, or progress photo.",
+        "NSPhotoLibraryAddUsageDescription": "BodyPilot saves exported reports and progress images only when you choose to share them.",
+        "NSSpeechRecognitionUsageDescription": "BodyPilot uses speech recognition only when you choose verbal food logging so it can transcribe meals for your review before saving."
       }
     },
     "android": {
@@ -35,14 +46,11 @@
         "backgroundColor": "#0F0F0F"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.fitfusion.app",
+      "package": "app.bodypilot.mobile",
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.RECORD_AUDIO"
-      ],
-      "blockedPermissions": [
         "android.permission.RECORD_AUDIO"
       ]
     },
@@ -53,6 +61,17 @@
       "expo-location",
       "expo-notifications",
       [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Allow BodyPilot to use the microphone when you choose verbal food logging.",
+          "speechRecognitionPermission": "Allow BodyPilot to transcribe spoken food logs for review before saving.",
+          "androidSpeechServicePackages": [
+            "com.google.android.googlequicksearchbox"
+          ]
+        }
+      ],
+      "expo-apple-authentication",
+      [
         "@kingstinct/react-native-healthkit",
         {
           "NSHealthShareUsageDescription": "BodyPilot reads Apple Health data such as steps, workouts, active energy, heart rate, and body weight to personalize fitness, nutrition, and recovery insights.",
@@ -61,7 +80,15 @@
         }
       ],
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "16.4"
+          }
+        }
+      ]
     ],
     "web": {
       "bundler": "metro",

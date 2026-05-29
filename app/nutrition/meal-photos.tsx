@@ -4,7 +4,10 @@
  * Timeline view of meal photos with food log data
  */
 
+import { toast } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { getLocalDateKey } from '@/lib/date';
+import { imageOnlyPickerOptions, requestCameraAccess, requestPhotoLibraryAccess } from '@/lib/imagePickerPermissions';
 import { useNutritionStore } from '@/stores/nutritionStore';
 import type { MealPhotoEntry, MealType } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +15,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import {
+    Alert,
     FlatList,
     Image,
     StyleSheet,
@@ -27,6 +31,8 @@ const MEAL_EMOJI: Record<MealType, string> = {
     dinner: '🌙',
     snack: '🍿',
 };
+
+const MEAL_TYPES: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack'];
 
 function generateId(): string {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
@@ -46,11 +52,11 @@ export default function MealPhotosScreen() {
 
     const takePhoto = async (mealType: MealType) => {
         try {
-            const perm = await ImagePicker.requestCameraPermissionsAsync();
-            if (!perm.granted) return;
+            const permitted = await requestCameraAccess();
+            if (!permitted) return;
 
             const result = await ImagePicker.launchCameraAsync({
-                mediaTypes: ['images'],
+                ...imageOnlyPickerOptions,
                 quality: 0.7,
                 allowsEditing: true,
                 aspect: [4, 3],
@@ -67,18 +73,20 @@ export default function MealPhotosScreen() {
                 logged_at: new Date().toISOString(),
             };
             setPhotos((prev) => [entry, ...prev]);
-        } catch {
-            // Silently handle camera failures
+            toast.success('Photo Added', `Saved to ${mealType}.`);
+        } catch (error) {
+            console.warn('[MealPhotos] Failed to take meal photo:', { mealType, error });
+            toast.error('Camera Error', 'Could not take a meal photo. Check camera access and try again.');
         }
     };
 
     const pickFromGallery = async (mealType: MealType) => {
         try {
-            const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-            if (!perm.granted) return;
+            const permitted = await requestPhotoLibraryAccess();
+            if (!permitted) return;
 
             const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ['images'],
+                ...imageOnlyPickerOptions,
                 quality: 0.7,
                 allowsEditing: true,
                 aspect: [4, 3],
@@ -95,16 +103,37 @@ export default function MealPhotosScreen() {
                 logged_at: new Date().toISOString(),
             };
             setPhotos((prev) => [entry, ...prev]);
-        } catch {
-            // Silently handle gallery failures
+            toast.success('Photo Imported', `Saved to ${mealType}.`);
+        } catch (error) {
+            console.warn('[MealPhotos] Failed to import meal photo:', { mealType, error });
+            toast.error('Gallery Error', 'Could not import that photo. Check photo access and try again.');
         }
+    };
+
+    const chooseGalleryMeal = () => {
+        if (selectedMeal !== 'all') {
+            pickFromGallery(selectedMeal);
+            return;
+        }
+
+        Alert.alert(
+            'Import to meal',
+            'Choose where this photo should be saved.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                ...MEAL_TYPES.map((mealType) => ({
+                    text: mealType.charAt(0).toUpperCase() + mealType.slice(1),
+                    onPress: () => pickFromGallery(mealType),
+                })),
+            ],
+        );
     };
 
     const filteredPhotos = selectedMeal === 'all' ? photos : photos.filter((p) => p.meal_type === selectedMeal);
 
     // Group photos by date
     const groupedByDate = filteredPhotos.reduce<Record<string, MealPhotoEntry[]>>((acc, photo) => {
-        const date = photo.logged_at.split('T')[0];
+        const date = getLocalDateKey(new Date(photo.logged_at));
         if (!acc[date]) acc[date] = [];
         acc[date].push(photo);
         return acc;
@@ -117,7 +146,7 @@ export default function MealPhotosScreen() {
     const todayStats = {
         totalCals: todaySummary.total_calories,
         meals: allMeals.length,
-        photos: photos.filter((p) => p.logged_at.startsWith(new Date().toISOString().split('T')[0])).length,
+        photos: photos.filter((p) => getLocalDateKey(new Date(p.logged_at)) === getLocalDateKey()).length,
     };
 
     const removePhoto = (id: string) => {
@@ -171,7 +200,7 @@ export default function MealPhotosScreen() {
 
             {/* Quick Add Buttons */}
             <View style={styles.addRow}>
-                {(['breakfast', 'lunch', 'dinner', 'snack'] as const).map((m) => (
+                {MEAL_TYPES.map((m) => (
                     <TouchableOpacity key={m} style={styles.addBtn} onPress={() => takePhoto(m)}>
                         <Ionicons name="camera" size={18} color={Colors.primary} />
                         <Text style={styles.addBtnText}>{MEAL_EMOJI[m]} {m}</Text>
@@ -180,9 +209,13 @@ export default function MealPhotosScreen() {
             </View>
 
             {/* Gallery Pick */}
-            <TouchableOpacity style={styles.galleryBtn} onPress={() => pickFromGallery('lunch')}>
+            <TouchableOpacity style={styles.galleryBtn} onPress={chooseGalleryMeal}>
                 <Ionicons name="images-outline" size={18} color={Colors.secondary} />
-                <Text style={styles.galleryBtnText}>Import from Gallery</Text>
+                <Text style={styles.galleryBtnText}>
+                    {selectedMeal === 'all'
+                        ? 'Import from Gallery'
+                        : `Import to ${selectedMeal.charAt(0).toUpperCase() + selectedMeal.slice(1)}`}
+                </Text>
             </TouchableOpacity>
 
             {/* Filter */}
@@ -221,7 +254,7 @@ export default function MealPhotosScreen() {
                     ListHeaderComponent={
                         dateKeys.length > 0 ? (
                             <Text style={styles.dateHeader}>
-                                {dateKeys[0] === new Date().toISOString().split('T')[0] ? 'Today' : dateKeys[0]}
+                                {dateKeys[0] === getLocalDateKey() ? 'Today' : dateKeys[0]}
                             </Text>
                         ) : null
                     }

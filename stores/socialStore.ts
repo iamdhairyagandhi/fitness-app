@@ -3,6 +3,7 @@
 // ============================================================
 
 import {
+    blockUser,
     deleteComment,
     fetchActivityFeed,
     fetchChallengeLeaderboard,
@@ -14,13 +15,16 @@ import {
     leaveChallenge,
     postActivity,
     postComment,
+    reportActivity,
     searchUsers,
+    toggleSavedActivity,
     toggleReaction,
     unfollowUser,
 } from '@/lib/socialDb';
 import type {
     ActivityFeedItem,
     ActivityType,
+    ActivityVisibility,
     ChallengeParticipant,
     Comment,
     LeaderboardEntry,
@@ -36,6 +40,7 @@ interface SocialState {
     feedPage: number;
     feedLoading: boolean;
     feedHasMore: boolean;
+    feedMode: 'following' | 'discover';
 
     // Search
     searchResults: PublicProfile[];
@@ -55,7 +60,8 @@ interface SocialState {
     commentsLoading: boolean;
 
     // Actions
-    loadFeed: (refresh?: boolean) => Promise<void>;
+    setFeedMode: (mode: 'following' | 'discover') => void;
+    loadFeed: (refresh?: boolean, mode?: 'following' | 'discover') => Promise<void>;
     loadMoreFeed: () => Promise<void>;
     searchPeople: (query: string) => Promise<void>;
     follow: (userId: string) => Promise<void>;
@@ -64,7 +70,11 @@ interface SocialState {
     loadComments: (activityId: string) => Promise<void>;
     addComment: (activityId: string, content: string) => Promise<void>;
     removeComment: (commentId: string) => Promise<void>;
-    publishActivity: (type: ActivityType, title: string, description?: string, metadata?: Record<string, unknown>) => Promise<void>;
+    publishActivity: (type: ActivityType, title: string, description?: string, metadata?: Record<string, unknown>, visibility?: ActivityVisibility) => Promise<void>;
+    saveActivity: (activityId: string, shouldSave: boolean) => Promise<void>;
+    hideActivity: (activityId: string) => void;
+    reportActivityAction: (activityId: string, targetUserId: string, reason?: string) => Promise<void>;
+    blockUserAction: (targetUserId: string) => Promise<void>;
     loadChallenges: () => Promise<void>;
     joinChallengeAction: (challengeId: string) => Promise<void>;
     leaveChallengeAction: (challengeId: string) => Promise<void>;
@@ -77,6 +87,7 @@ export const useSocialStore = create<SocialState>((set, get) => ({
     feedPage: 0,
     feedLoading: false,
     feedHasMore: true,
+    feedMode: 'following',
 
     searchResults: [],
     searchLoading: false,
@@ -91,15 +102,22 @@ export const useSocialStore = create<SocialState>((set, get) => ({
     activeComments: [],
     commentsLoading: false,
 
-    loadFeed: async (refresh = false) => {
+    setFeedMode: (mode) => {
+        set({ feedMode: mode, feed: [], feedPage: 0, feedHasMore: true });
+        get().loadFeed(true, mode);
+    },
+
+    loadFeed: async (refresh = false, mode) => {
         set({ feedLoading: true });
         const page = refresh ? 0 : get().feedPage;
-        const items = await fetchActivityFeed(page);
+        const feedMode = mode || get().feedMode;
+        const items = await fetchActivityFeed(page, 20, feedMode);
         set({
             feed: refresh ? items : [...get().feed, ...items],
             feedPage: page,
             feedLoading: false,
             feedHasMore: items.length >= 20,
+            feedMode,
         });
     },
 
@@ -107,7 +125,7 @@ export const useSocialStore = create<SocialState>((set, get) => ({
         if (get().feedLoading || !get().feedHasMore) return;
         const nextPage = get().feedPage + 1;
         set({ feedLoading: true, feedPage: nextPage });
-        const items = await fetchActivityFeed(nextPage);
+        const items = await fetchActivityFeed(nextPage, 20, get().feedMode);
         set({
             feed: [...get().feed, ...items],
             feedLoading: false,
@@ -130,7 +148,13 @@ export const useSocialStore = create<SocialState>((set, get) => ({
         // Update search results optimistically
         set({
             searchResults: get().searchResults.map((p) =>
-                p.id === userId ? { ...p, is_following: true, follow_status: 'accepted' as const } : p,
+                p.id === userId
+                    ? {
+                        ...p,
+                        is_following: p.is_public !== false,
+                        follow_status: p.is_public === false ? 'pending' as const : 'accepted' as const,
+                    }
+                    : p,
             ),
         });
     },
@@ -197,8 +221,42 @@ export const useSocialStore = create<SocialState>((set, get) => ({
         }
     },
 
-    publishActivity: async (type, title, description, metadata) => {
-        await postActivity(type, title, description, metadata);
+    publishActivity: async (type, title, description, metadata, visibility = 'public') => {
+        const activityId = await postActivity(type, title, description, metadata, visibility);
+        if (activityId) await get().loadFeed(true);
+    },
+
+    saveActivity: async (activityId, shouldSave) => {
+        set({
+            feed: get().feed.map((item) =>
+                item.id === activityId ? { ...item, is_saved: shouldSave } : item,
+            ),
+        });
+        const ok = await toggleSavedActivity(activityId, shouldSave);
+        if (!ok) {
+            set({
+                feed: get().feed.map((item) =>
+                    item.id === activityId ? { ...item, is_saved: !shouldSave } : item,
+                ),
+            });
+        }
+    },
+
+    hideActivity: (activityId) => {
+        set({ feed: get().feed.filter((item) => item.id !== activityId) });
+    },
+
+    reportActivityAction: async (activityId, targetUserId, reason = 'inappropriate') => {
+        await reportActivity(activityId, targetUserId, reason);
+        get().hideActivity(activityId);
+    },
+
+    blockUserAction: async (targetUserId) => {
+        await blockUser(targetUserId);
+        set({
+            feed: get().feed.filter((item) => item.user_id !== targetUserId),
+            searchResults: get().searchResults.filter((profile) => profile.id !== targetUserId),
+        });
     },
 
     loadChallenges: async () => {

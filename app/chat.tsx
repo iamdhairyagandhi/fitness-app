@@ -1,7 +1,9 @@
 import { AI_PROXY_ENABLED } from '@/constants/config';
+import { HEALTH_CITATIONS } from '@/constants/healthCitations';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { chatWithFunctions, type AIResponse } from '@/lib/aiEngine';
 import { buildCoachingSystemPrompt, type OpenAIMessage } from '@/lib/openai';
+import { requirePremium } from '@/lib/premium';
 import { generateId } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
 import { useChatStore } from '@/stores/chatStore';
@@ -17,6 +19,7 @@ import {
     ActivityIndicator,
     FlatList,
     KeyboardAvoidingView,
+    Linking,
     Platform,
     StyleSheet,
     Text,
@@ -41,12 +44,12 @@ const QUICK_PROMPTS = [
 
 const DEMO_RESPONSES: Record<string, string> = {
     default: "I'm your BodyPilot AI Coach! 💪\n\nLive AI responses are not configured yet.\n\nIn the meantime, I can still help you navigate the app. Try logging a workout, tracking your meals, or checking your progress!",
-    meal: "Here's a balanced meal suggestion for your remaining macros:\n\n🍗 **Grilled Chicken Breast** (150g) — 248 kcal, 46g protein, 0g carbs, 5g fat\n🍚 **Brown Rice** (150g cooked) — 168 kcal, 4g protein, 36g carbs, 1g fat\n🥦 **Steamed Broccoli** (100g) — 35 kcal, 2g protein, 7g carbs, 0g fat\n\n**Total: ~451 kcal | 52g protein | 43g carbs | 6g fat**",
-    workout: "Here's a solid workout for today:\n\n**Upper Body Push (45 min)**\n\n1. Bench Press — 4×8 @ moderate weight\n2. Overhead Press — 3×10\n3. Incline DB Press — 3×12\n4. Lateral Raises — 3×15\n5. Tricep Pushdowns — 3×12\n6. Face Pulls — 3×15\n\n💡 Rest 90-120s between compounds, 60s for isolation.",
+    meal: "Here's a balanced meal suggestion for your remaining macros:\n\n🍗 **Grilled Chicken Breast** (150g) — 248 kcal, 46g protein, 0g carbs, 5g fat\n🍚 **Brown Rice** (150g cooked) — 168 kcal, 4g protein, 36g carbs, 1g fat\n🥦 **Steamed Broccoli** (100g) — 35 kcal, 2g protein, 7g carbs, 0g fat\n\n**Total: ~451 kcal | 52g protein | 43g carbs | 6g fat**\n\nSources: Dietary Guidelines for Americans.",
+    workout: "Here's a solid workout for today:\n\n**Upper Body Push (45 min)**\n\n1. Bench Press — 4×8 @ moderate weight\n2. Overhead Press — 3×10\n3. Incline DB Press — 3×12\n4. Lateral Raises — 3×15\n5. Tricep Pushdowns — 3×12\n6. Face Pulls — 3×15\n\n💡 Rest 90-120s between compounds, 60s for isolation.\n\nSources: HHS Physical Activity Guidelines, ACSM position stands.",
     progress: "📈 **This Week's Summary:**\n- Track more workouts to see trends!\n- Protein goal: aim for 4+ days this week\n\n🎯 **Focus Areas:**\n1. Log every meal for complete data\n2. Hit protein target daily\n3. Add weight or reps each week\n\nKeep pushing! 🔥",
-    recovery: "😴 **Sleep:** 7-9 hours for muscle repair\n💧 **Hydration:** Hit your water goal daily\n🍗 **Post-Workout:** 20-40g protein within 2 hours\n🧘 **Active Recovery:** Light movement on rest days\n🔄 **Deload:** Every 4-6 weeks, reduce volume by 40-50%",
-    mealplan: "Here's a sample day:\n\n🌅 **Breakfast** — Protein Oats (420 kcal, 35g protein)\n☀️ **Lunch** — Greek Protein Bowl (480 kcal, 42g protein)\n🌙 **Dinner** — Chicken Stir Fry (380 kcal, 38g protein)\n🍿 **Snack** — Greek Yogurt + Berries (160 kcal, 15g protein)\n\n**Total: ~1,440 kcal | 130g protein**",
-    diet: "📈 **Bulking:** +10-20% above maintenance, focus strength gains\n📉 **Cutting:** -20-25%, high protein to preserve muscle\n⚖️ **Maintenance:** Great for recomp, train hard, eat at maintenance\n🔁 **Reverse Diet:** After a long cut, +50-100 kcal/week",
+    recovery: "😴 **Sleep:** 7-9 hours for muscle repair\n💧 **Hydration:** Hit your water goal daily\n🍗 **Post-Workout:** 20-40g protein within 2 hours\n🧘 **Active Recovery:** Light movement on rest days\n🔄 **Deload:** Every 4-6 weeks, reduce volume by 40-50%\n\nSources: HHS Physical Activity Guidelines, CDC Adult Physical Activity Guidelines, ACSM position stands.",
+    mealplan: "Here's a sample day:\n\n🌅 **Breakfast** — Protein Oats (420 kcal, 35g protein)\n☀️ **Lunch** — Greek Protein Bowl (480 kcal, 42g protein)\n🌙 **Dinner** — Chicken Stir Fry (380 kcal, 38g protein)\n🍿 **Snack** — Greek Yogurt + Berries (160 kcal, 15g protein)\n\n**Total: ~1,440 kcal | 130g protein**\n\nSources: Dietary Guidelines for Americans.",
+    diet: "📈 **Bulking:** +10-20% above maintenance, focus strength gains\n📉 **Cutting:** -20-25%, high protein to preserve muscle\n⚖️ **Maintenance:** Great for recomp, train hard, eat at maintenance\n🔁 **Reverse Diet:** After a long cut, +50-100 kcal/week\n\nSources: Dietary Guidelines for Americans, ACSM position stands.",
 };
 
 function getDemoResponse(message: string): string {
@@ -187,6 +190,7 @@ export default function AIChatScreen() {
 
     const sendMessage = useCallback(async (text: string) => {
         if (!text.trim() || isLoading) return;
+        if (!requirePremium('ai_coach')) return;
 
         const userMessage: ChatMessage = {
             id: generateId(),
@@ -318,7 +322,7 @@ export default function AIChatScreen() {
                 <View style={styles.headerCenter}>
                     <Text style={styles.headerTitle}>AI Coach</Text>
                     <Text style={styles.headerSubtitle}>
-                        {AI_PROXY_ENABLED ? '✨ Live AI' : '📋 Demo Mode'}
+                        {AI_PROXY_ENABLED ? 'Live AI' : 'AI unavailable'}
                     </Text>
                 </View>
                 <View style={styles.headerActions}>
@@ -384,6 +388,23 @@ export default function AIChatScreen() {
                     ))}
                 </View>
             )}
+
+            <View style={styles.sourcesPanel}>
+                <Text style={styles.sourcesTitle}>Health sources used by AI Coach</Text>
+                <Text style={styles.sourcesCopy}>
+                    Fitness and nutrition guidance is educational, not medical diagnosis or treatment.
+                </Text>
+                {HEALTH_CITATIONS.map((source) => (
+                    <TouchableOpacity
+                        key={source.url}
+                        style={styles.sourceLink}
+                        onPress={() => Linking.openURL(source.url)}
+                    >
+                        <Ionicons name="link-outline" size={14} color={Colors.primary} />
+                        <Text style={styles.sourceLinkText}>{source.organization}: {source.label}</Text>
+                    </TouchableOpacity>
+                ))}
+            </View>
 
             {/* Loading */}
             {isLoading && (
@@ -478,6 +499,40 @@ const styles = StyleSheet.create({
     },
     quickPromptIcon: { fontSize: 18 },
     quickPromptText: { color: Colors.text, fontSize: FontSize.sm },
+
+    sourcesPanel: {
+        marginHorizontal: Spacing.lg,
+        marginBottom: Spacing.md,
+        padding: Spacing.md,
+        borderRadius: BorderRadius.md,
+        borderWidth: 1,
+        borderColor: Colors.border,
+        backgroundColor: Colors.surface,
+    },
+    sourcesTitle: {
+        color: Colors.text,
+        fontSize: FontSize.sm,
+        fontWeight: FontWeight.bold,
+    },
+    sourcesCopy: {
+        color: Colors.textTertiary,
+        fontSize: FontSize.xs,
+        lineHeight: 17,
+        marginTop: 3,
+        marginBottom: Spacing.sm,
+    },
+    sourceLink: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.xs,
+        paddingVertical: 3,
+    },
+    sourceLinkText: {
+        flex: 1,
+        color: Colors.primary,
+        fontSize: FontSize.xs,
+        lineHeight: 17,
+    },
 
     loadingRow: {
         flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,

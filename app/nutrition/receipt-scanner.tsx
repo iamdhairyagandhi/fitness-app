@@ -7,7 +7,8 @@
 import { Button, toast } from '@/components/ui';
 import { AI_PROXY_ENABLED } from '@/constants/config';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
-import { parseReceiptDemo, parseReceiptImage } from '@/lib/nutritionIntelligence';
+import { parseReceiptImage } from '@/lib/nutritionIntelligence';
+import { imageOnlyPickerOptions, requestCameraAccess, requestPhotoLibraryAccess } from '@/lib/imagePickerPermissions';
 import { generateId } from '@/lib/utils';
 import { useNutritionStore } from '@/stores/nutritionStore';
 import type { MealType, ReceiptScanResult } from '@/types';
@@ -37,9 +38,11 @@ export default function ReceiptScannerScreen() {
     const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
 
     const pickImage = async (useCamera: boolean) => {
+        const source = useCamera ? 'camera' : 'gallery';
+
         try {
             const options: ImagePicker.ImagePickerOptions = {
-                mediaTypes: ['images'],
+                ...imageOnlyPickerOptions,
                 quality: 0.7,
                 base64: true,
                 allowsEditing: false,
@@ -47,12 +50,12 @@ export default function ReceiptScannerScreen() {
 
             let pickerResult;
             if (useCamera) {
-                const perm = await ImagePicker.requestCameraPermissionsAsync();
-                if (!perm.granted) { toast.warning('Permission', 'Camera access required'); return; }
+                const permitted = await requestCameraAccess();
+                if (!permitted) return;
                 pickerResult = await ImagePicker.launchCameraAsync(options);
             } else {
-                const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-                if (!perm.granted) { toast.warning('Permission', 'Gallery access required'); return; }
+                const permitted = await requestPhotoLibraryAccess();
+                if (!permitted) return;
                 pickerResult = await ImagePicker.launchImageLibraryAsync(options);
             }
 
@@ -63,17 +66,26 @@ export default function ReceiptScannerScreen() {
             setResult(null);
             setIsScanning(true);
 
-            let parsed: ReceiptScanResult;
             if (AI_PROXY_ENABLED && asset.base64) {
-                parsed = await parseReceiptImage(asset.base64);
+                const parsed = await parseReceiptImage(asset.base64);
+                setResult(parsed);
+                setSelectedItems(new Set(parsed.items.map((_, i) => i)));
             } else {
-                parsed = parseReceiptDemo();
+                toast.warning(
+                    'Scan unavailable',
+                    AI_PROXY_ENABLED
+                        ? 'Image data was unavailable. Retake the receipt and try again.'
+                        : 'Live receipt scanning is unavailable. Add items manually from food search.',
+                );
             }
-
-            setResult(parsed);
-            setSelectedItems(new Set(parsed.items.map((_, i) => i)));
-        } catch {
-            toast.error('Error', 'Failed to scan receipt');
+        } catch (error) {
+            console.warn('[ReceiptScanner] Failed to pick or scan receipt image:', { source, error });
+            toast.error(
+                'Scan Failed',
+                source === 'camera'
+                    ? 'Could not scan from the camera. Try again or choose a photo from your gallery.'
+                    : 'Could not scan that photo. Try another image or retake the receipt.',
+            );
         } finally {
             setIsScanning(false);
         }
@@ -161,16 +173,7 @@ export default function ReceiptScannerScreen() {
                             </TouchableOpacity>
                         </View>
                         {!AI_PROXY_ENABLED && (
-                            <TouchableOpacity
-                                style={styles.demoBtn}
-                                onPress={() => {
-                                    setResult(parseReceiptDemo());
-                                    setSelectedItems(new Set([0, 1, 2, 3]));
-                                }}
-                            >
-                                <Ionicons name="flask" size={16} color={Colors.secondary} />
-                                <Text style={styles.demoBtnText}>Try Demo Scan</Text>
-                            </TouchableOpacity>
+                            <Button title="Search Foods Manually" variant="outline" onPress={() => router.replace('/nutrition/food-search')} />
                         )}
                     </View>
                 )}

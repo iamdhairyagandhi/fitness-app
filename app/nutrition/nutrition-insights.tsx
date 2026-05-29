@@ -10,8 +10,10 @@ import {
     calculateGutHealthScore,
     detectMetabolicAdaptation,
 } from '@/lib/nutritionIntelligence';
+import { getLocalDateKey } from '@/lib/date';
 import { useAuthStore } from '@/stores/authStore';
 import { useNutritionStore } from '@/stores/nutritionStore';
+import { useProgressStore } from '@/stores/progressStore';
 import type { AdaptiveCalorieData, GutHealthScore, MetabolicAdaptation, WeightLog } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -27,56 +29,41 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Tab = 'calories' | 'adaptation' | 'gut';
 
-// Demo weight data (in production, this would come from a weight tracking store)
-function getDemoWeightLogs(): WeightLog[] {
-    const logs: WeightLog[] = [];
-    const today = new Date();
-    let weight = 82;
-    for (let i = 30; i >= 0; i--) {
-        const d = new Date(today);
-        d.setDate(d.getDate() - i);
-        weight += (Math.random() - 0.52) * 0.3; // slight downward trend
-        logs.push({ date: d.toISOString().split('T')[0], weight_kg: Math.round(weight * 10) / 10 });
-    }
-    return logs;
-}
-
-function getDemoNutritionHistory(): { date: string; calories: number }[] {
-    const history: { date: string; calories: number }[] = [];
-    const today = new Date();
-    for (let i = 30; i >= 0; i--) {
-        const d = new Date(today);
-        d.setDate(d.getDate() - i);
-        history.push({
-            date: d.toISOString().split('T')[0],
-            calories: 1800 + Math.round(Math.random() * 400),
-        });
-    }
-    return history;
-}
-
 export default function NutritionInsightsScreen() {
     const insets = useSafeAreaInsets();
     const user = useAuthStore((s) => s.user);
-    const { todaySummary } = useNutritionStore();
+    const { todaySummary, nutritionHistory } = useNutritionStore();
+    const weightEntries = useProgressStore((s) => s.weightEntries);
 
     const [tab, setTab] = useState<Tab>('calories');
 
     const calorieTarget = user?.daily_calorie_target ?? 2200;
     const goal = user?.goal ?? 'maintain';
 
-    // In production, weight logs would come from a dedicated store
-    const weightLogs = useMemo(() => getDemoWeightLogs(), []);
-    const nutritionHistory = useMemo(() => getDemoNutritionHistory(), []);
+    const weightLogs = useMemo<WeightLog[]>(() => weightEntries
+        .map((entry) => ({
+            date: getLocalDateKey(new Date(entry.logged_at)),
+            weight_kg: entry.weight_kg,
+        }))
+        .sort((a, b) => a.date.localeCompare(b.date)), [weightEntries]);
+
+    const calorieHistory = useMemo(() => {
+        const byDate = new Map(nutritionHistory.map((summary) => [summary.date, summary.total_calories]));
+        byDate.set(todaySummary.date, todaySummary.total_calories);
+        return Array.from(byDate.entries())
+            .map(([date, calories]) => ({ date, calories }))
+            .filter((entry) => entry.calories > 0)
+            .sort((a, b) => a.date.localeCompare(b.date));
+    }, [nutritionHistory, todaySummary]);
 
     const adaptiveData = useMemo<AdaptiveCalorieData>(
-        () => calculateAdaptiveCalories(weightLogs, nutritionHistory, calorieTarget, goal),
-        [weightLogs, nutritionHistory, calorieTarget, goal]
+        () => calculateAdaptiveCalories(weightLogs, calorieHistory, calorieTarget, goal),
+        [weightLogs, calorieHistory, calorieTarget, goal]
     );
 
     const metabolicData = useMemo<MetabolicAdaptation>(
-        () => detectMetabolicAdaptation(weightLogs, nutritionHistory, calorieTarget, goal),
-        [weightLogs, nutritionHistory, calorieTarget, goal]
+        () => detectMetabolicAdaptation(weightLogs, calorieHistory, calorieTarget, goal),
+        [weightLogs, calorieHistory, calorieTarget, goal]
     );
 
     // Collect all food logs from today for gut health

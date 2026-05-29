@@ -1,6 +1,5 @@
 import { supabase } from '@/lib/supabase';
 import type { Provider } from '@supabase/supabase-js';
-import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { Platform } from 'react-native';
@@ -15,10 +14,19 @@ try {
 
 WebBrowser.maybeCompleteAuthSession();
 
-const OAUTH_REDIRECT_URL = AuthSession.makeRedirectUri({
-    scheme: 'fitfusion',
-    path: 'auth/callback',
-});
+const PRIMARY_OAUTH_REDIRECT_URL = 'bodypilot://auth/callback';
+const LEGACY_OAUTH_REDIRECT_URL = 'com.dhairyagandhi.fitfusion://auth/callback';
+const OAUTH_REDIRECT_URLS = [PRIMARY_OAUTH_REDIRECT_URL, LEGACY_OAUTH_REDIRECT_URL];
+export const EMAIL_CONFIRM_REDIRECT_URL = 'https://iamdhairyagandhi.github.io/fitness-app/confirm/';
+
+const DEMO_EMAIL = 'app-review@bodypilot.app';
+const LEGACY_DEMO_EMAIL = 'app-review@fitfusion.app';
+const DEMO_PASSWORD = 'FitFusionReview2026!';
+
+export function isReviewerDemoLogin(email: string, password: string) {
+    const normalizedEmail = email.trim().toLowerCase();
+    return (normalizedEmail === DEMO_EMAIL || normalizedEmail === LEGACY_DEMO_EMAIL) && password === DEMO_PASSWORD;
+}
 
 function firstParam(value: string | string[] | null | undefined): string | null {
     if (Array.isArray(value)) return value[0] ?? null;
@@ -50,11 +58,11 @@ function extractOAuthParams(url: string) {
     return params;
 }
 
-async function completeOAuthSignIn(provider: Provider) {
+async function startOAuthAttempt(provider: Provider, redirectTo: string) {
     const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-            redirectTo: OAUTH_REDIRECT_URL,
+            redirectTo,
             skipBrowserRedirect: Platform.OS !== 'web',
         },
     });
@@ -64,7 +72,7 @@ async function completeOAuthSignIn(provider: Provider) {
     if (Platform.OS === 'web') return data;
     if (!data?.url) throw new Error('No sign-in URL returned');
 
-    const result = await WebBrowser.openAuthSessionAsync(data.url, OAUTH_REDIRECT_URL);
+    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
     if (result.type !== 'success') {
         throw new Error(`${provider === 'google' ? 'Google' : 'Apple'} sign-in was cancelled`);
     }
@@ -95,6 +103,25 @@ async function completeOAuthSignIn(provider: Provider) {
     throw new Error('Sign-in did not return a valid session');
 }
 
+async function completeOAuthSignIn(provider: Provider) {
+    let lastError: unknown = null;
+
+    for (const redirectTo of OAUTH_REDIRECT_URLS) {
+        try {
+            return await startOAuthAttempt(provider, redirectTo);
+        } catch (error: any) {
+            lastError = error;
+            const message = String(error?.message || error || '');
+            const canTryLegacy = redirectTo !== LEGACY_OAUTH_REDIRECT_URL &&
+                /cancel|dismiss|redirect|url|scheme|session/i.test(message);
+
+            if (!canTryLegacy) break;
+        }
+    }
+
+    throw lastError instanceof Error ? lastError : new Error(`${provider} sign-in failed`);
+}
+
 // ── Google sign-in via Supabase OAuth ────────────────────────
 
 export async function signInWithGoogle() {
@@ -104,7 +131,40 @@ export async function signInWithGoogle() {
 // ── Apple sign-in via Supabase OAuth ─────────────────────────
 
 export async function signInWithApple() {
-    if (!Crypto) throw new Error('expo-crypto is required for Apple sign-in but is not available');
+    if (Platform.OS === 'ios') {
+        if (!Crypto) throw new Error('Apple sign-in needs the native crypto module. Please rebuild the iOS app.');
+
+        const AppleAuthentication = require('expo-apple-authentication') as typeof import('expo-apple-authentication');
+        const isAvailable = await AppleAuthentication.isAvailableAsync();
+        if (!isAvailable) throw new Error('Sign in with Apple is not available on this device.');
+
+        const rawNonce = Crypto.randomUUID();
+        const hashedNonce = await Crypto.digestStringAsync(
+            Crypto.CryptoDigestAlgorithm.SHA256,
+            rawNonce
+        );
+
+        const credential = await AppleAuthentication.signInAsync({
+            requestedScopes: [
+                AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+                AppleAuthentication.AppleAuthenticationScope.EMAIL,
+            ],
+            nonce: hashedNonce,
+        });
+
+        if (!credential.identityToken) {
+            throw new Error('Apple did not return an identity token.');
+        }
+
+        const { data, error } = await supabase.auth.signInWithIdToken({
+            provider: 'apple',
+            token: credential.identityToken,
+            nonce: rawNonce,
+        });
+
+        if (error) throw error;
+        return data;
+    }
 
     return completeOAuthSignIn('apple');
 }

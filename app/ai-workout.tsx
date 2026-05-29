@@ -1,6 +1,7 @@
 import { Button, Card } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { generateWorkoutPlan } from '@/lib/aiEngine';
+import { requirePremium } from '@/lib/premium';
 import { useAuthStore } from '@/stores/authStore';
 import { useWorkoutStore } from '@/stores/workoutStore';
 import type { AIGeneratedWorkout } from '@/types';
@@ -37,6 +38,7 @@ export default function AIWorkoutScreen() {
     };
 
     const handleGenerate = async () => {
+        if (!requirePremium('ai_workout')) return;
         setLoading(true);
         setError('');
         setResult(null);

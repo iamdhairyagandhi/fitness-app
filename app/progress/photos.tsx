@@ -1,13 +1,14 @@
 import { toast } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { imageOnlyPickerOptions, requestCameraAccess, requestPhotoLibraryAccess } from '@/lib/imagePickerPermissions';
 import { generateId } from '@/lib/utils';
 import { useProgressStore } from '@/stores/progressStore';
 import type { ProgressPhoto } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    Platform,
     ScrollView,
     StyleSheet,
     Text,
@@ -28,16 +29,19 @@ export default function ProgressPhotosScreen() {
     const [selectedPose, setSelectedPose] = useState<ProgressPhoto['pose']>('front');
 
     const handleTakePhoto = async () => {
-        if (Platform.OS === 'web') {
-            toast.info('Camera', 'Camera access requires a mobile device. Adding demo photo.');
-        }
-
-        // In production: use expo-image-picker
-        // For MVP: add a placeholder entry
+        const permitted = await requestCameraAccess();
+        if (!permitted) return;
+        const result = await ImagePicker.launchCameraAsync({
+            ...imageOnlyPickerOptions,
+            quality: 0.85,
+            allowsEditing: true,
+            aspect: [3, 4],
+        });
+        if (result.canceled || !result.assets?.[0]) return;
         const photo: ProgressPhoto = {
             id: generateId(),
             user_id: '',
-            image_url: `https://via.placeholder.com/400x600/1A1A2E/6C5CE7?text=${selectedPose}+pose`,
+            image_url: result.assets[0].uri,
             pose: selectedPose,
             taken_at: new Date().toISOString(),
             weight_kg: null,
@@ -49,8 +53,27 @@ export default function ProgressPhotosScreen() {
     };
 
     const handlePickImage = async () => {
-        // Same as take photo for demo
-        handleTakePhoto();
+        const permitted = await requestPhotoLibraryAccess();
+        if (!permitted) return;
+        const result = await ImagePicker.launchImageLibraryAsync({
+            ...imageOnlyPickerOptions,
+            quality: 0.85,
+            allowsEditing: true,
+            aspect: [3, 4],
+        });
+        if (result.canceled || !result.assets?.[0]) return;
+        const photo: ProgressPhoto = {
+            id: generateId(),
+            user_id: '',
+            image_url: result.assets[0].uri,
+            pose: selectedPose,
+            taken_at: new Date().toISOString(),
+            weight_kg: null,
+            notes: null,
+        };
+
+        addProgressPhoto(photo);
+        toast.success('Photo Added', `${selectedPose} pose photo saved to your progress gallery.`);
     };
 
     const groupedPhotos = progressPhotos.reduce<Record<string, ProgressPhoto[]>>((acc, photo) => {

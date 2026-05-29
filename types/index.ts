@@ -112,7 +112,7 @@ export interface WorkoutTemplateExercise {
     exercise: Exercise;
     order: number;
     target_sets: number;
-    target_reps: string; // e.g., "8-12" or "5"
+    target_reps: string; // single target number, e.g., "10" or "5"
     target_weight_kg: number | null;
     rest_seconds: number;
     notes: string | null;
@@ -708,9 +708,15 @@ export type ActivityType =
     | 'challenge_joined'
     | 'challenge_completed'
     | 'weight_milestone'
-    | 'level_up';
+    | 'level_up'
+    | 'manual_post'
+    | 'progress_photo'
+    | 'body_milestone'
+    | 'recipe_shared'
+    | 'shared_activity';
 
 export type ReactionType = 'like' | 'fire' | 'muscle' | 'clap';
+export type ActivityVisibility = 'public' | 'followers' | 'private';
 
 export interface ActivityFeedItem {
     id: string;
@@ -720,6 +726,7 @@ export interface ActivityFeedItem {
     description: string | null;
     metadata: Record<string, unknown>;
     is_public: boolean;
+    visibility?: ActivityVisibility;
     created_at: string;
     profile?: {
         display_name: string;
@@ -730,6 +737,8 @@ export interface ActivityFeedItem {
     reactions_count: number;
     comments_count: number;
     user_reaction?: ReactionType | null;
+    is_saved?: boolean;
+    is_hidden?: boolean;
 }
 
 export interface Reaction {

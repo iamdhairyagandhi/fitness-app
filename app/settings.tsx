@@ -1,7 +1,9 @@
 import { Card, toast } from '@/components/ui';
+import { PREMIUM_PLANS } from '@/constants/subscription';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { ThemeScheme, useTheme } from '@/contexts/ThemeContext';
 import { buildMeasurementsExport, buildWorkoutExport, exportData } from '@/lib/export';
+import { seedSevenDayTestData } from '@/lib/seedWeekTestData';
 import {
     DEFAULT_NOTIFICATION_PREFERENCES,
     NotificationPreferenceKey,
@@ -13,11 +15,13 @@ import {
 } from '@/lib/notifications';
 import { useAuthStore } from '@/stores/authStore';
 import { useProgressStore } from '@/stores/progressStore';
+import { useSubscriptionStore } from '@/stores/subscriptionStore';
 import { useWorkoutStore } from '@/stores/workoutStore';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
+    Linking,
     ScrollView,
     StyleSheet,
     Text,
@@ -28,18 +32,22 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type UnitSystem = 'metric' | 'imperial';
 
+const PRIVACY_POLICY_URL = 'https://fudqcomgwnjxcqgocfuw.supabase.co/functions/v1/privacy-policy';
+
 export default function SettingsScreen() {
     const insets = useSafeAreaInsets();
     const { user, updateUser } = useAuthStore();
     const { mode: theme, scheme, schemes, setMode: setTheme, setScheme, colors } = useTheme();
     const recentWorkouts = useWorkoutStore((s) => s.recentWorkouts);
     const weightEntries = useProgressStore((s) => s.weightEntries);
+    const { isPremium, status, plan, trialEndsAt } = useSubscriptionStore();
 
     const [units, setUnits] = useState<UnitSystem>(user?.unit_system || 'metric');
     const [restTimer, setRestTimer] = useState(user?.preferred_rest_seconds || 90);
     const [notifications, setNotifications] = useState<NotificationPreferences>(DEFAULT_NOTIFICATION_PREFERENCES);
     const [notificationStatus, setNotificationStatus] = useState<string>('unknown');
     const [notificationBusy, setNotificationBusy] = useState(false);
+    const [seedBusy, setSeedBusy] = useState(false);
 
     const syncNotifications = async (next: NotificationPreferences) => {
         setNotificationBusy(true);
@@ -91,6 +99,17 @@ export default function SettingsScreen() {
         router.back();
     };
 
+    const handleOpenPrivacyPolicy = async () => {
+        try {
+            const canOpen = await Linking.canOpenURL(PRIVACY_POLICY_URL);
+            if (!canOpen) throw new Error(`Cannot open ${PRIVACY_POLICY_URL}`);
+            await Linking.openURL(PRIVACY_POLICY_URL);
+        } catch (error) {
+            console.warn('Could not open privacy policy:', error);
+            toast.error('Could Not Open Link', 'Please try the privacy policy again later.');
+        }
+    };
+
     const Toggle = ({ value, onPress }: { value: boolean; onPress: () => void }) => (
         <TouchableOpacity
             style={[styles.toggle, { backgroundColor: colors.surfaceLight }, value && styles.toggleActive, value && { backgroundColor: colors.primary }]}
@@ -136,6 +155,29 @@ export default function SettingsScreen() {
             </View>
 
             <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+                <TouchableOpacity
+                    style={[styles.premiumCard, { backgroundColor: colors.surface, borderColor: colors.primary + '45' }]}
+                    onPress={() => router.push('/premium' as any)}
+                    activeOpacity={0.85}
+                >
+                    <View style={[styles.premiumIcon, { backgroundColor: colors.primary + '18' }]}>
+                        <Ionicons name="sparkles" size={22} color={colors.primary} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                        <Text style={[styles.premiumTitle, { color: colors.text }]}>
+                            {isPremium() ? 'BodyPilot Premium' : 'Upgrade to Premium'}
+                        </Text>
+                        <Text style={[styles.premiumSubtitle, { color: colors.textSecondary }]}>
+                            {isPremium()
+                                ? status === 'trialing' && trialEndsAt
+                                    ? `Trial active until ${new Date(trialEndsAt).toLocaleDateString()}`
+                                    : `${plan ? PREMIUM_PLANS[plan].label : 'Premium'} active`
+                                : 'AI coach, food scan, advanced insights, Apple Health, and more.'}
+                        </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+                </TouchableOpacity>
+
                 {/* Units */}
                 <OptionRow
                     icon="⚖️"
@@ -160,22 +202,36 @@ export default function SettingsScreen() {
                         {schemes.map((item) => (
                             <TouchableOpacity
                                 key={item.id}
-                                style={[styles.schemeCard, { backgroundColor: colors.surface, borderColor: colors.border }, scheme === item.id && styles.schemeCardActive, scheme === item.id && { borderColor: colors.primary }]}
+                                style={[
+                                    styles.schemeCard,
+                                    { backgroundColor: colors.surface, borderColor: colors.border },
+                                    scheme === item.id && { backgroundColor: colors.surfaceLight, borderColor: colors.primary },
+                                ]}
                                 onPress={() => setScheme(item.id as ThemeScheme)}
                                 activeOpacity={0.82}
                             >
                                 <View style={styles.schemeSwatches}>
-                                    <View style={[styles.schemeSwatch, { backgroundColor: item.colors.background, borderColor: item.colors.border }]} />
-                                    <View style={[styles.schemeSwatch, { backgroundColor: item.colors.surface }]} />
-                                    <View style={[styles.schemeSwatch, { backgroundColor: item.colors.primary }]} />
+                                    {[
+                                        item.colors.background,
+                                        item.colors.surface,
+                                        item.colors.primary,
+                                        item.colors.accent,
+                                        item.colors.analytics,
+                                        item.colors.recovery,
+                                    ].map((swatch, index) => (
+                                        <View
+                                            key={`${item.id}-${index}`}
+                                            style={[styles.schemeSwatch, { backgroundColor: swatch, borderColor: item.colors.border }]}
+                                        />
+                                    ))}
                                 </View>
-                                <Text style={[styles.schemeName, scheme === item.id && styles.schemeNameActive]}>
+                                <Text style={[styles.schemeName, { color: colors.text }, scheme === item.id && { color: colors.primary }]}>
                                     {item.name}
                                 </Text>
-                                <Text style={styles.schemeDescription} numberOfLines={2}>
+                                <Text style={[styles.schemeDescription, { color: colors.textTertiary }]} numberOfLines={2}>
                                     {item.description}
                                 </Text>
-                                <Text style={styles.schemeTone}>{item.tone}</Text>
+                                <Text style={[styles.schemeTone, { color: colors.textTertiary }]}>{item.tone}</Text>
                             </TouchableOpacity>
                         ))}
                     </View>
@@ -281,6 +337,45 @@ export default function SettingsScreen() {
                     ))}
                 </Card>
 
+                {__DEV__ && (
+                    <>
+                        <Text style={[styles.sectionTitle, { color: colors.text }]}>Developer Testing</Text>
+                        <Card>
+                            <View style={styles.notificationHeader}>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={[styles.notificationTitle, { color: colors.text }]}>Seed 7-day analytics data</Text>
+                                    <Text style={[styles.notificationSubtitle, { color: colors.textTertiary }]}>
+                                        Adds meals, water, workouts, weight, and recovery data for simulator chart testing.
+                                    </Text>
+                                </View>
+                                <TouchableOpacity
+                                    style={[styles.testButton, { borderColor: colors.primary + '40', backgroundColor: colors.primary + '12' }]}
+                                    disabled={seedBusy}
+                                    onPress={async () => {
+                                        setSeedBusy(true);
+                                        try {
+                                            const result = await seedSevenDayTestData();
+                                            toast.success(
+                                                'Week seeded',
+                                                `${result.days} days, ${result.meals} meals, ${result.workouts} workouts.`
+                                            );
+                                        } catch (error) {
+                                            console.warn('Seed week test data failed:', error);
+                                            toast.error('Seed failed', 'Could not create simulator test data.');
+                                        } finally {
+                                            setSeedBusy(false);
+                                        }
+                                    }}
+                                >
+                                    <Text style={[styles.testButtonText, { color: colors.primary }]}>
+                                        {seedBusy ? 'Seeding' : 'Seed'}
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                        </Card>
+                    </>
+                )}
+
                 {/* Data & Privacy */}
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Data & Privacy</Text>
                 <Card padding={0}>
@@ -298,8 +393,8 @@ export default function SettingsScreen() {
                             }
                         },
                         { icon: 'trash-outline' as const, label: 'Clear All Data', action: () => toast.confirm({ title: 'Warning', message: 'This will delete all your local data.', confirmLabel: 'Delete', destructive: true, onConfirm: () => { } }) },
-                        { icon: 'document-text-outline' as const, label: 'Privacy Policy', action: () => { } },
-                        { icon: 'shield-checkmark-outline' as const, label: 'Terms of Service', action: () => { } },
+                        { icon: 'document-text-outline' as const, label: 'Privacy Policy', action: handleOpenPrivacyPolicy },
+                        { icon: 'shield-checkmark-outline' as const, label: 'Terms of Service', action: () => router.push('/terms' as any) },
                     ].map((item, idx) => (
                         <TouchableOpacity
                             key={item.label}
@@ -326,6 +421,31 @@ const styles = StyleSheet.create({
     saveBtn: { color: Colors.primary, fontSize: FontSize.md, fontWeight: FontWeight.bold },
     scroll: { paddingHorizontal: Spacing.lg, paddingBottom: 100 },
     sectionTitle: { color: Colors.text, fontSize: FontSize.md, fontWeight: FontWeight.bold, marginTop: Spacing.xxl, marginBottom: Spacing.md },
+    premiumCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.md,
+        borderWidth: 1.5,
+        borderRadius: BorderRadius.lg,
+        padding: Spacing.lg,
+        marginTop: Spacing.md,
+    },
+    premiumIcon: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    premiumTitle: {
+        fontSize: FontSize.md,
+        fontWeight: FontWeight.bold,
+    },
+    premiumSubtitle: {
+        fontSize: FontSize.xs,
+        lineHeight: 18,
+        marginTop: 3,
+    },
 
     optionSection: { marginTop: Spacing.xl },
     optionLabel: { color: Colors.text, fontSize: FontSize.md, fontWeight: FontWeight.semibold, marginBottom: Spacing.md },
@@ -349,10 +469,6 @@ const styles = StyleSheet.create({
         borderColor: Colors.border,
         padding: Spacing.md,
     },
-    schemeCardActive: {
-        borderColor: Colors.primary,
-        backgroundColor: Colors.surfaceLight,
-    },
     schemeSwatches: {
         flexDirection: 'row',
         marginBottom: Spacing.md,
@@ -370,9 +486,6 @@ const styles = StyleSheet.create({
         fontSize: FontSize.sm,
         fontWeight: FontWeight.bold,
         marginBottom: 3,
-    },
-    schemeNameActive: {
-        color: Colors.primary,
     },
     schemeDescription: {
         color: Colors.textTertiary,

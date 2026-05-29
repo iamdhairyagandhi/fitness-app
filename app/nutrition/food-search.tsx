@@ -1,6 +1,8 @@
 import { Button, toast } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 import { searchFoodsCombined } from '@/lib/foodApi';
+import { requirePremium } from '@/lib/premium';
 import { useNutritionStore } from '@/stores/nutritionStore';
 import type { FoodItem, MealType } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
@@ -54,6 +56,7 @@ const OFFLINE_FOODS: FoodItem[] = [
 
 export default function FoodSearchScreen() {
     const insets = useSafeAreaInsets();
+    const { colors } = useTheme();
     const params = useLocalSearchParams<{ meal?: string }>();
     const mealType = (params.meal as MealType) || 'snack';
 
@@ -111,7 +114,11 @@ export default function FoodSearchScreen() {
         <TouchableOpacity
             style={[
                 styles.foodCard,
-                selectedFood?.id === item.id && styles.foodRowSelected,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+                selectedFood?.id === item.id && {
+                    borderColor: colors.primary,
+                    backgroundColor: colors.primary + '18',
+                },
             ]}
             onPress={() => {
                 setSelectedFood(item);
@@ -123,7 +130,7 @@ export default function FoodSearchScreen() {
                 {item.image_url ? (
                     <Image source={{ uri: item.image_url }} style={styles.foodImage} resizeMode="cover" />
                 ) : (
-                    <Ionicons name="restaurant-outline" size={24} color={Colors.primary} />
+                    <Ionicons name="restaurant-outline" size={24} color={colors.primary} />
                 )}
             </View>
             <View style={styles.foodInfo}>
@@ -146,57 +153,59 @@ export default function FoodSearchScreen() {
                     <Text style={[styles.macroText, { color: Colors.fat }]}>F {item.fat_g}g</Text>
                 </View>
             </View>
-            <Ionicons name="add-circle" size={24} color={Colors.primary} />
+            <Ionicons name="add-circle" size={24} color={colors.primary} />
         </TouchableOpacity>
-    ), [selectedFood]);
+    ), [colors.border, colors.primary, colors.surface, selectedFood]);
 
     return (
-        <View style={[styles.container, { paddingTop: insets.top }]}>
+        <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()}>
-                    <Ionicons name="arrow-back" size={24} color={Colors.text} />
+                    <Ionicons name="arrow-back" size={24} color={colors.text} />
                 </TouchableOpacity>
-                <Text style={styles.title}>
+                <Text style={[styles.title, { color: colors.text }]}>
                     Add to {mealType.charAt(0).toUpperCase() + mealType.slice(1)}
                 </Text>
                 <TouchableOpacity onPress={() => router.push('/nutrition/create-food')}>
-                    <Ionicons name="add-circle-outline" size={24} color={Colors.primary} />
+                    <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
                 </TouchableOpacity>
             </View>
 
             {/* Quick actions */}
             <View style={styles.quickRow}>
                 <TouchableOpacity
-                    style={styles.quickBtn}
+                    style={[styles.quickBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
                     onPress={() => router.push('/nutrition/barcode-scanner')}
                 >
-                    <Ionicons name="barcode-outline" size={18} color={Colors.primary} />
-                    <Text style={styles.quickBtnText}>Scan Barcode</Text>
+                    <Ionicons name="barcode-outline" size={18} color={colors.primary} />
+                    <Text style={[styles.quickBtnText, { color: colors.primary }]}>Scan Barcode</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                    style={styles.quickBtn}
-                    onPress={() => router.push('/nutrition/ai-scanner')}
+                    style={[styles.quickBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                    onPress={() => {
+                        if (requirePremium('ai_food_scan')) router.push(`/nutrition/ai-scanner?meal=${mealType}`);
+                    }}
                 >
-                    <Ionicons name="camera-outline" size={18} color={Colors.primary} />
-                    <Text style={styles.quickBtnText}>AI Photo Scan</Text>
+                    <Ionicons name="camera-outline" size={18} color={colors.primary} />
+                    <Text style={[styles.quickBtnText, { color: colors.primary }]}>AI Photo Scan</Text>
                 </TouchableOpacity>
             </View>
 
             {/* Search */}
-            <View style={styles.searchContainer}>
-                <Ionicons name="search" size={20} color={Colors.textTertiary} />
+            <View style={[styles.searchContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <Ionicons name="search" size={20} color={colors.textTertiary} />
                 <TextInput
-                    style={styles.searchInput}
+                    style={[styles.searchInput, { color: colors.text }]}
                     placeholder="Search foods..."
-                    placeholderTextColor={Colors.textTertiary}
+                    placeholderTextColor={colors.textTertiary}
                     value={query}
                     onChangeText={setQuery}
                     autoFocus
                 />
                 {query.length > 0 && (
                     <TouchableOpacity onPress={() => setQuery('')}>
-                        <Ionicons name="close-circle" size={20} color={Colors.textTertiary} />
+                        <Ionicons name="close-circle" size={20} color={colors.textTertiary} />
                     </TouchableOpacity>
                 )}
             </View>
@@ -210,20 +219,20 @@ export default function FoodSearchScreen() {
                 showsVerticalScrollIndicator={false}
                 ListHeaderComponent={isSearching ? (
                     <View style={styles.searchingRow}>
-                        <ActivityIndicator size="small" color={Colors.primary} />
-                        <Text style={styles.searchingText}>Searching online...</Text>
+                        <ActivityIndicator size="small" color={colors.primary} />
+                        <Text style={[styles.searchingText, { color: colors.textSecondary }]}>Searching online...</Text>
                     </View>
                 ) : apiResults.length > 0 ? (
-                    <Text style={styles.sourceHint}>Showing matching foods</Text>
+                    <Text style={[styles.sourceHint, { color: colors.textTertiary }]}>Showing matching foods</Text>
                 ) : query.length >= 2 ? (
-                    <Text style={styles.sourceHint}>Showing offline results</Text>
+                    <Text style={[styles.sourceHint, { color: colors.textTertiary }]}>Showing offline results</Text>
                 ) : null}
                 ListEmptyComponent={
                     <View style={styles.emptyState}>
-                        <Ionicons name="search-outline" size={40} color={Colors.textTertiary} />
-                        <Text style={styles.emptyText}>No foods found</Text>
+                        <Ionicons name="search-outline" size={40} color={colors.textTertiary} />
+                        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No foods found</Text>
                         <TouchableOpacity onPress={() => router.push('/nutrition/create-food')}>
-                            <Text style={styles.createLink}>Create custom food</Text>
+                            <Text style={[styles.createLink, { color: colors.primary }]}>Create custom food</Text>
                         </TouchableOpacity>
                     </View>
                 }
@@ -231,13 +240,13 @@ export default function FoodSearchScreen() {
 
             {/* Selected food bottom sheet */}
             {selectedFood && (
-                <View style={[styles.bottomSheet, { paddingBottom: insets.bottom + Spacing.md }]}>
+                <View style={[styles.bottomSheet, { paddingBottom: insets.bottom + Spacing.md, backgroundColor: colors.surface, borderColor: colors.border }]}>
                     <View style={styles.sheetHeader}>
                         <View style={{ flex: 1 }}>
-                            <Text style={styles.sheetFoodName}>{selectedFood.name}</Text>
+                            <Text style={[styles.sheetFoodName, { color: colors.text }]}>{selectedFood.name}</Text>
                         </View>
                         <TouchableOpacity onPress={() => setSelectedFood(null)}>
-                            <Ionicons name="close" size={22} color={Colors.textSecondary} />
+                            <Ionicons name="close" size={22} color={colors.textSecondary} />
                         </TouchableOpacity>
                     </View>
 
@@ -246,52 +255,52 @@ export default function FoodSearchScreen() {
                             <Text style={[styles.sheetMacroValue, { color: Colors.calories }]}>
                                 {Math.round(selectedFood.calories * parseFloat(servings || '0'))}
                             </Text>
-                            <Text style={styles.sheetMacroLabel}>kcal</Text>
+                            <Text style={[styles.sheetMacroLabel, { color: colors.textTertiary }]}>kcal</Text>
                         </View>
                         <View style={styles.sheetMacro}>
                             <Text style={[styles.sheetMacroValue, { color: Colors.protein }]}>
                                 {(selectedFood.protein_g * parseFloat(servings || '0')).toFixed(1)}
                             </Text>
-                            <Text style={styles.sheetMacroLabel}>Protein</Text>
+                            <Text style={[styles.sheetMacroLabel, { color: colors.textTertiary }]}>Protein</Text>
                         </View>
                         <View style={styles.sheetMacro}>
                             <Text style={[styles.sheetMacroValue, { color: Colors.carbs }]}>
                                 {(selectedFood.carbs_g * parseFloat(servings || '0')).toFixed(1)}
                             </Text>
-                            <Text style={styles.sheetMacroLabel}>Carbs</Text>
+                            <Text style={[styles.sheetMacroLabel, { color: colors.textTertiary }]}>Carbs</Text>
                         </View>
                         <View style={styles.sheetMacro}>
                             <Text style={[styles.sheetMacroValue, { color: Colors.fat }]}>
                                 {(selectedFood.fat_g * parseFloat(servings || '0')).toFixed(1)}
                             </Text>
-                            <Text style={styles.sheetMacroLabel}>Fat</Text>
+                            <Text style={[styles.sheetMacroLabel, { color: colors.textTertiary }]}>Fat</Text>
                         </View>
                     </View>
 
                     <View style={styles.servingsRow}>
-                        <Text style={styles.servingsLabel}>Servings</Text>
+                        <Text style={[styles.servingsLabel, { color: colors.textSecondary }]}>Servings</Text>
                         <View style={styles.servingsControl}>
                             <TouchableOpacity
-                                style={styles.servingsBtn}
+                                style={[styles.servingsBtn, { backgroundColor: colors.surfaceElevated }]}
                                 onPress={() => setServings(String(Math.max(0.5, parseFloat(servings || '1') - 0.5)))}
                             >
-                                <Ionicons name="remove" size={18} color={Colors.text} />
+                                <Ionicons name="remove" size={18} color={colors.text} />
                             </TouchableOpacity>
                             <TextInput
-                                style={styles.servingsInput}
+                                style={[styles.servingsInput, { backgroundColor: colors.surfaceElevated, color: colors.text }]}
                                 value={servings}
                                 onChangeText={setServings}
                                 keyboardType="decimal-pad"
                                 textAlign="center"
                             />
                             <TouchableOpacity
-                                style={styles.servingsBtn}
+                                style={[styles.servingsBtn, { backgroundColor: colors.surfaceElevated }]}
                                 onPress={() => setServings(String(parseFloat(servings || '1') + 0.5))}
                             >
-                                <Ionicons name="add" size={18} color={Colors.text} />
+                                <Ionicons name="add" size={18} color={colors.text} />
                             </TouchableOpacity>
                         </View>
-                        <Text style={styles.servingsUnit}>
+                        <Text style={[styles.servingsUnit, { color: colors.textTertiary }]}>
                             × {selectedFood.serving_size_g}{selectedFood.serving_unit === 'g' ? 'g' : ` ${selectedFood.serving_unit}`}
                         </Text>
                     </View>
@@ -318,7 +327,7 @@ const styles = StyleSheet.create({
         gap: Spacing.sm, backgroundColor: Colors.surface, borderRadius: BorderRadius.md,
         paddingVertical: Spacing.md, borderWidth: 1, borderColor: Colors.border,
     },
-    quickBtnText: { color: Colors.primary, fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
+    quickBtnText: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
     searchContainer: {
         flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
         marginHorizontal: Spacing.lg, backgroundColor: Colors.surface,
@@ -340,10 +349,7 @@ const styles = StyleSheet.create({
         padding: Spacing.md,
         marginBottom: Spacing.md,
     },
-    foodRowSelected: {
-        borderColor: Colors.primary,
-        backgroundColor: Colors.primary + '18',
-    },
+    foodRowSelected: {},
     foodImageWrap: {
         width: 68,
         height: 68,
@@ -383,7 +389,7 @@ const styles = StyleSheet.create({
     macroText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
     emptyState: { alignItems: 'center', paddingTop: Spacing.huge, gap: Spacing.md },
     emptyText: { color: Colors.textSecondary, fontSize: FontSize.md },
-    createLink: { color: Colors.primary, fontSize: FontSize.md, fontWeight: FontWeight.semibold },
+    createLink: { fontSize: FontSize.md, fontWeight: FontWeight.semibold },
     searchingRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.md },
     searchingText: { color: Colors.textSecondary, fontSize: FontSize.sm },
     sourceHint: { color: Colors.textTertiary, fontSize: FontSize.xs, paddingVertical: Spacing.sm },

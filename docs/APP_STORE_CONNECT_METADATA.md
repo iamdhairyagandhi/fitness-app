@@ -39,7 +39,7 @@ fitness,workout,nutrition,calorie,macros,meal,tracker,gym,progress,AI coach
 
 ## Required URLs
 
-- Privacy Policy URL: publish `docs/PRIVACY_POLICY.md` to a public webpage before submission.
+- Privacy Policy URL: https://fudqcomgwnjxcqgocfuw.supabase.co/functions/v1/privacy-policy
 - Support URL: use a public support/contact page or mailto-capable support page.
 - Marketing URL: optional.
 
@@ -57,7 +57,7 @@ Permissions:
 Account deletion is available in Profile > Account Settings > Delete Account.
 
 Demo account:
-- Email: app-review@fitfusion.app
+- Email: app-review@bodypilot.app
 - Password: FitFusionReview2026!
 
 App Review contact:

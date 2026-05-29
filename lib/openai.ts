@@ -1,4 +1,5 @@
 import { AI_PROXY_ENABLED } from '@/constants/config';
+import { HEALTH_CITATION_PROMPT } from '@/constants/healthCitations';
 import { supabase } from '@/lib/supabase';
 
 export interface OpenAIMessage {
@@ -74,16 +75,20 @@ export async function chatCompletion(
 /**
  * Analyze a food photo using GPT-4o Vision
  */
-export async function analyzeFoodPhoto(base64Image: string): Promise<string> {
+export async function analyzeFoodPhoto(base64Image: string, context?: string): Promise<string> {
+    const contextText = context?.trim()
+        ? `User context for this meal: ${context.trim()}\nUse this context to improve portion and ingredient estimates, but do not invent foods that are not plausible from the photo.`
+        : 'No extra user context was provided.';
+
     const messages: OpenAIMessage[] = [
         {
             role: 'system',
-            content: 'You are a nutrition expert. Analyze the food in the image and return a JSON array of detected food items with estimated nutrition values. Each item should have: name, serving_size_g, calories, protein_g, carbs_g, fat_g. Be concise and accurate.',
+            content: 'You are a nutrition expert. Analyze the food in the image and return a JSON array of detected food items with estimated nutrition values. Each item should have: name, serving_size_g, serving_unit, calories, protein_g, carbs_g, fat_g, fiber_g, sugar_g, sodium_mg. Use the user-provided context when available to improve ingredient and portion estimates. Be concise and accurate.',
         },
         {
             role: 'user',
             content: [
-                { type: 'text', text: 'What foods do you see in this image? Estimate the nutrition values.' },
+                { type: 'text', text: `What foods do you see in this image? Estimate nutrition values.\n\n${contextText}` },
                 { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${base64Image}` } },
             ],
         },
@@ -147,5 +152,6 @@ Guidelines:
 - For workout advice, consider recovery score and recent training
 - For recovery advice, reference their sleep quality and soreness
 - Suggest progressive overload based on experience level
+- ${HEALTH_CITATION_PROMPT}
 - Use emoji sparingly for emphasis`;
 }

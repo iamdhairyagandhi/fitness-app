@@ -1,0 +1,5 @@
+file '/Users/iamdhairyagandhi/Desktop/fitness-app/assets/social/.tmp-launch-reel/scene-0.mp4'
+file '/Users/iamdhairyagandhi/Desktop/fitness-app/assets/social/.tmp-launch-reel/scene-1.mp4'
+file '/Users/iamdhairyagandhi/Desktop/fitness-app/assets/social/.tmp-launch-reel/scene-2.mp4'
+file '/Users/iamdhairyagandhi/Desktop/fitness-app/assets/social/.tmp-launch-reel/scene-3.mp4'
+file '/Users/iamdhairyagandhi/Desktop/fitness-app/assets/social/.tmp-launch-reel/scene-4.mp4'

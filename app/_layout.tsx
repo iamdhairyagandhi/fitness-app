@@ -3,20 +3,22 @@ import { OfflineBanner } from '@/components/ui/OfflineBanner';
 import { Colors } from '@/constants/theme';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { hydrateAllStores } from '@/lib/db';
+import { getLocalDateKey } from '@/lib/date';
+import { buildNutritionSummary } from '@/lib/nutritionSummary';
 import { addNotificationRoutingListener } from '@/lib/notifications';
 import { supabase } from '@/lib/supabase';
+import { useAppleHealthStore } from '@/stores/appleHealthStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useMealPlanStore } from '@/stores/mealPlanStore';
 import { useNutritionStore } from '@/stores/nutritionStore';
 import { useProgressStore } from '@/stores/progressStore';
 import { useRecoveryStore } from '@/stores/recoveryStore';
 import { useWorkoutStore } from '@/stores/workoutStore';
-import type { FoodLogEntry, MealType } from '@/types';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { Component, useCallback, useEffect } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, StyleSheet, Text, View } from 'react-native';
 
 // Error boundary to catch runtime crashes
 class ErrorBoundary extends Component<{ children: React.ReactNode }, { error: Error | null }> {
@@ -69,32 +71,10 @@ function RootLayoutContent() {
             if (data.templates.length > 0) workoutStore.setTemplates(data.templates);
             if (data.personalRecords.length > 0) workoutStore.setPersonalRecords(data.personalRecords);
 
-            // Nutrition store — rebuild today summary from food logs
-            if (data.foodLogs.length > 0 || data.waterLogs.length > 0) {
-                const meals: Record<MealType, FoodLogEntry[]> = {
-                    breakfast: [], lunch: [], dinner: [], snack: [],
-                };
-                let totalCal = 0, totalP = 0, totalC = 0, totalF = 0, totalFiber = 0;
-                for (const fl of data.foodLogs) {
-                    meals[fl.meal_type].push(fl);
-                    totalCal += fl.calories;
-                    totalP += fl.protein_g;
-                    totalC += fl.carbs_g;
-                    totalF += fl.fat_g;
-                }
-                const waterMl = data.waterLogs.reduce((s, w) => s + w.amount_ml, 0);
-                const nutritionStore = useNutritionStore.getState();
-                nutritionStore.setTodaySummary({
-                    date: new Date().toISOString().split('T')[0],
-                    total_calories: totalCal,
-                    total_protein_g: totalP,
-                    total_carbs_g: totalC,
-                    total_fat_g: totalF,
-                    total_fiber_g: totalFiber,
-                    water_ml: waterMl,
-                    meals,
-                });
-            }
+            // Nutrition store — rebuild today from local-day logs and retain real history for analytics.
+            const nutritionStore = useNutritionStore.getState();
+            nutritionStore.setNutritionHistory(data.nutritionHistory);
+            nutritionStore.setTodaySummary(buildNutritionSummary(getLocalDateKey(), data.foodLogs, data.waterLogs));
 
             // Progress store
             const progressStore = useProgressStore.getState();
@@ -140,6 +120,8 @@ function RootLayoutContent() {
                     fastHistory: history,
                 });
             }
+
+            useAppleHealthStore.getState().refreshStatus().catch(() => { });
         } catch (err) {
             console.warn('Hydration error:', err);
         }
@@ -147,6 +129,11 @@ function RootLayoutContent() {
 
     useEffect(() => {
         const notificationSubscription = addNotificationRoutingListener();
+        const appStateSubscription = AppState.addEventListener('change', (nextState) => {
+            if (nextState === 'active') {
+                useAppleHealthStore.getState().refreshStatus().catch(() => { });
+            }
+        });
 
         // Safety timeout — never stay on loading screen forever
         const timeout = setTimeout(() => {
@@ -182,6 +169,7 @@ function RootLayoutContent() {
 
         return () => {
             notificationSubscription.remove();
+            appStateSubscription.remove();
             subscription.unsubscribe();
         };
     }, [setSession, setLoading, hydrateFromSupabase]);
@@ -219,6 +207,13 @@ function RootLayoutContent() {
                 <Stack.Screen name="progress" />
                 <Stack.Screen name="social" />
                 <Stack.Screen name="account-settings" />
+                <Stack.Screen
+                    name="premium"
+                    options={{
+                        presentation: 'modal',
+                        animation: 'slide_from_bottom',
+                    }}
+                />
                 <Stack.Screen name="ai-workout" />
                 <Stack.Screen name="ai-meal-plan" />
                 <Stack.Screen name="weekly-report" />
