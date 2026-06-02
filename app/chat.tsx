@@ -263,11 +263,12 @@ export default function AIChatScreen() {
                     ? { functionName: functionCall.functionName, args: functionCall.args }
                     : undefined).catch(() => { });
             }
-        } catch {
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Please try again.';
             const errorMessage: ChatMessage = {
                 id: generateId(),
                 role: 'assistant',
-                content: 'Sorry, I encountered an error. Please try again.',
+                content: `Sorry, I encountered an error. ${message}`,
                 timestamp: new Date().toISOString(),
             };
             setMessages((prev) => [...prev, errorMessage]);

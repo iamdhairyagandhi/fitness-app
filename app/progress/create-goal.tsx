@@ -1,5 +1,6 @@
 import { Button, toast } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 import { generateId } from '@/lib/utils';
 import { useProgressStore } from '@/stores/progressStore';
 import type { GoalType } from '@/types';
@@ -31,6 +32,7 @@ const GOAL_TYPES: { value: GoalType; label: string; icon: string; defaultUnit: s
 
 export default function CreateGoalScreen() {
     const insets = useSafeAreaInsets();
+    const { colors } = useTheme();
     const { addGoal } = useProgressStore();
 
     const [goalType, setGoalType] = useState<GoalType>('weight');
@@ -80,30 +82,34 @@ export default function CreateGoalScreen() {
 
     return (
         <KeyboardAvoidingView
-            style={[styles.container, { paddingTop: insets.top }]}
+            style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()}>
-                    <Ionicons name="arrow-back" size={24} color={Colors.text} />
+                    <Ionicons name="arrow-back" size={24} color={colors.text} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>New Goal</Text>
+                <Text style={[styles.headerTitle, { color: colors.text }]}>New Goal</Text>
                 <View style={{ width: 24 }} />
             </View>
 
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 {/* Goal type picker */}
-                <Text style={styles.sectionLabel}>Goal Type</Text>
+                <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Goal Type</Text>
                 <View style={styles.typeGrid}>
                     {GOAL_TYPES.map((type) => (
                         <TouchableOpacity
                             key={type.value}
-                            style={[styles.typeCard, goalType === type.value && styles.typeCardActive]}
+                            style={[
+                                styles.typeCard,
+                                { backgroundColor: colors.surface, borderColor: colors.border },
+                                goalType === type.value && { backgroundColor: colors.surfaceLight, borderColor: colors.primary },
+                            ]}
                             onPress={() => handleTypeChange(type.value)}
                         >
                             <Text style={styles.typeIcon}>{type.icon}</Text>
-                            <Text style={[styles.typeLabel, goalType === type.value && styles.typeLabelActive]}>
+                            <Text style={[styles.typeLabel, { color: goalType === type.value ? colors.primary : colors.textSecondary }]}>
                                 {type.label}
                             </Text>
                         </TouchableOpacity>
@@ -111,23 +117,23 @@ export default function CreateGoalScreen() {
                 </View>
 
                 {/* Title */}
-                <Text style={styles.sectionLabel}>Goal Title *</Text>
+                <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Goal Title *</Text>
                 <TextInput
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
                     value={title}
                     onChangeText={setTitle}
                     placeholder={`e.g. Reach ${selectedType.value === 'weight' ? '75kg' : '100kg bench press'}`}
-                    placeholderTextColor={Colors.textTertiary}
+                    placeholderTextColor={colors.textTertiary}
                 />
 
                 {/* Description */}
-                <Text style={styles.sectionLabel}>Description (optional)</Text>
+                <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Description (optional)</Text>
                 <TextInput
-                    style={[styles.input, styles.textArea]}
+                    style={[styles.input, styles.textArea, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
                     value={description}
                     onChangeText={setDescription}
                     placeholder="Why is this goal important to you?"
-                    placeholderTextColor={Colors.textTertiary}
+                    placeholderTextColor={colors.textTertiary}
                     multiline
                     numberOfLines={3}
                 />
@@ -135,46 +141,46 @@ export default function CreateGoalScreen() {
                 {/* Values */}
                 <View style={styles.valueRow}>
                     <View style={styles.valueField}>
-                        <Text style={styles.sectionLabel}>Current Value</Text>
+                        <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Current Value</Text>
                         <View style={styles.valueInputRow}>
                             <TextInput
-                                style={[styles.input, styles.valueInput]}
+                                style={[styles.input, styles.valueInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
                                 value={currentValue}
                                 onChangeText={setCurrentValue}
                                 placeholder="0"
-                                placeholderTextColor={Colors.textTertiary}
+                                placeholderTextColor={colors.textTertiary}
                                 keyboardType="decimal-pad"
                             />
-                            <Text style={styles.unitText}>{unit}</Text>
+                            <Text style={[styles.unitText, { color: colors.textTertiary }]}>{unit}</Text>
                         </View>
                     </View>
                     <View style={styles.arrowContainer}>
-                        <Ionicons name="arrow-forward" size={20} color={Colors.primary} />
+                        <Ionicons name="arrow-forward" size={20} color={colors.primary} />
                     </View>
                     <View style={styles.valueField}>
-                        <Text style={styles.sectionLabel}>Target Value *</Text>
+                        <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Target Value *</Text>
                         <View style={styles.valueInputRow}>
                             <TextInput
-                                style={[styles.input, styles.valueInput]}
+                                style={[styles.input, styles.valueInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
                                 value={targetValue}
                                 onChangeText={setTargetValue}
                                 placeholder="0"
-                                placeholderTextColor={Colors.textTertiary}
+                                placeholderTextColor={colors.textTertiary}
                                 keyboardType="decimal-pad"
                             />
-                            <Text style={styles.unitText}>{unit}</Text>
+                            <Text style={[styles.unitText, { color: colors.textTertiary }]}>{unit}</Text>
                         </View>
                     </View>
                 </View>
 
                 {/* Target date */}
-                <Text style={styles.sectionLabel}>Target Date (optional)</Text>
+                <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Target Date (optional)</Text>
                 <TextInput
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
                     value={targetDate}
                     onChangeText={setTargetDate}
                     placeholder="YYYY-MM-DD"
-                    placeholderTextColor={Colors.textTertiary}
+                    placeholderTextColor={colors.textTertiary}
                 />
 
                 <Button title="Create Goal" onPress={handleSave} size="lg" style={{ marginTop: Spacing.xxl }} />

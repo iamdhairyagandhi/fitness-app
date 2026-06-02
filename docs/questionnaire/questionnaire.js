@@ -119,6 +119,34 @@ function calculateTDEE(bmr, activity) {
   return Math.round(bmr * (multipliers[activity] || 1.55));
 }
 
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function roundToNearest(value, nearest) {
+  return Math.round(value / nearest) * nearest;
+}
+
+function getGoalDailyEnergyDelta(weightKg, goal, pace) {
+  const paceFactor = { steady: 0.75, balanced: 1, aggressive: 1.25 }[pace || 'balanced'];
+  const lossRates = { lose_fat: 0.0075, recomp: 0.0035, maintain: 0, build_muscle: 0, strength: 0, endurance: 0 };
+  const gainRates = { lose_fat: 0, recomp: 0, maintain: 0, build_muscle: 0.0025, strength: 0.0015, endurance: 0 };
+  const lossRate = (lossRates[goal] || 0) * paceFactor;
+  const gainRate = (gainRates[goal] || 0) * paceFactor;
+
+  if (lossRate > 0) {
+    const dailyDeficit = (weightKg * lossRate * 7700) / 7;
+    return -Math.min(Math.max(dailyDeficit, 250), goal === 'lose_fat' ? 750 : 400);
+  }
+
+  if (gainRate > 0) {
+    const dailySurplus = (weightKg * gainRate * 7700) / 7;
+    return Math.min(Math.max(dailySurplus, 125), goal === 'build_muscle' ? 450 : 300);
+  }
+
+  return 0;
+}
+
 function getPlan() {
   const unit = answers.unit_system || 'imperial';
   const weightKg = unit === 'metric' ? numberFrom(answers.weight) : lbsToKg(numberFrom(answers.weight));
@@ -131,22 +159,26 @@ function getPlan() {
   const activity = answers.activity_level || 'moderate';
   const bmr = calculateBMR(weightKg, heightCm, ageYears, answers.gender || 'male');
   const tdee = calculateTDEE(bmr, activity);
-  const paceMultiplier = { steady: 0.9, balanced: 1, aggressive: 1.1 }[answers.pace || 'balanced'];
-  let calories = tdee;
+  const calorieFloor = answers.gender === 'female' ? 1200 : 1500;
+  const calorieDelta = getGoalDailyEnergyDelta(weightKg, goal, answers.pace);
+  const calories = roundToNearest(clamp(tdee + calorieDelta, calorieFloor, Math.max(tdee + 650, calorieFloor + 300)), 25);
+  const actualDelta = calories - tdee;
+  const weeklyChangeKg = (actualDelta * 7) / 7700;
+  const kgToTarget = targetWeightKg == null ? null : targetWeightKg - weightKg;
+  const weeksToTarget = kgToTarget != null && Math.abs(weeklyChangeKg) > 0.05 && Math.sign(kgToTarget) === Math.sign(weeklyChangeKg)
+    ? Math.max(1, Math.ceil(Math.abs(kgToTarget / weeklyChangeKg)))
+    : null;
 
-  if (goal === 'lose_fat') calories = Math.round(tdee * (0.86 - 0.06 * paceMultiplier));
-  else if (goal === 'build_muscle') calories = Math.round(tdee * (1.06 + 0.04 * paceMultiplier));
-  else if (goal === 'strength') calories = Math.round(tdee * 1.05);
-  else if (goal === 'endurance') calories = Math.round(tdee * 1.02);
-
-  let proteinPct = 0.3;
-  let carbsPct = 0.4;
-  let fatPct = 0.3;
-  if (goal === 'lose_fat') { proteinPct = 0.36; carbsPct = 0.34; fatPct = 0.3; }
-  if (goal === 'build_muscle') { proteinPct = 0.3; carbsPct = 0.45; fatPct = 0.25; }
-  if (goal === 'endurance') { proteinPct = 0.25; carbsPct = 0.5; fatPct = 0.25; }
-  if (answers.diet_style === 'low_carb') { proteinPct = 0.35; carbsPct = 0.25; fatPct = 0.4; }
-  if (answers.diet_style === 'high_protein') { proteinPct = Math.max(proteinPct, 0.36); carbsPct = 0.37; fatPct = 0.27; }
+  let proteinPerKg = 1.8;
+  let fatPct = 0.28;
+  if (goal === 'lose_fat' || goal === 'recomp') proteinPerKg = 2.1;
+  if (goal === 'build_muscle' || goal === 'strength') proteinPerKg = 1.9;
+  if (goal === 'endurance') proteinPerKg = 1.6;
+  if (answers.diet_style === 'high_protein') proteinPerKg = Math.max(proteinPerKg, 2.2);
+  if (answers.diet_style === 'vegetarian') proteinPerKg = Math.max(proteinPerKg, 1.9);
+  if (answers.diet_style === 'low_carb') fatPct = 0.4;
+  const protein = Math.round(weightKg * proteinPerKg);
+  const fat = Math.max(Math.round(weightKg * 0.6), Math.round((calories * fatPct) / 9));
 
   return {
     weightKg,
@@ -156,9 +188,12 @@ function getPlan() {
     bmr,
     tdee,
     calories,
-    protein: Math.round((calories * proteinPct) / 4),
-    carbs: Math.round((calories * carbsPct) / 4),
-    fat: Math.round((calories * fatPct) / 9),
+    calorieDelta: actualDelta,
+    weeklyChangeKg,
+    weeksToTarget,
+    protein,
+    carbs: Math.max(50, Math.round((calories - protein * 4 - fat * 9) / 4)),
+    fat,
     waterMl: Math.round(weightKg * (activity === 'very_active' ? 42 : 36)),
     restSeconds: answers.experience_level === 'beginner' ? 90 : goal === 'strength' ? 150 : 75,
   };
@@ -290,11 +325,19 @@ async function submit() {
 
   title.textContent = 'Your BodyPilot plan is saved.';
   subtitle.textContent = 'Download BodyPilot and sign up with the same email. Your answers will be pulled into the app automatically.';
+  const weeklyText = Math.abs(plan.weeklyChangeKg) < 0.05
+    ? 'roughly stable weight'
+    : `${Math.abs(plan.weeklyChangeKg).toFixed(2)} kg/week ${plan.weeklyChangeKg < 0 ? 'loss' : 'gain'}`;
   body.innerHTML = `
     <div class="metric">
       <strong>Starting target</strong>
       <span>${plan.calories}</span>
       <small>calories/day • ${plan.protein}g protein</small>
+    </div>
+    <div class="note">
+      Math: your BMR is ${plan.bmr} kcal. After activity, estimated maintenance is ${plan.tdee} kcal/day.
+      This plan sets calories ${Math.abs(plan.calorieDelta)} kcal/day ${plan.calorieDelta < 0 ? 'below' : plan.calorieDelta > 0 ? 'above' : 'at'} maintenance,
+      which is ${Math.abs(plan.calorieDelta * 7)} kcal/week and estimates ${weeklyText}${plan.weeksToTarget ? `, about ${plan.weeksToTarget} weeks to your target weight.` : '.'}
     </div>
   `;
   document.querySelector('.quiz-actions').innerHTML = `

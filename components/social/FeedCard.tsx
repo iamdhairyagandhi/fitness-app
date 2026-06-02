@@ -28,6 +28,15 @@ const REACTION_EMOJIS: Record<ReactionType, string> = {
     clap: '👏',
 };
 
+const REPORT_REASONS = [
+    { label: 'Harassment or abusive behavior', value: 'harassment' },
+    { label: 'Hate, threats, or violence', value: 'threats_or_hate' },
+    { label: 'Sexual or explicit content', value: 'explicit_content' },
+    { label: 'Spam or misleading content', value: 'spam' },
+    { label: 'Unsafe health advice', value: 'unsafe_health_advice' },
+    { label: 'Other objectionable content', value: 'other' },
+];
+
 function timeAgo(dateStr: string): string {
     const diff = Date.now() - new Date(dateStr).getTime();
     const mins = Math.floor(diff / 60000);
@@ -57,6 +66,38 @@ export function FeedCard({ item, onReact, onComment, onProfile, onSave, onHide, 
     const activityColor = item.activity_type === 'workout_completed' ? colors.primary : actConfig.color;
     const visibility = item.visibility || (item.is_public ? 'public' : 'followers');
 
+    const openReportMenu = () => {
+        Alert.alert('Report post', 'What is wrong with this update?', [
+            ...REPORT_REASONS.map((reason) => ({
+                text: reason.label,
+                style: reason.value === 'other' ? 'default' as const : undefined,
+                onPress: () => {
+                    onReport?.(item.id, item.user_id, reason.value);
+                    Alert.alert('Report sent', 'Thanks. This post is hidden from your feed while it is reviewed.');
+                },
+            })),
+            { text: 'Cancel', style: 'cancel' as const },
+        ]);
+    };
+
+    const confirmBlockUser = () => {
+        Alert.alert(
+            'Block user?',
+            'You will no longer see this user in your feed or search results. Existing follows between you will be removed.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Block',
+                    style: 'destructive',
+                    onPress: () => {
+                        onBlock?.(item.user_id);
+                        Alert.alert('User blocked', 'You will no longer see updates from this user.');
+                    },
+                },
+            ],
+        );
+    };
+
     const openPostMenu = () => {
         Alert.alert(item.title, 'Choose what to do with this update.', [
             {
@@ -70,12 +111,12 @@ export function FeedCard({ item, onReact, onComment, onProfile, onSave, onHide, 
             {
                 text: 'Report',
                 style: 'destructive',
-                onPress: () => onReport?.(item.id, item.user_id, 'inappropriate'),
+                onPress: openReportMenu,
             },
             {
                 text: 'Block user',
                 style: 'destructive',
-                onPress: () => onBlock?.(item.user_id),
+                onPress: confirmBlockUser,
             },
             { text: 'Cancel', style: 'cancel' },
         ]);

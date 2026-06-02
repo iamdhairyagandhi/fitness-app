@@ -3,6 +3,7 @@ import { PREMIUM_PLANS } from '@/constants/subscription';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { ThemeScheme, useTheme } from '@/contexts/ThemeContext';
 import { buildMeasurementsExport, buildWorkoutExport, exportData } from '@/lib/export';
+import { createEmptyNutritionDay } from '@/lib/nutritionSummary';
 import { seedSevenDayTestData } from '@/lib/seedWeekTestData';
 import {
     DEFAULT_NOTIFICATION_PREFERENCES,
@@ -13,8 +14,15 @@ import {
     scheduleBodyPilotNotifications,
     sendTestNotification,
 } from '@/lib/notifications';
+import { EMPTY_APPLE_HEALTH_SNAPSHOT, useAppleHealthStore } from '@/stores/appleHealthStore';
 import { useAuthStore } from '@/stores/authStore';
+import { useChatStore } from '@/stores/chatStore';
+import { useHomeDashboardStore } from '@/stores/homeDashboardStore';
+import { useMealPlanStore } from '@/stores/mealPlanStore';
+import { useNutritionStore } from '@/stores/nutritionStore';
 import { useProgressStore } from '@/stores/progressStore';
+import { useRecoveryStore } from '@/stores/recoveryStore';
+import { useSocialStore } from '@/stores/socialStore';
 import { useSubscriptionStore } from '@/stores/subscriptionStore';
 import { useWorkoutStore } from '@/stores/workoutStore';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,7 +40,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type UnitSystem = 'metric' | 'imperial';
 
-const PRIVACY_POLICY_URL = 'https://fudqcomgwnjxcqgocfuw.supabase.co/functions/v1/privacy-policy';
+const PRIVACY_POLICY_URL = 'https://iamdhairyagandhi.github.io/fitness-app/privacy/';
 
 export default function SettingsScreen() {
     const insets = useSafeAreaInsets();
@@ -110,6 +118,95 @@ export default function SettingsScreen() {
         }
     };
 
+    const handleClearLocalData = () => {
+        toast.confirm({
+            title: 'Clear Local Data',
+            message: 'This clears logs and cached app data on this device. Your account stays signed in. Use Account Details to permanently delete cloud data.',
+            confirmLabel: 'Clear',
+            destructive: true,
+            onConfirm: () => {
+                useWorkoutStore.setState({
+                    activeWorkout: null,
+                    isWorkoutActive: false,
+                    restTimerSeconds: 0,
+                    isRestTimerRunning: false,
+                    templates: [],
+                    recentWorkouts: [],
+                    personalRecords: [],
+                    exercises: [],
+                });
+                useNutritionStore.setState({
+                    todaySummary: createEmptyNutritionDay(),
+                    waterLogs: [],
+                    nutritionHistory: [],
+                    searchResults: [],
+                    recentFoods: [],
+                    isSearching: false,
+                });
+                useProgressStore.setState({
+                    weightEntries: [],
+                    measurements: [],
+                    progressPhotos: [],
+                    goals: [],
+                });
+                useRecoveryStore.setState((state) => ({
+                    recoveryLogs: [],
+                    todayRecovery: null,
+                    achievements: state.achievements.map((achievement) => ({
+                        ...achievement,
+                        unlocked_at: null,
+                        progress: 0,
+                    })),
+                    recentlyUnlocked: [],
+                    supplements: [],
+                    supplementLogs: [],
+                }));
+                useMealPlanStore.setState({
+                    favoriteRecipes: [],
+                    activeMealPlan: null,
+                    mealPlans: [],
+                    groceryList: null,
+                    activeFast: null,
+                    fastHistory: [],
+                });
+                useAppleHealthStore.setState({
+                    snapshot: EMPTY_APPLE_HEALTH_SNAPSHOT,
+                    isSyncing: false,
+                });
+                useChatStore.setState({
+                    conversations: [],
+                    activeConversationId: null,
+                    messages: [],
+                    isLoadingConversations: false,
+                    isLoadingMessages: false,
+                });
+                useSocialStore.setState({
+                    feed: [],
+                    feedPage: 0,
+                    feedLoading: false,
+                    feedHasMore: true,
+                    searchResults: [],
+                    searchLoading: false,
+                    challenges: [],
+                    challengesLoading: false,
+                    challengeLeaderboard: [],
+                    leaderboard: [],
+                    leaderboardLoading: false,
+                    activeComments: [],
+                    commentsLoading: false,
+                });
+                useHomeDashboardStore.setState({
+                    widgetOrder: null,
+                    hiddenWidgets: [],
+                    quickActions: null,
+                    density: 'comfortable',
+                    hasCustomized: false,
+                });
+                toast.success('Local Data Cleared', 'This device has been reset. Cloud data was not deleted.');
+            },
+        });
+    };
+
     const Toggle = ({ value, onPress }: { value: boolean; onPress: () => void }) => (
         <TouchableOpacity
             style={[styles.toggle, { backgroundColor: colors.surfaceLight }, value && styles.toggleActive, value && { backgroundColor: colors.primary }]}
@@ -120,12 +217,15 @@ export default function SettingsScreen() {
     );
 
     const OptionRow = ({ icon, label, value, options, onSelect }: {
-        icon: string; label: string; value: string;
+        icon: keyof typeof Ionicons.glyphMap; label: string; value: string;
         options: { label: string; value: string }[];
         onSelect: (v: any) => void;
     }) => (
         <View style={styles.optionSection}>
-            <Text style={[styles.optionLabel, { color: colors.textSecondary }]}>{icon} {label}</Text>
+            <View style={styles.optionLabelRow}>
+                <Ionicons name={icon} size={18} color={colors.textSecondary} />
+                <Text style={[styles.optionLabel, { color: colors.textSecondary }]}>{label}</Text>
+            </View>
             <View style={styles.optionRow}>
                 {options.map((opt) => (
                     <TouchableOpacity
@@ -178,18 +278,39 @@ export default function SettingsScreen() {
                     <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
                 </TouchableOpacity>
 
-                {/* Units */}
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Training Preferences</Text>
                 <OptionRow
-                    icon="⚖️"
+                    icon="scale-outline"
                     label="Units"
                     value={units}
                     options={[{ label: 'Metric (kg/cm)', value: 'metric' }, { label: 'Imperial (lb/ft)', value: 'imperial' }]}
                     onSelect={setUnits}
                 />
 
-                {/* Theme */}
+                <View style={[styles.optionPanel, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <View style={styles.optionPanelHeader}>
+                        <View style={[styles.optionIcon, { backgroundColor: colors.primary + '16' }]}>
+                            <Ionicons name="timer-outline" size={18} color={colors.primary} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={[styles.optionPanelTitle, { color: colors.text }]}>Default Rest Timer</Text>
+                            <Text style={[styles.optionPanelText, { color: colors.textSecondary }]}>Used when you start new workout sets.</Text>
+                        </View>
+                    </View>
+                    <View style={styles.restTimerRow}>
+                        <TouchableOpacity style={[styles.restBtn, { backgroundColor: colors.background, borderColor: colors.border }]} onPress={() => setRestTimer(Math.max(15, restTimer - 15))}>
+                            <Ionicons name="remove" size={20} color={colors.text} />
+                        </TouchableOpacity>
+                        <Text style={[styles.restValue, { color: colors.text }]}>{restTimer}s</Text>
+                        <TouchableOpacity style={[styles.restBtn, { backgroundColor: colors.background, borderColor: colors.border }]} onPress={() => setRestTimer(Math.min(300, restTimer + 15))}>
+                            <Ionicons name="add" size={20} color={colors.text} />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Appearance</Text>
                 <OptionRow
-                    icon="🎨"
+                    icon="contrast-outline"
                     label="Theme"
                     value={theme}
                     options={[{ label: 'Dark', value: 'dark' }, { label: 'Light', value: 'light' }, { label: 'System', value: 'system' }]}
@@ -197,7 +318,10 @@ export default function SettingsScreen() {
                 />
 
                 <View style={styles.optionSection}>
-                    <Text style={[styles.optionLabel, { color: colors.textSecondary }]}>🌈 Color Scheme</Text>
+                    <View style={styles.optionLabelRow}>
+                        <Ionicons name="color-palette-outline" size={18} color={colors.textSecondary} />
+                        <Text style={[styles.optionLabel, { color: colors.textSecondary }]}>Color Scheme</Text>
+                    </View>
                     <View style={styles.schemeGrid}>
                         {schemes.map((item) => (
                             <TouchableOpacity
@@ -237,21 +361,6 @@ export default function SettingsScreen() {
                     </View>
                 </View>
 
-                {/* Rest Timer Default */}
-                <View style={styles.optionSection}>
-                    <Text style={[styles.optionLabel, { color: colors.textSecondary }]}>⏱️ Default Rest Timer</Text>
-                    <View style={styles.restTimerRow}>
-                        <TouchableOpacity style={[styles.restBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => setRestTimer(Math.max(15, restTimer - 15))}>
-                            <Ionicons name="remove" size={20} color={colors.text} />
-                        </TouchableOpacity>
-                        <Text style={[styles.restValue, { color: colors.text }]}>{restTimer}s</Text>
-                        <TouchableOpacity style={[styles.restBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => setRestTimer(Math.min(300, restTimer + 15))}>
-                            <Ionicons name="add" size={20} color={colors.text} />
-                        </TouchableOpacity>
-                    </View>
-                </View>
-
-                {/* Notifications */}
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Notifications</Text>
                 <Card>
                     <View style={styles.notificationHeader}>
@@ -316,11 +425,11 @@ export default function SettingsScreen() {
                     </TouchableOpacity>
                 </Card>
 
-                {/* Quick Links */}
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick Settings</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Health & Planning</Text>
                 <Card padding={0}>
                     {[
-                        { icon: 'nutrition-outline' as const, label: 'Diet Plan Settings', route: '/nutrition/diet-settings' },
+                        { icon: 'options-outline' as const, label: 'Customize Macros', route: '/customize-macros' },
+                        { icon: 'nutrition-outline' as const, label: 'Diet Preferences', route: '/nutrition/diet-settings' },
                         { icon: 'body-outline' as const, label: 'Body Measurements', route: '/progress/measurements' },
                         { icon: 'fitness-outline' as const, label: 'Fitness Goals', route: '/progress/create-goal' },
                         { icon: 'medical-outline' as const, label: 'Supplement Stack', route: '/recovery/supplements' },
@@ -376,7 +485,6 @@ export default function SettingsScreen() {
                     </>
                 )}
 
-                {/* Data & Privacy */}
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Data & Privacy</Text>
                 <Card padding={0}>
                     {[
@@ -392,7 +500,7 @@ export default function SettingsScreen() {
                                 else toast.error('Export Failed', 'Could not export data.');
                             }
                         },
-                        { icon: 'trash-outline' as const, label: 'Clear All Data', action: () => toast.confirm({ title: 'Warning', message: 'This will delete all your local data.', confirmLabel: 'Delete', destructive: true, onConfirm: () => { } }) },
+                        { icon: 'trash-outline' as const, label: 'Clear Local Data', action: handleClearLocalData },
                         { icon: 'document-text-outline' as const, label: 'Privacy Policy', action: handleOpenPrivacyPolicy },
                         { icon: 'shield-checkmark-outline' as const, label: 'Terms of Service', action: () => router.push('/terms' as any) },
                     ].map((item, idx) => (
@@ -417,10 +525,10 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.background },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md },
-    title: { color: Colors.text, fontSize: FontSize.lg, fontWeight: FontWeight.bold },
+    title: { color: Colors.text, fontSize: FontSize.xl, fontWeight: FontWeight.heavy },
     saveBtn: { color: Colors.primary, fontSize: FontSize.md, fontWeight: FontWeight.bold },
     scroll: { paddingHorizontal: Spacing.lg, paddingBottom: 100 },
-    sectionTitle: { color: Colors.text, fontSize: FontSize.md, fontWeight: FontWeight.bold, marginTop: Spacing.xxl, marginBottom: Spacing.md },
+    sectionTitle: { color: Colors.text, fontSize: FontSize.lg, fontWeight: FontWeight.heavy, marginTop: Spacing.xxl, marginBottom: Spacing.md },
     premiumCard: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -447,13 +555,42 @@ const styles = StyleSheet.create({
         marginTop: 3,
     },
 
-    optionSection: { marginTop: Spacing.xl },
-    optionLabel: { color: Colors.text, fontSize: FontSize.md, fontWeight: FontWeight.semibold, marginBottom: Spacing.md },
+    optionSection: { marginTop: Spacing.md },
+    optionLabelRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.md },
+    optionLabel: { color: Colors.text, fontSize: FontSize.md, fontWeight: FontWeight.semibold },
     optionRow: { flexDirection: 'row', gap: Spacing.sm },
     optionChip: { flex: 1, paddingVertical: Spacing.md, borderRadius: BorderRadius.md, backgroundColor: Colors.surface, borderWidth: 1.5, borderColor: Colors.border, alignItems: 'center' },
     optionChipActive: { borderColor: Colors.primary, backgroundColor: Colors.surfaceLight },
     optionChipText: { color: Colors.textSecondary, fontSize: FontSize.sm, fontWeight: FontWeight.medium },
     optionChipTextActive: { color: Colors.primary },
+    optionPanel: {
+        borderWidth: 1,
+        borderRadius: BorderRadius.lg,
+        padding: Spacing.lg,
+        marginTop: Spacing.md,
+    },
+    optionPanelHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.md,
+        marginBottom: Spacing.lg,
+    },
+    optionIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: BorderRadius.md,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    optionPanelTitle: {
+        fontSize: FontSize.md,
+        fontWeight: FontWeight.bold,
+    },
+    optionPanelText: {
+        fontSize: FontSize.sm,
+        lineHeight: 19,
+        marginTop: 2,
+    },
 
     schemeGrid: {
         flexDirection: 'row',

@@ -4,9 +4,12 @@ import {
     readAppleHealthSnapshot,
     requestAppleHealthAccess,
 } from '@/lib/appleHealth';
+import { getLocalDateKey } from '@/lib/date';
 import AsyncStorage from '@/lib/storage';
+import { generateId } from '@/lib/utils';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { useProgressStore } from './progressStore';
 
 export const EMPTY_APPLE_HEALTH_SNAPSHOT: AppleHealthSnapshot = {
     status: 'available',
@@ -18,6 +21,28 @@ export const EMPTY_APPLE_HEALTH_SNAPSHOT: AppleHealthSnapshot = {
     latestHeartRateBpm: null,
     workouts: [],
 };
+
+function syncHealthWeightToProgress(snapshot: AppleHealthSnapshot) {
+    if (snapshot.status !== 'authorized' || !snapshot.currentWeightKg) return;
+
+    const progressStore = useProgressStore.getState();
+    const today = getLocalDateKey();
+    const hasHealthWeightToday = progressStore.weightEntries.some((entry) => (
+        getLocalDateKey(new Date(entry.logged_at)) === today &&
+        entry.notes === 'Imported from Apple Health'
+    ));
+
+    if (hasHealthWeightToday) return;
+
+    progressStore.addWeightEntry({
+        id: generateId(),
+        user_id: '',
+        weight_kg: snapshot.currentWeightKg,
+        body_fat_pct: null,
+        logged_at: new Date().toISOString(),
+        notes: 'Imported from Apple Health',
+    });
+}
 
 interface AppleHealthState {
     snapshot: AppleHealthSnapshot;
@@ -49,6 +74,7 @@ export const useAppleHealthStore = create<AppleHealthState>()(
                     const snapshot = status === 'authorized'
                         ? await readAppleHealthSnapshot()
                         : { ...EMPTY_APPLE_HEALTH_SNAPSHOT, status };
+                    syncHealthWeightToProgress(snapshot);
                     set({ snapshot });
                     return snapshot;
                 } finally {
@@ -60,6 +86,7 @@ export const useAppleHealthStore = create<AppleHealthState>()(
                 set({ isSyncing: true });
                 try {
                     const snapshot = await readAppleHealthSnapshot();
+                    syncHealthWeightToProgress(snapshot);
                     set({ snapshot });
                     return snapshot;
                 } finally {

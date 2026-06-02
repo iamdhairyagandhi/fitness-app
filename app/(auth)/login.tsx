@@ -263,7 +263,7 @@ export default function LoginScreen() {
                     <TermsAcceptance accepted={acceptedTerms} onToggle={() => setAcceptedTerms((value) => !value)} />
 
                     <Button
-                        title="Sign In"
+                        title={acceptedTerms ? 'Sign In' : 'Accept Terms to Sign In'}
                         onPress={handleLogin}
                         loading={loading}
                         disabled={!acceptedTerms}
@@ -315,20 +315,40 @@ export default function LoginScreen() {
 
 function TermsAcceptance({ accepted, onToggle }: { accepted: boolean; onToggle: () => void }) {
     return (
-        <View style={styles.termsWrap}>
-            <TouchableOpacity style={styles.termsRow} onPress={onToggle} activeOpacity={0.78}>
+        <TouchableOpacity
+            style={[styles.termsCard, accepted && styles.termsCardAccepted]}
+            onPress={onToggle}
+            activeOpacity={0.82}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: accepted }}
+        >
+            <View style={styles.termsTopRow}>
                 <View style={[styles.checkbox, accepted && styles.checkboxActive]}>
-                    {accepted ? <Ionicons name="checkmark" size={15} color={Colors.textInverse} /> : null}
+                    {accepted ? <Ionicons name="checkmark" size={19} color={Colors.textInverse} /> : null}
                 </View>
-                <Text style={styles.termsText}>
-                    I agree to the{' '}
-                    <Text style={styles.termsLink} onPress={() => router.push('/terms' as any)}>
-                        Terms of Service
-                    </Text>
-                    , including the no-tolerance policy for objectionable content and abusive users.
+                <View style={styles.termsCopy}>
+                    <Text style={styles.termsRequired}>Required before continuing</Text>
+                    <Text style={styles.termsTitle}>Accept BodyPilot&apos;s Terms</Text>
+                </View>
+            </View>
+            <Text style={styles.termsText}>
+                Tap this box to agree to the{' '}
+                <Text style={styles.termsLink} onPress={() => router.push('/terms' as any)}>
+                    Terms of Service
                 </Text>
-            </TouchableOpacity>
-        </View>
+                , including the no-tolerance policy for objectionable content and abusive users.
+            </Text>
+            <View style={styles.termsFooter}>
+                <Ionicons
+                    name={accepted ? 'checkmark-circle' : 'alert-circle-outline'}
+                    size={16}
+                    color={accepted ? Colors.success : Colors.warning}
+                />
+                <Text style={[styles.termsStatus, accepted && styles.termsStatusAccepted]}>
+                    {accepted ? 'Terms accepted' : 'Sign-in buttons unlock after you accept'}
+                </Text>
+            </View>
+        </TouchableOpacity>
     );
 }
 
@@ -411,37 +431,76 @@ const styles = StyleSheet.create({
     socialButtonDisabled: {
         opacity: 0.45,
     },
-    termsWrap: {
+    termsCard: {
+        backgroundColor: Colors.surface,
+        borderRadius: BorderRadius.lg,
+        borderWidth: 1.5,
+        borderColor: Colors.warning,
+        padding: Spacing.md,
         marginBottom: Spacing.lg,
     },
-    termsRow: {
+    termsCardAccepted: {
+        borderColor: Colors.primary,
+        backgroundColor: Colors.primary + '10',
+    },
+    termsTopRow: {
         flexDirection: 'row',
-        alignItems: 'flex-start',
-        gap: Spacing.sm,
+        alignItems: 'center',
+        gap: Spacing.md,
+        marginBottom: Spacing.sm,
     },
     checkbox: {
-        width: 22,
-        height: 22,
-        borderRadius: 6,
-        borderWidth: 1.5,
-        borderColor: Colors.borderLight,
+        width: 30,
+        height: 30,
+        borderRadius: 9,
+        borderWidth: 2,
+        borderColor: Colors.warning,
         alignItems: 'center',
         justifyContent: 'center',
-        marginTop: 1,
+        backgroundColor: Colors.background,
     },
     checkboxActive: {
         backgroundColor: Colors.primary,
         borderColor: Colors.primary,
     },
-    termsText: {
+    termsCopy: {
         flex: 1,
-        color: Colors.textSecondary,
+    },
+    termsRequired: {
+        color: Colors.warning,
         fontSize: FontSize.xs,
-        lineHeight: 18,
+        fontWeight: FontWeight.heavy,
+        letterSpacing: 0.8,
+        textTransform: 'uppercase',
+    },
+    termsTitle: {
+        color: Colors.text,
+        fontSize: FontSize.md,
+        fontWeight: FontWeight.bold,
+        marginTop: 2,
+    },
+    termsText: {
+        color: Colors.textSecondary,
+        fontSize: FontSize.sm,
+        lineHeight: 20,
     },
     termsLink: {
         color: Colors.primary,
         fontWeight: FontWeight.bold,
+    },
+    termsFooter: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.xs,
+        marginTop: Spacing.sm,
+    },
+    termsStatus: {
+        color: Colors.warning,
+        fontSize: FontSize.xs,
+        fontWeight: FontWeight.bold,
+    },
+    termsStatusAccepted: {
+        color: Colors.success,
     },
     footer: {
         flexDirection: 'row',

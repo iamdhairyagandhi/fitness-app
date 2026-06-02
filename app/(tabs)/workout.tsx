@@ -1,7 +1,7 @@
 import { Button, Card } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { useTheme } from '@/contexts/ThemeContext';
-import { saveWorkoutTemplate } from '@/lib/db';
+import { deleteWorkoutTemplate, saveWorkoutTemplate } from '@/lib/db';
 import { requirePremium } from '@/lib/premium';
 import {
     DirectoryExercise,
@@ -27,6 +27,7 @@ import { router } from 'expo-router';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
     Image,
     KeyboardAvoidingView,
     Modal,
@@ -52,9 +53,27 @@ const BASE_EXERCISES: Record<string, Exercise> = {
     lunge: { id: 'template-lunge', name: 'Walking Lunge', category: 'bodyweight', muscle_groups: ['quads', 'glutes', 'hamstrings'], equipment: 'bodyweight', instructions: '', tips: null, image_url: null, is_compound: true, is_custom: false, user_id: null },
     plank: { id: 'template-plank', name: 'Plank', category: 'bodyweight', muscle_groups: ['abs'], equipment: 'bodyweight', instructions: '', tips: null, image_url: null, is_compound: false, is_custom: false, user_id: null },
     curl: { id: 'template-curl', name: 'Dumbbell Curl', category: 'dumbbell', muscle_groups: ['biceps'], equipment: 'dumbbell', instructions: '', tips: null, image_url: null, is_compound: false, is_custom: false, user_id: null },
+    gluteBridge: { id: 'template-glute-bridge', name: 'Glute Bridge', category: 'bodyweight', muscle_groups: ['glutes', 'hamstrings'], equipment: 'none', instructions: '', tips: null, image_url: null, is_compound: true, is_custom: false, user_id: null },
+    hipThrust: { id: 'template-hip-thrust', name: 'Dumbbell Hip Thrust', category: 'dumbbell', muscle_groups: ['glutes', 'hamstrings'], equipment: 'dumbbell', instructions: '', tips: null, image_url: null, is_compound: true, is_custom: false, user_id: null },
+    sumoSquat: { id: 'template-sumo-squat', name: 'Dumbbell Sumo Squat', category: 'dumbbell', muscle_groups: ['glutes', 'quads', 'hamstrings'], equipment: 'dumbbell', instructions: '', tips: null, image_url: null, is_compound: true, is_custom: false, user_id: null },
+    stepUp: { id: 'template-step-up', name: 'Step-Up', category: 'bodyweight', muscle_groups: ['glutes', 'quads', 'hamstrings'], equipment: 'bodyweight', instructions: '', tips: null, image_url: null, is_compound: true, is_custom: false, user_id: null },
+    bandWalk: { id: 'template-band-walk', name: 'Lateral Band Walk', category: 'bodyweight', muscle_groups: ['glutes'], equipment: 'band', instructions: '', tips: null, image_url: null, is_compound: false, is_custom: false, user_id: null },
+    deadBug: { id: 'template-dead-bug', name: 'Dead Bug', category: 'bodyweight', muscle_groups: ['abs'], equipment: 'none', instructions: '', tips: null, image_url: null, is_compound: false, is_custom: false, user_id: null },
+    birdDog: { id: 'template-bird-dog', name: 'Bird Dog', category: 'bodyweight', muscle_groups: ['abs', 'lower_back', 'glutes'], equipment: 'none', instructions: '', tips: null, image_url: null, is_compound: false, is_custom: false, user_id: null },
+    sidePlank: { id: 'template-side-plank', name: 'Side Plank', category: 'bodyweight', muscle_groups: ['abs', 'obliques'], equipment: 'none', instructions: '', tips: null, image_url: null, is_compound: false, is_custom: false, user_id: null },
+    pilatesHundred: { id: 'template-pilates-hundred', name: 'Pilates Hundred', category: 'bodyweight', muscle_groups: ['abs'], equipment: 'none', instructions: '', tips: null, image_url: null, is_compound: false, is_custom: false, user_id: null },
+    mountainClimber: { id: 'template-mountain-climber', name: 'Mountain Climber', category: 'cardio', muscle_groups: ['full_body', 'abs'], equipment: 'bodyweight', instructions: '', tips: null, image_url: null, is_compound: true, is_custom: false, user_id: null },
+    squatToReach: { id: 'template-squat-to-reach', name: 'Squat to Reach', category: 'cardio', muscle_groups: ['full_body', 'quads', 'glutes'], equipment: 'bodyweight', instructions: '', tips: null, image_url: null, is_compound: true, is_custom: false, user_id: null },
+    skaterStep: { id: 'template-skater-step', name: 'Skater Step', category: 'cardio', muscle_groups: ['glutes', 'quads', 'calves'], equipment: 'bodyweight', instructions: '', tips: null, image_url: null, is_compound: true, is_custom: false, user_id: null },
+    highKnees: { id: 'template-high-knees', name: 'High Knees', category: 'cardio', muscle_groups: ['full_body', 'quads', 'calves'], equipment: 'bodyweight', instructions: '', tips: null, image_url: null, is_compound: true, is_custom: false, user_id: null },
+    downDog: { id: 'template-downward-dog', name: 'Downward Dog', category: 'stretching', muscle_groups: ['full_body', 'hamstrings', 'calves', 'shoulders'], equipment: 'none', instructions: '', tips: null, image_url: null, is_compound: false, is_custom: false, user_id: null },
+    catCow: { id: 'template-cat-cow', name: 'Cat-Cow', category: 'stretching', muscle_groups: ['lower_back', 'abs'], equipment: 'none', instructions: '', tips: null, image_url: null, is_compound: false, is_custom: false, user_id: null },
+    warriorFlow: { id: 'template-warrior-flow', name: 'Warrior Flow', category: 'stretching', muscle_groups: ['quads', 'glutes', 'hamstrings'], equipment: 'none', instructions: '', tips: null, image_url: null, is_compound: true, is_custom: false, user_id: null },
+    childPose: { id: 'template-child-pose', name: 'Child Pose', category: 'stretching', muscle_groups: ['lower_back', 'shoulders'], equipment: 'none', instructions: '', tips: null, image_url: null, is_compound: false, is_custom: false, user_id: null },
+    sunSalutation: { id: 'template-sun-salutation', name: 'Sun Salutation', category: 'stretching', muscle_groups: ['full_body'], equipment: 'none', instructions: '', tips: null, image_url: null, is_compound: true, is_custom: false, user_id: null },
 };
 
-type WorkoutCategory = 'Popular' | 'Split Workouts' | 'Full-body' | 'Calisthenics' | 'Home Workout';
+type WorkoutCategory = 'Popular' | 'Split Workouts' | 'Full-body' | 'Calisthenics' | 'Home Workout' | 'Yoga' | 'HIIT' | 'Glutes & Core' | 'Mobility';
 
 type DirectoryTemplate = {
     id: string;
@@ -74,6 +93,10 @@ type BuilderExercise = WorkoutTemplateExercise & {
     planned_sets: WorkoutTemplateSet[];
 };
 
+type AiIntensity = 'light' | 'moderate' | 'hard';
+type AiWorkoutType = 'progressive_overload' | 'volume' | 'strength' | 'hypertrophy' | 'conditioning' | 'low_impact' | 'yoga_mobility';
+type AiTrainingEnvironment = 'full_gym' | 'home' | 'dumbbells' | 'bodyweight';
+
 const WORKOUT_CATEGORIES: ('All' | WorkoutCategory | 'Mine')[] = [
     'All',
     'Popular',
@@ -81,12 +104,38 @@ const WORKOUT_CATEGORIES: ('All' | WorkoutCategory | 'Mine')[] = [
     'Full-body',
     'Calisthenics',
     'Home Workout',
+    'Yoga',
+    'HIIT',
+    'Glutes & Core',
+    'Mobility',
     'Mine',
 ];
 
 const BUILDER_MUSCLE_FILTERS = ['All', 'Chest', 'Back', 'Shoulders', 'Arms', 'Legs', 'Core', 'Glutes'] as const;
 const BUILDER_EQUIPMENT_FILTERS = ['All', 'Home', 'Calisthenics', 'Barbell', 'Dumbbell', 'Cable', 'Machine', 'Band', 'Kettlebell'] as const;
 const FULL_LIBRARY_MIN_EXERCISES = 100;
+const AI_MUSCLE_OPTIONS = ['Chest', 'Back', 'Shoulders', 'Arms', 'Legs', 'Glutes', 'Core', 'Full Body'] as const;
+const AI_DURATION_OPTIONS = [30, 45, 60, 75, 90] as const;
+const AI_INTENSITY_OPTIONS: { value: AiIntensity; label: string; description: string }[] = [
+    { value: 'light', label: 'Light', description: 'Technique, recovery, easier pace' },
+    { value: 'moderate', label: 'Moderate', description: 'Solid work without crushing fatigue' },
+    { value: 'hard', label: 'Hard', description: 'Higher effort, more rest, fewer reps' },
+];
+const AI_WORKOUT_TYPE_OPTIONS: { value: AiWorkoutType; label: string; description: string }[] = [
+    { value: 'progressive_overload', label: 'Progressive overload', description: 'Repeatable lifts with room to add reps or load' },
+    { value: 'volume', label: 'Volume', description: 'More total sets and controlled pump work' },
+    { value: 'strength', label: 'Strength', description: 'Lower reps, heavier work, longer rest' },
+    { value: 'hypertrophy', label: 'Hypertrophy', description: 'Muscle-building sets in the 8-12 zone' },
+    { value: 'conditioning', label: 'Conditioning', description: 'Faster pace with paired movements' },
+    { value: 'low_impact', label: 'Low impact', description: 'Joint-friendly sweat with no jumping required' },
+    { value: 'yoga_mobility', label: 'Yoga + mobility', description: 'Flow, core control, flexibility, and recovery' },
+];
+const AI_TRAINING_ENVIRONMENT_OPTIONS: { value: AiTrainingEnvironment; label: string; description: string }[] = [
+    { value: 'full_gym', label: 'Full gym', description: 'Prioritize machines, cables, dumbbells, and barbells' },
+    { value: 'home', label: 'Home workout', description: 'Use bodyweight, bands, kettlebells, and light dumbbells' },
+    { value: 'dumbbells', label: 'Dumbbells only', description: 'Build around dumbbell and bodyweight movements' },
+    { value: 'bodyweight', label: 'Bodyweight', description: 'No equipment unless the database has a close substitute' },
+];
 
 function planExercise(
     exercise: Exercise,
@@ -199,6 +248,109 @@ const WORKOUT_DIRECTORY: DirectoryTemplate[] = [
             planExercise(BASE_EXERCISES.plank, 2, { target_reps: '45 sec', set_type: 'volume' }),
         ],
     },
+    {
+        id: 'yoga-morning-flow',
+        name: 'Morning Yoga Flow',
+        description: 'A gentle full-body flow for mobility, breath, and feeling good before the day starts.',
+        category: 'Yoga',
+        level: 'Beginner',
+        durationMin: 25,
+        exercises: [
+            planExercise(BASE_EXERCISES.catCow, 0, { target_sets: 2, target_reps: '8', set_type: 'volume', intensity_percent: 45, rest_seconds: 30 }),
+            planExercise(BASE_EXERCISES.sunSalutation, 1, { target_sets: 3, target_reps: '5', set_type: 'volume', intensity_percent: 55, rest_seconds: 30 }),
+            planExercise(BASE_EXERCISES.warriorFlow, 2, { target_sets: 3, target_reps: '6/side', set_type: 'volume', intensity_percent: 60, rest_seconds: 35 }),
+            planExercise(BASE_EXERCISES.downDog, 3, { target_sets: 2, target_reps: '45 sec', set_type: 'volume', intensity_percent: 45, rest_seconds: 25 }),
+            planExercise(BASE_EXERCISES.childPose, 4, { target_sets: 1, target_reps: '60 sec', set_type: 'volume', intensity_percent: 35, rest_seconds: 20 }),
+        ],
+    },
+    {
+        id: 'yoga-strength-core',
+        name: 'Yoga Strength + Core',
+        description: 'Low-impact flow with core holds, glutes, balance, and shoulder control.',
+        category: 'Yoga',
+        level: 'All levels',
+        durationMin: 35,
+        exercises: [
+            planExercise(BASE_EXERCISES.sunSalutation, 0, { target_sets: 3, target_reps: '5', set_type: 'volume', intensity_percent: 58, rest_seconds: 30 }),
+            planExercise(BASE_EXERCISES.warriorFlow, 1, { target_sets: 3, target_reps: '8/side', set_type: 'volume', intensity_percent: 65, rest_seconds: 40 }),
+            planExercise(BASE_EXERCISES.gluteBridge, 2, { target_sets: 3, target_reps: '15', set_type: 'volume', intensity_percent: 68, rest_seconds: 45 }),
+            planExercise(BASE_EXERCISES.sidePlank, 3, { target_sets: 2, target_reps: '30/side', set_type: 'volume', intensity_percent: 65, rest_seconds: 35 }),
+            planExercise(BASE_EXERCISES.downDog, 4, { target_sets: 2, target_reps: '45 sec', set_type: 'volume', intensity_percent: 45, rest_seconds: 25 }),
+        ],
+    },
+    {
+        id: 'hiit-low-impact',
+        name: 'Low-Impact HIIT',
+        description: 'A joint-friendly sweat session with no jumping and simple full-body intervals.',
+        category: 'HIIT',
+        level: 'Beginner',
+        durationMin: 28,
+        exercises: [
+            planExercise(BASE_EXERCISES.squatToReach, 0, { target_sets: 3, target_reps: '40 sec', set_type: 'volume', intensity_percent: 72, rest_seconds: 25, superset_group: 'A' }),
+            planExercise(BASE_EXERCISES.skaterStep, 1, { target_sets: 3, target_reps: '40 sec', set_type: 'volume', intensity_percent: 72, rest_seconds: 25, superset_group: 'A' }),
+            planExercise(BASE_EXERCISES.stepUp, 2, { target_sets: 3, target_reps: '10/side', set_type: 'volume', intensity_percent: 70, rest_seconds: 35, superset_group: 'B' }),
+            planExercise(BASE_EXERCISES.deadBug, 3, { target_sets: 3, target_reps: '10/side', set_type: 'volume', intensity_percent: 62, rest_seconds: 30, superset_group: 'B' }),
+        ],
+    },
+    {
+        id: 'hiit-full-body',
+        name: 'Full-Body HIIT',
+        description: 'Fast bodyweight intervals for conditioning, core, and total-body energy.',
+        category: 'HIIT',
+        level: 'Intermediate',
+        durationMin: 32,
+        exercises: [
+            planExercise(BASE_EXERCISES.mountainClimber, 0, { target_sets: 4, target_reps: '30 sec', set_type: 'volume', intensity_percent: 82, rest_seconds: 25, superset_group: 'A' }),
+            planExercise(BASE_EXERCISES.pushup, 1, { target_sets: 4, target_reps: '10', set_type: 'volume', intensity_percent: 78, rest_seconds: 25, superset_group: 'A' }),
+            planExercise(BASE_EXERCISES.highKnees, 2, { target_sets: 4, target_reps: '30 sec', set_type: 'volume', intensity_percent: 82, rest_seconds: 25, superset_group: 'B' }),
+            planExercise(BASE_EXERCISES.lunge, 3, { target_sets: 4, target_reps: '10/side', set_type: 'volume', intensity_percent: 75, rest_seconds: 35, superset_group: 'B' }),
+            planExercise(BASE_EXERCISES.plank, 4, { target_sets: 3, target_reps: '40 sec', set_type: 'volume', intensity_percent: 70, rest_seconds: 30 }),
+        ],
+    },
+    {
+        id: 'glutes-core-sculpt',
+        name: 'Glutes + Core Sculpt',
+        description: 'Dumbbell and bodyweight work for glutes, core control, and lower-body shape.',
+        category: 'Glutes & Core',
+        level: 'All levels',
+        durationMin: 45,
+        exercises: [
+            planExercise(BASE_EXERCISES.hipThrust, 0, { target_sets: 4, target_reps: '10', intensity_percent: 78, rest_seconds: 75 }),
+            planExercise(BASE_EXERCISES.sumoSquat, 1, { target_sets: 3, target_reps: '12', intensity_percent: 74, rest_seconds: 70 }),
+            planExercise(BASE_EXERCISES.bandWalk, 2, { target_sets: 3, target_reps: '15/side', set_type: 'volume', intensity_percent: 68, rest_seconds: 45 }),
+            planExercise(BASE_EXERCISES.deadBug, 3, { target_sets: 3, target_reps: '10/side', set_type: 'volume', intensity_percent: 62, rest_seconds: 35 }),
+            planExercise(BASE_EXERCISES.sidePlank, 4, { target_sets: 2, target_reps: '30/side', set_type: 'volume', intensity_percent: 65, rest_seconds: 35 }),
+        ],
+    },
+    {
+        id: 'pilates-core-control',
+        name: 'Pilates Core Control',
+        description: 'A controlled mat-style session for deep core, posture, and stability.',
+        category: 'Glutes & Core',
+        level: 'Beginner',
+        durationMin: 30,
+        exercises: [
+            planExercise(BASE_EXERCISES.pilatesHundred, 0, { target_sets: 2, target_reps: '50', set_type: 'volume', intensity_percent: 62, rest_seconds: 40 }),
+            planExercise(BASE_EXERCISES.deadBug, 1, { target_sets: 3, target_reps: '10/side', set_type: 'volume', intensity_percent: 62, rest_seconds: 35 }),
+            planExercise(BASE_EXERCISES.birdDog, 2, { target_sets: 3, target_reps: '10/side', set_type: 'volume', intensity_percent: 60, rest_seconds: 35 }),
+            planExercise(BASE_EXERCISES.gluteBridge, 3, { target_sets: 3, target_reps: '15', set_type: 'volume', intensity_percent: 66, rest_seconds: 45 }),
+            planExercise(BASE_EXERCISES.sidePlank, 4, { target_sets: 2, target_reps: '25/side', set_type: 'volume', intensity_percent: 62, rest_seconds: 35 }),
+        ],
+    },
+    {
+        id: 'mobility-recovery',
+        name: 'Recovery Mobility',
+        description: 'A calm reset for hips, back, shoulders, and hamstrings on lighter days.',
+        category: 'Mobility',
+        level: 'All levels',
+        durationMin: 20,
+        exercises: [
+            planExercise(BASE_EXERCISES.catCow, 0, { target_sets: 2, target_reps: '8', set_type: 'volume', intensity_percent: 35, rest_seconds: 20 }),
+            planExercise(BASE_EXERCISES.childPose, 1, { target_sets: 2, target_reps: '45 sec', set_type: 'volume', intensity_percent: 30, rest_seconds: 20 }),
+            planExercise(BASE_EXERCISES.downDog, 2, { target_sets: 2, target_reps: '45 sec', set_type: 'volume', intensity_percent: 35, rest_seconds: 20 }),
+            planExercise(BASE_EXERCISES.birdDog, 3, { target_sets: 2, target_reps: '8/side', set_type: 'volume', intensity_percent: 45, rest_seconds: 25 }),
+        ],
+    },
 ];
 
 export default function WorkoutScreen() {
@@ -221,6 +373,13 @@ export default function WorkoutScreen() {
     const [customWorkoutDescription, setCustomWorkoutDescription] = useState('');
     const [customWorkoutCategory, setCustomWorkoutCategory] = useState<WorkoutCategory>('Full-body');
     const [customWorkoutPublic, setCustomWorkoutPublic] = useState(false);
+    const [showAiWorkout, setShowAiWorkout] = useState(false);
+    const [aiMuscles, setAiMuscles] = useState<string[]>(['Full Body']);
+    const [aiIntensity, setAiIntensity] = useState<AiIntensity>('moderate');
+    const [aiDuration, setAiDuration] = useState<(typeof AI_DURATION_OPTIONS)[number]>(45);
+    const [aiWorkoutType, setAiWorkoutType] = useState<AiWorkoutType>('progressive_overload');
+    const [aiTrainingEnvironment, setAiTrainingEnvironment] = useState<AiTrainingEnvironment>('full_gym');
+    const [aiIncludeWarmup, setAiIncludeWarmup] = useState(true);
     const [builderStep, setBuilderStep] = useState<'details' | 'exercises'>('details');
     const [builderExercises, setBuilderExercises] = useState<BuilderExercise[]>([]);
     const [builderExerciseQuery, setBuilderExerciseQuery] = useState('');
@@ -335,11 +494,16 @@ export default function WorkoutScreen() {
         }
     }, [directoryLoading, exerciseDirectory.length, setStoredExercises, storedExercises]);
 
+    const openAiWorkout = useCallback(() => {
+        setShowAiWorkout(true);
+        loadExerciseDirectory();
+    }, [loadExerciseDirectory]);
+
     React.useEffect(() => {
-        if (activeTab === 'exercises' || showCreateWorkout) {
+        if (activeTab === 'exercises' || showCreateWorkout || showAiWorkout) {
             loadExerciseDirectory();
         }
-    }, [activeTab, loadExerciseDirectory, showCreateWorkout]);
+    }, [activeTab, loadExerciseDirectory, showAiWorkout, showCreateWorkout]);
 
     const startTemplateWorkout = useCallback((template: DirectoryTemplate) => {
         startWorkoutFromTemplate({
@@ -413,6 +577,52 @@ export default function WorkoutScreen() {
         user?.id,
     ]);
 
+    const toggleAiMuscle = useCallback((muscle: string) => {
+        setAiMuscles((current) => {
+            if (muscle === 'Full Body') return ['Full Body'];
+            const withoutFullBody = current.filter((item) => item !== 'Full Body');
+            const nextMuscles = withoutFullBody.includes(muscle)
+                ? withoutFullBody.filter((item) => item !== muscle)
+                : [...withoutFullBody, muscle];
+            return nextMuscles.length ? nextMuscles : ['Full Body'];
+        });
+    }, []);
+
+    const createAiWorkout = useCallback(() => {
+        const template = buildAiWorkoutTemplate({
+            muscles: aiMuscles,
+            intensity: aiIntensity,
+            durationMin: aiDuration,
+            workoutType: aiWorkoutType,
+            trainingEnvironment: aiTrainingEnvironment,
+            includeWarmup: aiIncludeWarmup,
+            exerciseDirectory,
+            userId: user?.id || '',
+            goal: user?.goal,
+            experienceLevel: user?.experience_level,
+            preferredRestSeconds: user?.preferred_rest_seconds,
+        });
+        setTemplates([template, ...templates]);
+        saveWorkoutTemplate(template).catch(() => { });
+        setShowAiWorkout(false);
+        setActiveTab('templates');
+        setSelectedWorkoutCategory('Mine');
+    }, [
+        aiDuration,
+        aiIncludeWarmup,
+        aiIntensity,
+        aiMuscles,
+        aiTrainingEnvironment,
+        aiWorkoutType,
+        exerciseDirectory,
+        setTemplates,
+        templates,
+        user?.experience_level,
+        user?.goal,
+        user?.id,
+        user?.preferred_rest_seconds,
+    ]);
+
     const resetBuilder = useCallback(() => {
         setShowCreateWorkout(false);
         setBuilderStep('details');
@@ -426,6 +636,30 @@ export default function WorkoutScreen() {
         setCustomWorkoutCategory('Full-body');
         setCustomWorkoutPublic(false);
     }, []);
+
+    const deleteCustomTemplate = useCallback((template: DirectoryTemplate) => {
+        const isMine = templates.some((saved) => saved.id === template.id);
+        if (!isMine) return;
+
+        Alert.alert(
+            'Delete workout?',
+            `"${template.name}" will be removed from your saved templates.`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: () => {
+                        setTemplates(templates.filter((saved) => saved.id !== template.id));
+                        deleteWorkoutTemplate(template.id).catch(() => { });
+                        if (editingTemplateId === template.id) {
+                            resetBuilder();
+                        }
+                    },
+                },
+            ],
+        );
+    }, [editingTemplateId, resetBuilder, setTemplates, templates]);
 
     const addBuilderExercise = useCallback((exercise: Exercise) => {
         const plannedSet = createPlannedSet(1);
@@ -584,6 +818,22 @@ export default function WorkoutScreen() {
                     onPress={() => router.push('/workout/active')}
                     size="lg"
                 />
+                <TouchableOpacity
+                    style={[styles.aiWorkoutButton, { backgroundColor: colors.surface, borderColor: colors.primary + '3D' }]}
+                    onPress={openAiWorkout}
+                    activeOpacity={0.84}
+                >
+                    <View style={[styles.aiWorkoutIcon, { backgroundColor: colors.primary + '18' }]}>
+                        <Ionicons name="sparkles" size={20} color={colors.primary} />
+                    </View>
+                    <View style={styles.aiWorkoutCopy}>
+                        <Text style={[styles.aiWorkoutTitle, { color: colors.text }]}>Create workout with AI</Text>
+                        <Text style={[styles.aiWorkoutText, { color: colors.textSecondary }]}>
+                            Pick muscles, time, intensity, warm-up, and training style.
+                        </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+                </TouchableOpacity>
                 <View style={styles.quickActions}>
                     <TouchableOpacity style={[styles.quickAction, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/workout/warmup')}>
                         <Ionicons name="flame" size={20} color={colors.primary} />
@@ -679,43 +929,58 @@ export default function WorkoutScreen() {
                             ))}
                         </ScrollView>
 
-                        {filteredWorkoutTemplates.map((template) => (
-                            <TouchableOpacity
-                                key={template.id}
-                                style={[styles.templateCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                                activeOpacity={0.7}
-                                onPress={() => openTemplateEditor(template)}
-                            >
-                                <View style={[styles.templateIcon, { backgroundColor: colors.primary + '18', borderColor: colors.primary + '28' }]}>
-                                    <Ionicons name={getTemplateIcon(template.category)} size={23} color={colors.primary} />
-                                </View>
-                                <View style={styles.templateInfo}>
-                                    <Text style={[styles.templateName, { color: colors.text }]}>{template.name}</Text>
-                                    <Text style={[styles.templateDesc, { color: colors.textSecondary }]}>{template.description}</Text>
-                                    <View style={styles.templateMeta}>
-                                        <View style={styles.metaItem}>
-                                            <Ionicons name="list" size={12} color={Colors.textTertiary} />
-                                            <Text style={styles.metaText}>{template.exercises.length} exercises</Text>
-                                        </View>
-                                        <View style={styles.metaItem}>
-                                            <Ionicons name="time-outline" size={12} color={Colors.textTertiary} />
-                                            <Text style={styles.metaText}>{template.durationMin} min</Text>
-                                        </View>
-                                        <View style={styles.metaItem}>
-                                            <Ionicons name={template.isPublic ? 'earth' : 'lock-closed'} size={12} color={Colors.textTertiary} />
-                                            <Text style={styles.metaText}>{template.isPublic ? 'Public' : template.category}</Text>
+                        {filteredWorkoutTemplates.map((template) => {
+                            const isMine = templates.some((saved) => saved.id === template.id);
+                            return (
+                                <TouchableOpacity
+                                    key={template.id}
+                                    style={[styles.templateCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                                    activeOpacity={0.7}
+                                    onPress={() => openTemplateEditor(template)}
+                                >
+                                    <View style={[styles.templateIcon, { backgroundColor: colors.primary + '18', borderColor: colors.primary + '28' }]}>
+                                        <Ionicons name={getTemplateIcon(template.category)} size={23} color={colors.primary} />
+                                    </View>
+                                    <View style={styles.templateInfo}>
+                                        <Text style={[styles.templateName, { color: colors.text }]}>{template.name}</Text>
+                                        <Text style={[styles.templateDesc, { color: colors.textSecondary }]}>{template.description}</Text>
+                                        <View style={styles.templateMeta}>
+                                            <View style={styles.metaItem}>
+                                                <Ionicons name="list" size={12} color={Colors.textTertiary} />
+                                                <Text style={styles.metaText}>{template.exercises.length} exercises</Text>
+                                            </View>
+                                            <View style={styles.metaItem}>
+                                                <Ionicons name="time-outline" size={12} color={Colors.textTertiary} />
+                                                <Text style={styles.metaText}>{template.durationMin} min</Text>
+                                            </View>
+                                            <View style={styles.metaItem}>
+                                                <Ionicons name={template.isPublic ? 'earth' : 'lock-closed'} size={12} color={Colors.textTertiary} />
+                                                <Text style={styles.metaText}>{template.isPublic ? 'Public' : template.category}</Text>
+                                            </View>
                                         </View>
                                     </View>
-                                </View>
-                                <TouchableOpacity
-                                    style={[styles.templatePlayButton, { backgroundColor: colors.primary, shadowColor: colors.primary }]}
-                                    onPress={() => startTemplateWorkout(template)}
-                                    hitSlop={10}
-                                >
-                                    <Ionicons name="play" size={20} color={colors.textInverse} />
+                                    <View style={styles.templateActions}>
+                                        {isMine && (
+                                            <TouchableOpacity
+                                                style={[styles.templateIconButton, { backgroundColor: colors.background, borderColor: colors.border }]}
+                                                onPress={() => deleteCustomTemplate(template)}
+                                                hitSlop={10}
+                                                accessibilityLabel={`Delete ${template.name}`}
+                                            >
+                                                <Ionicons name="trash-outline" size={18} color={Colors.error} />
+                                            </TouchableOpacity>
+                                        )}
+                                        <TouchableOpacity
+                                            style={[styles.templatePlayButton, { backgroundColor: colors.primary, shadowColor: colors.primary }]}
+                                            onPress={() => startTemplateWorkout(template)}
+                                            hitSlop={10}
+                                        >
+                                            <Ionicons name="play" size={20} color={colors.textInverse} />
+                                        </TouchableOpacity>
+                                    </View>
                                 </TouchableOpacity>
-                            </TouchableOpacity>
-                        ))}
+                            );
+                        })}
 
                         <TouchableOpacity style={styles.createTemplate} onPress={openCreateWorkout}>
                             <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
@@ -907,6 +1172,173 @@ export default function WorkoutScreen() {
             </ScrollView>
 
             <Modal
+                visible={showAiWorkout}
+                animationType="slide"
+                presentationStyle="pageSheet"
+                onRequestClose={() => setShowAiWorkout(false)}
+            >
+                <View style={[styles.detailContainer, { backgroundColor: colors.background }]}>
+                    <View style={[styles.detailHeader, { paddingTop: insets.top + Spacing.sm, borderBottomColor: colors.border }]}>
+                        <TouchableOpacity style={[styles.detailClose, { backgroundColor: colors.surface }]} onPress={() => setShowAiWorkout(false)}>
+                            <Ionicons name="close" size={22} color={colors.text} />
+                        </TouchableOpacity>
+                        <Text style={[styles.detailHeaderTitle, { color: colors.text }]}>AI Workout</Text>
+                        <TouchableOpacity style={[styles.saveTemplateButton, { backgroundColor: colors.primary }]} onPress={createAiWorkout}>
+                            <Text style={styles.saveTemplateButtonText}>Create</Text>
+                        </TouchableOpacity>
+                    </View>
+                    <ScrollView
+                        contentContainerStyle={[
+                            styles.createWorkoutContent,
+                            { paddingBottom: insets.bottom + 120 },
+                        ]}
+                        showsVerticalScrollIndicator={false}
+                    >
+                        <View style={[styles.aiModalHero, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                            <View style={[styles.aiWorkoutIcon, { backgroundColor: colors.primary + '18' }]}>
+                                <Ionicons name="sparkles" size={22} color={colors.primary} />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.aiModalTitle, { color: colors.text }]}>Build a workout from your profile</Text>
+                                <Text style={[styles.aiModalText, { color: colors.textSecondary }]}>
+                                    BodyPilot will use your onboarding goal, experience level, and the exercise database to create a saved template.
+                                </Text>
+                            </View>
+                        </View>
+
+                        <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Muscle groups</Text>
+                        <View style={styles.createCategoryGrid}>
+                            {AI_MUSCLE_OPTIONS.map((muscle) => {
+                                const selected = aiMuscles.includes(muscle);
+                                return (
+                                    <TouchableOpacity
+                                        key={muscle}
+                                        style={[
+                                            styles.createCategoryChip,
+                                            { backgroundColor: colors.surface, borderColor: colors.border },
+                                            selected && { backgroundColor: colors.primary, borderColor: colors.primary },
+                                        ]}
+                                        onPress={() => toggleAiMuscle(muscle)}
+                                    >
+                                        <Text style={[styles.createCategoryText, { color: colors.textSecondary }, selected && { color: colors.textInverse }]}>
+                                            {muscle}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+
+                        <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Workout setup</Text>
+                        <View style={styles.aiOptionStack}>
+                            {AI_TRAINING_ENVIRONMENT_OPTIONS.map((option) => (
+                                <TouchableOpacity
+                                    key={option.value}
+                                    style={[
+                                        styles.aiOptionRow,
+                                        { backgroundColor: colors.surface, borderColor: colors.border },
+                                        aiTrainingEnvironment === option.value && { backgroundColor: colors.primary + '12', borderColor: colors.primary },
+                                    ]}
+                                    onPress={() => setAiTrainingEnvironment(option.value)}
+                                    activeOpacity={0.84}
+                                >
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={[styles.aiOptionTitle, { color: colors.text }, aiTrainingEnvironment === option.value && { color: colors.primary }]}>{option.label}</Text>
+                                        <Text style={[styles.aiOptionText, { color: colors.textTertiary }]}>{option.description}</Text>
+                                    </View>
+                                    {aiTrainingEnvironment === option.value && <Ionicons name="checkmark-circle" size={20} color={colors.primary} />}
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+
+                        <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Intensity</Text>
+                        <View style={styles.aiOptionStack}>
+                            {AI_INTENSITY_OPTIONS.map((option) => (
+                                <TouchableOpacity
+                                    key={option.value}
+                                    style={[
+                                        styles.aiOptionRow,
+                                        { backgroundColor: colors.surface, borderColor: colors.border },
+                                        aiIntensity === option.value && { backgroundColor: colors.primary + '12', borderColor: colors.primary },
+                                    ]}
+                                    onPress={() => setAiIntensity(option.value)}
+                                    activeOpacity={0.84}
+                                >
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={[styles.aiOptionTitle, { color: colors.text }, aiIntensity === option.value && { color: colors.primary }]}>{option.label}</Text>
+                                        <Text style={[styles.aiOptionText, { color: colors.textTertiary }]}>{option.description}</Text>
+                                    </View>
+                                    {aiIntensity === option.value && <Ionicons name="checkmark-circle" size={20} color={colors.primary} />}
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+
+                        <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Time</Text>
+                        <View style={styles.aiDurationGrid}>
+                            {AI_DURATION_OPTIONS.map((minutes) => (
+                                <TouchableOpacity
+                                    key={minutes}
+                                    style={[
+                                        styles.aiDurationChip,
+                                        { backgroundColor: colors.surface, borderColor: colors.border },
+                                        aiDuration === minutes && { backgroundColor: colors.primary, borderColor: colors.primary },
+                                    ]}
+                                    onPress={() => setAiDuration(minutes)}
+                                >
+                                    <Text style={[styles.aiDurationText, { color: colors.textSecondary }, aiDuration === minutes && { color: colors.textInverse }]}>
+                                        {minutes} min
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+
+                        <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Workout type</Text>
+                        <View style={styles.aiOptionStack}>
+                            {AI_WORKOUT_TYPE_OPTIONS.map((option) => (
+                                <TouchableOpacity
+                                    key={option.value}
+                                    style={[
+                                        styles.aiOptionRow,
+                                        { backgroundColor: colors.surface, borderColor: colors.border },
+                                        aiWorkoutType === option.value && { backgroundColor: colors.primary + '12', borderColor: colors.primary },
+                                    ]}
+                                    onPress={() => setAiWorkoutType(option.value)}
+                                    activeOpacity={0.84}
+                                >
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={[styles.aiOptionTitle, { color: colors.text }, aiWorkoutType === option.value && { color: colors.primary }]}>{option.label}</Text>
+                                        <Text style={[styles.aiOptionText, { color: colors.textTertiary }]}>{option.description}</Text>
+                                    </View>
+                                    {aiWorkoutType === option.value && <Ionicons name="checkmark-circle" size={20} color={colors.primary} />}
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+
+                        <TouchableOpacity
+                            style={[styles.visibilityRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                            onPress={() => setAiIncludeWarmup((value) => !value)}
+                            activeOpacity={0.84}
+                        >
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.visibilityTitle, { color: colors.text }]}>Add warm-up sets</Text>
+                                <Text style={[styles.visibilityText, { color: colors.textTertiary }]}>
+                                    {aiIncludeWarmup
+                                        ? 'The first main lifts will include lighter warm-up sets.'
+                                        : 'The template will only include working sets.'}
+                                </Text>
+                            </View>
+                            <Ionicons
+                                name={aiIncludeWarmup ? 'toggle' : 'toggle-outline'}
+                                size={32}
+                                color={aiIncludeWarmup ? colors.primary : colors.textTertiary}
+                            />
+                        </TouchableOpacity>
+
+                        <Button title="Create Workout Template" onPress={createAiWorkout} size="lg" />
+                    </ScrollView>
+                </View>
+            </Modal>
+
+            <Modal
                 visible={showCreateWorkout}
                 animationType="slide"
                 presentationStyle="pageSheet"
@@ -917,12 +1349,12 @@ export default function WorkoutScreen() {
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                     keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
                 >
-                    <View style={styles.detailContainer}>
-                    <View style={[styles.detailHeader, { paddingTop: insets.top + Spacing.sm }]}>
-                        <TouchableOpacity style={styles.detailClose} onPress={resetBuilder}>
-                            <Ionicons name="close" size={22} color={Colors.text} />
+                    <View style={[styles.detailContainer, { backgroundColor: colors.background }]}>
+                    <View style={[styles.detailHeader, { paddingTop: insets.top + Spacing.sm, borderBottomColor: colors.border }]}>
+                        <TouchableOpacity style={[styles.detailClose, { backgroundColor: colors.surface }]} onPress={resetBuilder}>
+                            <Ionicons name="close" size={22} color={colors.text} />
                         </TouchableOpacity>
-                        <Text style={styles.detailHeaderTitle}>
+                        <Text style={[styles.detailHeaderTitle, { color: colors.text }]}>
                             {editingTemplateId
                                 ? 'Edit Workout'
                                 : builderStep === 'details'
@@ -964,38 +1396,40 @@ export default function WorkoutScreen() {
                     >
                         {builderStep === 'details' ? (
                             <>
-                                <Text style={styles.inputLabel}>Workout name</Text>
+                                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Workout name</Text>
                                 <TextInput
                                     value={customWorkoutName}
                                     onChangeText={setCustomWorkoutName}
                                     placeholder="Upper Strength, Hotel Full Body..."
-                                    placeholderTextColor={Colors.textTertiary}
-                                    style={styles.createInput}
+                                    placeholderTextColor={colors.textTertiary}
+                                    style={[styles.createInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
                                 />
-                                <Text style={styles.inputLabel}>Description</Text>
+                                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Description</Text>
                                 <TextInput
                                     value={customWorkoutDescription}
                                     onChangeText={setCustomWorkoutDescription}
                                     placeholder="What is this workout for?"
-                                    placeholderTextColor={Colors.textTertiary}
-                                    style={[styles.createInput, styles.createTextArea]}
+                                    placeholderTextColor={colors.textTertiary}
+                                    style={[styles.createInput, styles.createTextArea, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
                                     multiline
                                 />
-                                <Text style={styles.inputLabel}>Category</Text>
+                                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Category</Text>
                                 <View style={styles.createCategoryGrid}>
                                     {WORKOUT_CATEGORIES.filter((category): category is WorkoutCategory => category !== 'All' && category !== 'Mine').map((category) => (
                                         <TouchableOpacity
                                             key={category}
                                             style={[
                                                 styles.createCategoryChip,
-                                                customWorkoutCategory === category && styles.createCategoryChipActive,
+                                                { backgroundColor: colors.surface, borderColor: colors.border },
+                                                customWorkoutCategory === category && { backgroundColor: colors.primary, borderColor: colors.primary },
                                             ]}
                                             onPress={() => setCustomWorkoutCategory(category)}
                                         >
                                             <Text
                                                 style={[
                                                     styles.createCategoryText,
-                                                    customWorkoutCategory === category && styles.createCategoryTextActive,
+                                                    { color: colors.textSecondary },
+                                                    customWorkoutCategory === category && { color: colors.textInverse },
                                                 ]}
                                             >
                                                 {category}
@@ -1004,14 +1438,14 @@ export default function WorkoutScreen() {
                                     ))}
                                 </View>
                                 <TouchableOpacity
-                                    style={styles.visibilityRow}
+                                    style={[styles.visibilityRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
                                     onPress={() => setCustomWorkoutPublic((value) => !value)}
                                 >
                                     <View>
-                                        <Text style={styles.visibilityTitle}>
+                                        <Text style={[styles.visibilityTitle, { color: colors.text }]}>
                                             {customWorkoutPublic ? 'Public workout' : 'Private workout'}
                                         </Text>
-                                        <Text style={styles.visibilityText}>
+                                        <Text style={[styles.visibilityText, { color: colors.textTertiary }]}>
                                             {customWorkoutPublic
                                                 ? 'Other BodyPilot users can discover this template later.'
                                                 : 'Only you can see and use this template.'}
@@ -1020,7 +1454,7 @@ export default function WorkoutScreen() {
                                     <Ionicons
                                         name={customWorkoutPublic ? 'earth' : 'lock-closed'}
                                         size={24}
-                                        color={customWorkoutPublic ? colors.primary : Colors.textTertiary}
+                                        color={customWorkoutPublic ? colors.primary : colors.textTertiary}
                                     />
                                 </TouchableOpacity>
                             </>
@@ -1031,49 +1465,57 @@ export default function WorkoutScreen() {
                                         <Ionicons name="chevron-back" size={17} color={colors.primary} />
                                         <Text style={[styles.builderBackText, { color: colors.primary }]}>Details</Text>
                                     </TouchableOpacity>
-                                    <Text style={styles.builderTitle}>{customWorkoutName}</Text>
-                                    <Text style={styles.builderSubtext}>
+                                    <Text style={[styles.builderTitle, { color: colors.text }]}>{customWorkoutName}</Text>
+                                    <Text style={[styles.builderSubtext, { color: colors.textSecondary }]}>
                                         Add movements, then configure sets, reps, intensity, warmups, volume work, and supersets.
                                     </Text>
                                 </View>
 
-                                <View style={styles.searchBar}>
-                                    <Ionicons name="search" size={20} color={Colors.textTertiary} />
+                                <View style={[styles.searchBar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                                    <Ionicons name="search" size={20} color={colors.textTertiary} />
                                     <TextInput
                                         value={builderExerciseQuery}
                                         onChangeText={setBuilderExerciseQuery}
                                         placeholder="Search exercises to add..."
-                                        placeholderTextColor={Colors.textTertiary}
-                                        style={styles.searchInput}
+                                        placeholderTextColor={colors.textTertiary}
+                                        style={[styles.searchInput, { color: colors.text }]}
                                         autoCapitalize="none"
                                         autoCorrect={false}
                                     />
                                 </View>
 
-                                <Text style={styles.builderFilterLabel}>Muscle group</Text>
+                                <Text style={[styles.builderFilterLabel, { color: colors.textTertiary }]}>Muscle group</Text>
                                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.builderFilterScroll}>
                                     {BUILDER_MUSCLE_FILTERS.map((filter) => (
                                         <TouchableOpacity
                                             key={filter}
-                                            style={[styles.builderFilterChip, builderMuscleFilter === filter && styles.builderFilterChipActive]}
+                                            style={[
+                                                styles.builderFilterChip,
+                                                { backgroundColor: colors.surface, borderColor: colors.border },
+                                                builderMuscleFilter === filter && { backgroundColor: colors.primary, borderColor: colors.primary },
+                                            ]}
                                             onPress={() => setBuilderMuscleFilter(filter)}
                                         >
-                                            <Text style={[styles.builderFilterText, builderMuscleFilter === filter && styles.builderFilterTextActive]}>
+                                            <Text style={[styles.builderFilterText, { color: colors.textSecondary }, builderMuscleFilter === filter && { color: colors.textInverse }]}>
                                                 {filter}
                                             </Text>
                                         </TouchableOpacity>
                                     ))}
                                 </ScrollView>
 
-                                <Text style={styles.builderFilterLabel}>Equipment / style</Text>
+                                <Text style={[styles.builderFilterLabel, { color: colors.textTertiary }]}>Equipment / style</Text>
                                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.builderFilterScroll}>
                                     {BUILDER_EQUIPMENT_FILTERS.map((filter) => (
                                         <TouchableOpacity
                                             key={filter}
-                                            style={[styles.builderFilterChip, builderEquipmentFilter === filter && styles.builderFilterChipActive]}
+                                            style={[
+                                                styles.builderFilterChip,
+                                                { backgroundColor: colors.surface, borderColor: colors.border },
+                                                builderEquipmentFilter === filter && { backgroundColor: colors.primary, borderColor: colors.primary },
+                                            ]}
                                             onPress={() => setBuilderEquipmentFilter(filter)}
                                         >
-                                            <Text style={[styles.builderFilterText, builderEquipmentFilter === filter && styles.builderFilterTextActive]}>
+                                            <Text style={[styles.builderFilterText, { color: colors.textSecondary }, builderEquipmentFilter === filter && { color: colors.textInverse }]}>
                                                 {filter}
                                             </Text>
                                         </TouchableOpacity>
@@ -1081,8 +1523,8 @@ export default function WorkoutScreen() {
                                 </ScrollView>
 
                                 <View style={styles.builderPickerHeader}>
-                                    <Text style={styles.builderPickerTitle}>Add Exercise</Text>
-                                    <Text style={styles.builderPickerCount}>{builderExerciseOptions.length} results</Text>
+                                    <Text style={[styles.builderPickerTitle, { color: colors.text }]}>Add Exercise</Text>
+                                    <Text style={[styles.builderPickerCount, { color: colors.textTertiary }]}>{builderExerciseOptions.length} results</Text>
                                 </View>
                                 <ScrollView
                                     horizontal
@@ -1292,6 +1734,379 @@ export default function WorkoutScreen() {
     );
 }
 
+function buildAiWorkoutTemplate({
+    muscles,
+    intensity,
+    durationMin,
+    workoutType,
+    trainingEnvironment,
+    includeWarmup,
+    exerciseDirectory,
+    userId,
+    goal,
+    experienceLevel,
+    preferredRestSeconds,
+}: {
+    muscles: string[];
+    intensity: AiIntensity;
+    durationMin: number;
+    workoutType: AiWorkoutType;
+    trainingEnvironment: AiTrainingEnvironment;
+    includeWarmup: boolean;
+    exerciseDirectory: DirectoryExercise[];
+    userId: string;
+    goal?: string;
+    experienceLevel?: string;
+    preferredRestSeconds?: number | null;
+}): WorkoutTemplate {
+    const library = dedupeExercises([
+        ...exerciseDirectory,
+        ...Object.values(BASE_EXERCISES),
+    ]);
+    const focusMuscles = muscles.includes('Full Body') || muscles.length === 0
+        ? ['Chest', 'Back', 'Legs', 'Shoulders', 'Core']
+        : muscles;
+    const effectiveTrainingEnvironment = workoutType === 'yoga_mobility'
+        ? 'bodyweight'
+        : workoutType === 'low_impact' && trainingEnvironment === 'full_gym'
+            ? 'home'
+            : trainingEnvironment;
+    const exerciseCount = getAiExerciseCount(durationMin);
+    const selectedExercises = selectAiExercises(library, focusMuscles, exerciseCount, effectiveTrainingEnvironment);
+    const prescription = getAiPrescription(workoutType, intensity, experienceLevel, preferredRestSeconds);
+    const workoutTypeLabel = AI_WORKOUT_TYPE_OPTIONS.find((option) => option.value === workoutType)?.label ?? 'AI';
+    const environmentLabel = workoutType === 'yoga_mobility'
+        ? 'Yoga + mobility'
+        : AI_TRAINING_ENVIRONMENT_OPTIONS.find((option) => option.value === effectiveTrainingEnvironment)?.label ?? 'Workout';
+    const focusLabel = focusMuscles.length >= 4 ? 'Full Body' : focusMuscles.join(' + ');
+    const templateExercises = selectedExercises.map((exercise, index) => {
+        const isConditioningPair = workoutType === 'conditioning' && index < 4;
+        const workSetCount = Math.max(2, prescription.sets + (exercise.is_compound && intensity === 'hard' ? 1 : 0));
+        const plannedSets = buildAiPlannedSets({
+            setCount: workSetCount,
+            reps: getAiExerciseReps(exercise, prescription.reps),
+            intensityPercent: prescription.intensityPercent,
+            setType: prescription.setType,
+            addWarmup: includeWarmup && index < 2 && exercise.is_compound,
+        });
+
+        return {
+            ...planExercise(exercise, index, {
+                target_sets: plannedSets.length,
+                target_reps: summarizeReps(plannedSets),
+                rest_seconds: prescription.restSeconds,
+                set_type: prescription.setType,
+                intensity_percent: prescription.intensityPercent,
+                superset_group: isConditioningPair ? (index % 2 === 0 ? 'A' : 'B') : null,
+                notes: getAiExerciseNote(workoutType, goal),
+            }),
+            planned_sets: plannedSets,
+        };
+    });
+
+    return {
+        id: generateId(),
+        user_id: userId,
+        name: `AI ${environmentLabel}: ${focusLabel}`,
+        description: [
+            `${durationMin}-minute ${workoutTypeLabel.toLowerCase()} session`,
+            `${environmentLabel.toLowerCase()} equipment`,
+            `built for ${formatAiGoal(goal)} and ${formatAiGoal(experienceLevel)} experience`,
+            includeWarmup ? 'with warm-up sets' : 'without warm-up sets',
+        ].join(', ') + '.',
+        exercises: templateExercises,
+        estimated_duration_min: durationMin,
+        category: workoutType === 'yoga_mobility'
+            ? 'Yoga'
+            : workoutType === 'low_impact'
+                ? 'HIIT'
+                : effectiveTrainingEnvironment === 'home' || effectiveTrainingEnvironment === 'bodyweight'
+            ? 'Home Workout'
+            : focusMuscles.length >= 4 ? 'Full-body' : 'Split Workouts',
+        is_public: false,
+        created_at: new Date().toISOString(),
+    };
+}
+
+function dedupeExercises(exercises: Exercise[]) {
+    const seen = new Set<string>();
+    return exercises.filter((exercise) => {
+        if (seen.has(exercise.id)) return false;
+        seen.add(exercise.id);
+        return true;
+    });
+}
+
+function getAiExerciseCount(durationMin: number) {
+    if (durationMin <= 30) return 4;
+    if (durationMin <= 45) return 5;
+    if (durationMin <= 60) return 6;
+    if (durationMin <= 75) return 7;
+    return 8;
+}
+
+function selectAiExercises(library: Exercise[], focusMuscles: string[], count: number, trainingEnvironment: AiTrainingEnvironment) {
+    const selected: Exercise[] = [];
+    const relevantLibrary = library.filter((exercise) => matchesAiTrainingEnvironment(exercise, trainingEnvironment));
+    const quotas = getAiMuscleQuotas(focusMuscles, count);
+    const selectedCounts = Object.fromEntries(focusMuscles.map((muscle) => [muscle, 0])) as Record<string, number>;
+    const muscleQueue = buildAiMuscleQueue(focusMuscles, quotas);
+
+    muscleQueue.forEach((muscle, pickIndex) => {
+        if (selected.length >= count) return;
+        const candidate = relevantLibrary
+            .filter((exercise) => !selected.some((item) => item.id === exercise.id))
+            .filter((exercise) => isAllowedAiExerciseForFocus(exercise, focusMuscles))
+            .filter((exercise) => matchesAiMuscle(exercise, muscle))
+            .sort((a, b) => scoreAiExerciseForMuscle(a, b, muscle, focusMuscles, trainingEnvironment, pickIndex))[0];
+        if (!candidate) return;
+        selected.push(candidate);
+        selectedCounts[muscle] = (selectedCounts[muscle] ?? 0) + 1;
+    });
+
+    for (const muscle of focusMuscles) {
+        while ((selectedCounts[muscle] ?? 0) < quotas[muscle] && selected.length < count) {
+            const candidate = relevantLibrary
+                .filter((exercise) => !selected.some((item) => item.id === exercise.id))
+                .filter((exercise) => isAllowedAiExerciseForFocus(exercise, focusMuscles))
+                .filter((exercise) => matchesAiMuscle(exercise, muscle))
+                .sort((a, b) => scoreAiExerciseForMuscle(a, b, muscle, focusMuscles, trainingEnvironment, 1))[0];
+            if (!candidate) break;
+            selected.push(candidate);
+            selectedCounts[muscle] = (selectedCounts[muscle] ?? 0) + 1;
+        }
+    }
+
+    const targetMatches = relevantLibrary
+        .filter((exercise) => !selected.some((item) => item.id === exercise.id))
+        .filter((exercise) => isAllowedAiExerciseForFocus(exercise, focusMuscles))
+        .filter((exercise) => focusMuscles.some((muscle) => matchesAiMuscle(exercise, muscle)))
+        .sort((a, b) => scoreAiExerciseForFocus(a, b, focusMuscles, trainingEnvironment));
+    const environmentBackfill = relevantLibrary
+        .filter((exercise) => !selected.some((item) => item.id === exercise.id))
+        .filter((exercise) => isAllowedAiExerciseForFocus(exercise, focusMuscles))
+        .sort((a, b) => scoreAiExerciseForFocus(a, b, focusMuscles, trainingEnvironment));
+    const emergencyBackfill = library
+        .filter((exercise) => !selected.some((item) => item.id === exercise.id))
+        .filter((exercise) => isAllowedAiExerciseForFocus(exercise, focusMuscles))
+        .sort((a, b) => scoreAiExerciseForFocus(a, b, focusMuscles, trainingEnvironment));
+
+    return [...selected, ...targetMatches, ...environmentBackfill, ...emergencyBackfill].slice(0, count);
+}
+
+function scoreAiExerciseForFocus(a: Exercise, b: Exercise, focusMuscles: string[], trainingEnvironment: AiTrainingEnvironment) {
+    const aScore = Math.max(...focusMuscles.map((muscle) => getAiMuscleScore(a, muscle, focusMuscles, 1))) +
+        getEquipmentScore(a.equipment, trainingEnvironment) +
+        getInstructionScore(a);
+    const bScore = Math.max(...focusMuscles.map((muscle) => getAiMuscleScore(b, muscle, focusMuscles, 1))) +
+        getEquipmentScore(b.equipment, trainingEnvironment) +
+        getInstructionScore(b);
+    return bScore - aScore || a.name.localeCompare(b.name);
+}
+
+function scoreAiExerciseForMuscle(a: Exercise, b: Exercise, muscle: string, focusMuscles: string[], trainingEnvironment: AiTrainingEnvironment, pickIndex: number) {
+    const aScore = getAiMuscleScore(a, muscle, focusMuscles, pickIndex) + getEquipmentScore(a.equipment, trainingEnvironment) + getInstructionScore(a);
+    const bScore = getAiMuscleScore(b, muscle, focusMuscles, pickIndex) + getEquipmentScore(b.equipment, trainingEnvironment) + getInstructionScore(b);
+    return bScore - aScore || a.name.localeCompare(b.name);
+}
+
+function getAiMuscleScore(exercise: Exercise, muscle: string, focusMuscles: string[], pickIndex: number) {
+    const groups = exercise.muscle_groups;
+    const primary = groups[0];
+    const isPrimary = matchesAiPrimaryMuscle(primary, muscle);
+    const isTarget = matchesAiMuscle(exercise, muscle);
+    const primaryIsSelected = focusMuscles.some((focusMuscle) => matchesAiPrimaryMuscle(primary, focusMuscle));
+    const compoundScore = exercise.is_compound ? (pickIndex < focusMuscles.length ? 5 : 1) : 4;
+    const isolationBonus = !exercise.is_compound && ['Arms', 'Glutes', 'Core'].includes(muscle) ? 8 : 0;
+    const offTargetPrimaryPenalty = primaryIsSelected || primary === 'full_body' ? 0 : -35;
+
+    if (isPrimary) return 40 + compoundScore + isolationBonus;
+    if (isTarget) return 20 + compoundScore + offTargetPrimaryPenalty;
+    return -100;
+}
+
+function getAiMuscleQuotas(focusMuscles: string[], count: number) {
+    const baseQuota = Math.floor(count / Math.max(1, focusMuscles.length));
+    let remainder = count % Math.max(1, focusMuscles.length);
+    return Object.fromEntries(focusMuscles.map((muscle) => {
+        const quota = baseQuota + (remainder > 0 ? 1 : 0);
+        remainder -= 1;
+        return [muscle, quota];
+    })) as Record<string, number>;
+}
+
+function buildAiMuscleQueue(focusMuscles: string[], quotas: Record<string, number>) {
+    const queue: string[] = [];
+    const maxQuota = Math.max(...Object.values(quotas), 0);
+    for (let index = 0; index < maxQuota; index += 1) {
+        focusMuscles.forEach((muscle) => {
+            if ((quotas[muscle] ?? 0) > index) queue.push(muscle);
+        });
+    }
+    return queue;
+}
+
+function isAllowedAiExerciseForFocus(exercise: Exercise, focusMuscles: string[]) {
+    const primary = exercise.muscle_groups[0];
+    if (!primary || primary === 'full_body') return true;
+    return focusMuscles.some((muscle) => matchesAiPrimaryMuscle(primary, muscle));
+}
+
+function matchesAiTrainingEnvironment(exercise: Exercise, trainingEnvironment: AiTrainingEnvironment) {
+    const equipment = exercise.equipment;
+    if (trainingEnvironment === 'full_gym') return ['machine', 'cable', 'dumbbell', 'barbell', 'kettlebell'].includes(equipment);
+    if (trainingEnvironment === 'home') return ['bodyweight', 'none', 'band', 'dumbbell', 'kettlebell'].includes(equipment);
+    if (trainingEnvironment === 'dumbbells') return ['dumbbell', 'bodyweight', 'none'].includes(equipment);
+    if (trainingEnvironment === 'bodyweight') return ['bodyweight', 'none'].includes(equipment);
+    return true;
+}
+
+function getEquipmentScore(equipment: string, trainingEnvironment: AiTrainingEnvironment) {
+    if (trainingEnvironment === 'full_gym') {
+        if (['machine', 'cable'].includes(equipment)) return 8;
+        if (['dumbbell', 'barbell'].includes(equipment)) return 7;
+        if (equipment === 'kettlebell') return 4;
+        if (equipment === 'bodyweight') return 1;
+        return 0;
+    }
+    if (trainingEnvironment === 'home') {
+        if (['bodyweight', 'band', 'dumbbell', 'kettlebell'].includes(equipment)) return 7;
+        if (equipment === 'none') return 6;
+        return 0;
+    }
+    if (trainingEnvironment === 'dumbbells') {
+        if (equipment === 'dumbbell') return 9;
+        if (['bodyweight', 'none'].includes(equipment)) return 5;
+        return 0;
+    }
+    if (trainingEnvironment === 'bodyweight') {
+        if (['bodyweight', 'none'].includes(equipment)) return 9;
+        return 0;
+    }
+    return 1;
+}
+
+function getInstructionScore(exercise: Exercise) {
+    return exercise.instructions ? 2 : 0;
+}
+
+function matchesAiMuscle(exercise: Exercise, muscle: string) {
+    const groups = exercise.muscle_groups;
+    switch (muscle) {
+        case 'Chest':
+            return groups.includes('chest');
+        case 'Back':
+            return groups.some((group) => ['back', 'lats', 'lower_back', 'traps'].includes(group));
+        case 'Shoulders':
+            return groups.includes('shoulders');
+        case 'Arms':
+            return groups.some((group) => ['biceps', 'triceps', 'forearms'].includes(group));
+        case 'Legs':
+            return groups.some((group) => ['quads', 'hamstrings', 'calves'].includes(group));
+        case 'Glutes':
+            return groups.includes('glutes');
+        case 'Core':
+            return groups.some((group) => ['abs', 'obliques'].includes(group));
+        default:
+            return true;
+    }
+}
+
+function matchesAiPrimaryMuscle(primary: string | undefined, muscle: string) {
+    if (!primary) return false;
+    switch (muscle) {
+        case 'Chest':
+            return primary === 'chest';
+        case 'Back':
+            return ['back', 'lats', 'lower_back', 'traps'].includes(primary);
+        case 'Shoulders':
+            return primary === 'shoulders';
+        case 'Arms':
+            return ['biceps', 'triceps', 'forearms'].includes(primary);
+        case 'Legs':
+            return ['quads', 'hamstrings', 'calves'].includes(primary);
+        case 'Glutes':
+            return primary === 'glutes';
+        case 'Core':
+            return ['abs', 'obliques'].includes(primary);
+        default:
+            return true;
+    }
+}
+
+function getAiPrescription(
+    workoutType: AiWorkoutType,
+    intensity: AiIntensity,
+    experienceLevel?: string,
+    preferredRestSeconds?: number | null,
+) {
+    const intensityDefaults: Record<AiIntensity, { sets: number; reps: string; intensityPercent: number; restSeconds: number }> = {
+        light: { sets: 2, reps: '12', intensityPercent: 65, restSeconds: 60 },
+        moderate: { sets: 3, reps: '10', intensityPercent: 75, restSeconds: 90 },
+        hard: { sets: 3, reps: '6', intensityPercent: 85, restSeconds: 120 },
+    };
+    const base = intensityDefaults[intensity];
+    const typeOverrides: Record<AiWorkoutType, Partial<typeof base> & { setType: WorkoutSet['set_type'] }> = {
+        progressive_overload: { setType: 'normal', reps: intensity === 'hard' ? '6' : '8' },
+        volume: { setType: 'volume', sets: intensity === 'hard' ? 4 : 3, reps: '12', restSeconds: 70, intensityPercent: 70 },
+        strength: { setType: 'normal', sets: experienceLevel === 'beginner' ? 3 : 4, reps: '5', restSeconds: 150, intensityPercent: 85 },
+        hypertrophy: { setType: 'normal', sets: 3, reps: '10', restSeconds: 75, intensityPercent: 75 },
+        conditioning: { setType: 'volume', sets: 3, reps: '15', restSeconds: 45, intensityPercent: 65 },
+        low_impact: { setType: 'volume', sets: 3, reps: '12', restSeconds: 40, intensityPercent: 62 },
+        yoga_mobility: { setType: 'volume', sets: 2, reps: '8', restSeconds: 25, intensityPercent: 45 },
+    };
+    const merged = { ...base, ...typeOverrides[workoutType] };
+    return {
+        ...merged,
+        sets: experienceLevel === 'beginner' ? Math.min(merged.sets, 3) : merged.sets,
+        restSeconds: preferredRestSeconds ? Math.round((merged.restSeconds + preferredRestSeconds) / 2) : merged.restSeconds,
+    };
+}
+
+function buildAiPlannedSets({
+    setCount,
+    reps,
+    intensityPercent,
+    setType,
+    addWarmup,
+}: {
+    setCount: number;
+    reps: string;
+    intensityPercent: number;
+    setType: WorkoutSet['set_type'];
+    addWarmup: boolean;
+}) {
+    const sets: WorkoutTemplateSet[] = [];
+    if (addWarmup) {
+        sets.push(createPlannedSet(1, 'warmup', reps, 55));
+    }
+    for (let index = 0; index < setCount; index += 1) {
+        sets.push(createPlannedSet(sets.length + 1, setType, reps, intensityPercent));
+    }
+    return sets;
+}
+
+function getAiExerciseReps(exercise: Exercise, reps: string) {
+    if (exercise.muscle_groups.some((group) => ['abs', 'obliques'].includes(group)) && exercise.name.toLowerCase().includes('plank')) {
+        return '45';
+    }
+    return normalizeRepTarget(reps);
+}
+
+function getAiExerciseNote(workoutType: AiWorkoutType, goal?: string) {
+    if (workoutType === 'progressive_overload') return 'When all sets feel clean, add 1 rep or a small load next time.';
+    if (workoutType === 'conditioning') return 'Keep rest honest and move smoothly between paired exercises.';
+    if (workoutType === 'low_impact') return 'Move continuously, keep impact low, and scale range of motion as needed.';
+    if (workoutType === 'yoga_mobility') return 'Use slow breathing and stay in a pain-free range of motion.';
+    if (workoutType === 'strength') return 'Leave one good rep in reserve on most working sets.';
+    if (goal === 'lose_fat') return 'Control tempo and keep rest periods consistent.';
+    return 'Use clean form and stop the set before technique breaks.';
+}
+
+function formatAiGoal(value?: string) {
+    return value ? value.replace(/_/g, ' ') : 'general fitness';
+}
+
 function formatLabel(value: string) {
     return value.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
@@ -1416,6 +2231,14 @@ function getTemplateIcon(category: WorkoutCategory): keyof typeof Ionicons.glyph
             return 'accessibility';
         case 'Home Workout':
             return 'home';
+        case 'Yoga':
+            return 'leaf';
+        case 'HIIT':
+            return 'flash';
+        case 'Glutes & Core':
+            return 'fitness';
+        case 'Mobility':
+            return 'body-outline';
         default:
             return 'barbell';
     }
@@ -1705,6 +2528,20 @@ const styles = StyleSheet.create({
     templateInfo: {
         flex: 1,
     },
+    templateActions: {
+        alignItems: 'center',
+        gap: Spacing.sm,
+    },
+    templateIconButton: {
+        width: 38,
+        height: 38,
+        borderRadius: BorderRadius.full,
+        backgroundColor: Colors.background,
+        borderWidth: 1,
+        borderColor: Colors.border,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     templatePlayButton: {
         width: 46,
         height: 46,
@@ -1757,6 +2594,39 @@ const styles = StyleSheet.create({
         color: Colors.primary,
         fontSize: FontSize.md,
         fontWeight: FontWeight.semibold,
+    },
+    aiWorkoutButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.md,
+        marginTop: Spacing.sm,
+        padding: Spacing.md,
+        backgroundColor: Colors.surface,
+        borderRadius: BorderRadius.lg,
+        borderWidth: 1,
+        borderColor: Colors.primary + '3D',
+    },
+    aiWorkoutIcon: {
+        width: 44,
+        height: 44,
+        borderRadius: BorderRadius.md,
+        backgroundColor: Colors.primary + '18',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    aiWorkoutCopy: {
+        flex: 1,
+    },
+    aiWorkoutTitle: {
+        color: Colors.text,
+        fontSize: FontSize.md,
+        fontWeight: FontWeight.bold,
+    },
+    aiWorkoutText: {
+        color: Colors.textSecondary,
+        fontSize: FontSize.sm,
+        lineHeight: 19,
+        marginTop: 2,
     },
     createWorkoutContent: {
         padding: Spacing.lg,
@@ -1830,6 +2700,86 @@ const styles = StyleSheet.create({
         lineHeight: 19,
         marginTop: 3,
         maxWidth: 280,
+    },
+    aiModalHero: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: Spacing.md,
+        padding: Spacing.lg,
+        borderRadius: BorderRadius.lg,
+        backgroundColor: Colors.surface,
+        borderWidth: 1,
+        borderColor: Colors.border,
+    },
+    aiModalTitle: {
+        color: Colors.text,
+        fontSize: FontSize.lg,
+        fontWeight: FontWeight.heavy,
+        lineHeight: 25,
+    },
+    aiModalText: {
+        color: Colors.textSecondary,
+        fontSize: FontSize.sm,
+        lineHeight: 20,
+        marginTop: Spacing.xs,
+    },
+    aiOptionStack: {
+        gap: Spacing.sm,
+    },
+    aiOptionRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.md,
+        padding: Spacing.md,
+        borderRadius: BorderRadius.lg,
+        backgroundColor: Colors.surface,
+        borderWidth: 1,
+        borderColor: Colors.border,
+    },
+    aiOptionRowActive: {
+        borderColor: Colors.primary,
+        backgroundColor: Colors.primary + '12',
+    },
+    aiOptionTitle: {
+        color: Colors.text,
+        fontSize: FontSize.md,
+        fontWeight: FontWeight.bold,
+    },
+    aiOptionTitleActive: {
+        color: Colors.primary,
+    },
+    aiOptionText: {
+        color: Colors.textTertiary,
+        fontSize: FontSize.sm,
+        lineHeight: 19,
+        marginTop: 2,
+    },
+    aiDurationGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: Spacing.sm,
+    },
+    aiDurationChip: {
+        minWidth: 82,
+        alignItems: 'center',
+        paddingHorizontal: Spacing.md,
+        paddingVertical: Spacing.md,
+        borderRadius: BorderRadius.md,
+        backgroundColor: Colors.surface,
+        borderWidth: 1,
+        borderColor: Colors.border,
+    },
+    aiDurationChipActive: {
+        backgroundColor: Colors.primary,
+        borderColor: Colors.primary,
+    },
+    aiDurationText: {
+        color: Colors.textSecondary,
+        fontSize: FontSize.sm,
+        fontWeight: FontWeight.bold,
+    },
+    aiDurationTextActive: {
+        color: Colors.textInverse,
     },
     saveTemplateButton: {
         minWidth: 58,

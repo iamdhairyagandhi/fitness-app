@@ -49,7 +49,6 @@ const queryClient = new QueryClient({
 
 function RootLayoutContent() {
     const { isLoading, setSession, setLoading, setUser, setOnboarded } = useAuthStore();
-    console.log('RootLayoutContent render, isLoading:', isLoading);
 
     const hydrateFromSupabase = useCallback(async (userId: string) => {
         try {
@@ -207,6 +206,7 @@ function RootLayoutContent() {
                 <Stack.Screen name="progress" />
                 <Stack.Screen name="social" />
                 <Stack.Screen name="account-settings" />
+                <Stack.Screen name="customize-macros" />
                 <Stack.Screen
                     name="premium"
                     options={{

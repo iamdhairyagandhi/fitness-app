@@ -61,7 +61,7 @@ Train smarter. Eat better. See progress.
 Website:
 
 ```text
-https://fudqcomgwnjxcqgocfuw.supabase.co/functions/v1/support
+https://iamdhairyagandhi.github.io/fitness-app/help/
 ```
 
 Suggested setup:
@@ -96,7 +96,7 @@ AI fitness tracking for workouts, nutrition, progress, and recovery.
 Website:
 
 ```text
-https://fudqcomgwnjxcqgocfuw.supabase.co/functions/v1/support
+https://iamdhairyagandhi.github.io/fitness-app/help/
 ```
 
 Suggested setup:
@@ -147,4 +147,3 @@ Your progress should be easier to understand. BodyPilot tracks training, nutriti
 5. Convert both to professional/business accounts.
 6. Reserve the same handle on both platforms before posting.
 7. Add the App Store link once the app is live.
-

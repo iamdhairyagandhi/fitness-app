@@ -1,3 +1,5 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.103.0';
+
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -47,9 +49,28 @@ Deno.serve(async (req) => {
         return jsonResponse({ error: { message: 'Method not allowed' } }, 405);
     }
 
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
     const apiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!apiKey) {
-        return jsonResponse({ error: { message: 'OPENAI_API_KEY is not configured' } }, 500);
+    if (!supabaseUrl || !anonKey || !apiKey) {
+        return jsonResponse({ error: { message: 'AI proxy is not configured' } }, 500);
+    }
+
+    const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
+    if (!token) {
+        return jsonResponse({ error: { message: 'Missing authorization token' } }, 401);
+    }
+
+    const supabase = createClient(supabaseUrl, anonKey, {
+        auth: {
+            autoRefreshToken: false,
+            persistSession: false,
+        },
+    });
+
+    const { data: userData, error: userError } = await supabase.auth.getUser(token);
+    if (userError || !userData?.user) {
+        return jsonResponse({ error: { message: 'Invalid authorization token' } }, 401);
     }
 
     let body: ChatBody;

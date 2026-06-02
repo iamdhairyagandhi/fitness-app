@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const SUPPORT_URL = 'https://fudqcomgwnjxcqgocfuw.supabase.co/functions/v1/support';
+const SUPPORT_URL = 'https://iamdhairyagandhi.github.io/fitness-app/feedback/';
 
 const FAQ_ITEMS = [
     {

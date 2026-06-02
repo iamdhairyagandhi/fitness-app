@@ -39,8 +39,9 @@ fitness,workout,nutrition,calorie,macros,meal,tracker,gym,progress,AI coach
 
 ## Required URLs
 
-- Privacy Policy URL: https://fudqcomgwnjxcqgocfuw.supabase.co/functions/v1/privacy-policy
-- Support URL: use a public support/contact page or mailto-capable support page.
+- Privacy Policy URL: https://iamdhairyagandhi.github.io/fitness-app/privacy/
+- Support URL: https://iamdhairyagandhi.github.io/fitness-app/help/
+- Privacy Choices URL: https://iamdhairyagandhi.github.io/fitness-app/feedback/
 - Marketing URL: optional.
 
 ## Review Notes

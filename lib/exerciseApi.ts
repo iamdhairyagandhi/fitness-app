@@ -138,7 +138,6 @@ function mapExerciseDBItem(item: ExerciseDBItem): Exercise {
  */
 export async function fetchExercisesFromAPI(limit = 200, offset = 0): Promise<Exercise[]> {
     if (!RAPIDAPI_KEY) {
-        console.log('No RapidAPI key — using built-in exercise database');
         return BUILTIN_EXERCISES;
     }
 

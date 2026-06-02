@@ -22,11 +22,11 @@
           "AI coach"
         ],
         "promoText": "Track workouts, nutrition, progress, recovery, and goals with AI-powered coaching tools.",
-        "supportUrl": "https://fudqcomgwnjxcqgocfuw.supabase.co/functions/v1/support",
+        "supportUrl": "https://iamdhairyagandhi.github.io/fitness-app/help/",
         "title": "BodyPilot: AI Fitness",
         "subtitle": "Workout & Nutrition Tracker",
-        "privacyPolicyUrl": "https://fudqcomgwnjxcqgocfuw.supabase.co/functions/v1/privacy-policy",
-        "privacyChoicesUrl": "https://fudqcomgwnjxcqgocfuw.supabase.co/functions/v1/support",
+        "privacyPolicyUrl": "https://iamdhairyagandhi.github.io/fitness-app/privacy/",
+        "privacyChoicesUrl": "https://iamdhairyagandhi.github.io/fitness-app/feedback/",
         "screenshots": {
           "APP_IPHONE_67": [
             "store/apple/screenshot/en-US/APP_IPHONE_67/nutrition.png",

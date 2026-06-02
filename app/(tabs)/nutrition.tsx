@@ -45,6 +45,7 @@ const MEAL_ICONS: Record<MealType, string> = {
 };
 
 const MEAL_ORDER: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack'];
+const DIET_TEMPLATE_OPTIONS = (Object.keys(DIET_TEMPLATES) as DietTemplate[]).filter((template) => template !== 'custom');
 
 type MealDropZone = {
     mealType: MealType;
@@ -62,7 +63,9 @@ export default function NutritionScreen() {
     const { dietProfile, setDietProfile } = useMealPlanStore();
     const weightEntries = useProgressStore((s) => s.weightEntries);
     const [showDietSetup, setShowDietSetup] = React.useState(false);
-    const [setupTemplate, setSetupTemplate] = React.useState<DietTemplate>(dietProfile.template);
+    const [setupTemplate, setSetupTemplate] = React.useState<DietTemplate>(
+        dietProfile.template === 'custom' ? 'standard' : dietProfile.template
+    );
     const [setupPhase, setSetupPhase] = React.useState<DietPhase>(dietProfile.phase);
     const [setupAllergies, setSetupAllergies] = React.useState<string[]>(dietProfile.allergies);
     const [setupExclusions, setSetupExclusions] = React.useState<string[]>(dietProfile.excluded_foods);
@@ -191,7 +194,7 @@ export default function NutritionScreen() {
 
     const saveDietSetup = async () => {
         setDietProfile({
-            template: setupTemplate,
+            template: setupTemplate === 'custom' ? 'standard' : setupTemplate,
             phase: setupPhase,
             phase_start_date: new Date().toISOString(),
             allergies: setupAllergies,
@@ -359,8 +362,6 @@ export default function NutritionScreen() {
                         colors={colors}
                     />
                 </ScrollView>
-
-                <HealthSourcesCard title="Nutrition Sources" />
 
                 <Card style={styles.logHubCard}>
                     <View style={styles.logHubHeader}>
@@ -535,6 +536,8 @@ export default function NutritionScreen() {
                         a balanced meal hitting your targets.
                     </Text>
                 </Card>
+
+                <HealthSourcesCard title="Nutrition Sources" />
             </ScrollView>
 
             <Modal visible={showDietSetup} animationType="slide" presentationStyle="pageSheet">
@@ -548,7 +551,7 @@ export default function NutritionScreen() {
 
                         <Text style={styles.setupSection}>Diet style</Text>
                         <View style={styles.setupChipGrid}>
-                            {(Object.keys(DIET_TEMPLATES) as DietTemplate[]).slice(0, 8).map((template) => (
+                            {DIET_TEMPLATE_OPTIONS.map((template) => (
                                 <SetupChip
                                     key={template}
                                     label={DIET_TEMPLATES[template].name}
@@ -557,7 +560,6 @@ export default function NutritionScreen() {
                                 />
                             ))}
                         </View>
-
                         <Text style={styles.setupSection}>Goal phase</Text>
                         <View style={styles.setupChipGrid}>
                             {(['cut', 'maintain', 'recomp', 'bulk'] as DietPhase[]).map((phase) => (
@@ -610,6 +612,7 @@ export default function NutritionScreen() {
                     </ScrollView>
                 </View>
             </Modal>
+
         </View>
     );
 }
@@ -987,7 +990,7 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         paddingHorizontal: Spacing.lg,
-        paddingBottom: 100,
+        paddingBottom: 120,
     },
     header: {
         flexDirection: 'row',
@@ -1017,7 +1020,7 @@ const styles = StyleSheet.create({
 
     // Quick nav
     quickNav: {
-        marginBottom: Spacing.lg,
+        marginBottom: Spacing.md,
         marginHorizontal: -Spacing.lg,
     },
     quickNavContent: {
@@ -1030,20 +1033,20 @@ const styles = StyleSheet.create({
         gap: 6,
         backgroundColor: Colors.surface,
         borderRadius: BorderRadius.full,
-        paddingHorizontal: Spacing.md,
-        paddingVertical: Spacing.sm,
+        paddingHorizontal: Spacing.sm,
+        paddingVertical: 7,
         borderWidth: 1,
         borderColor: Colors.border,
     },
     quickNavText: {
         color: Colors.textSecondary,
-        fontSize: FontSize.sm,
+        fontSize: FontSize.xs,
         fontWeight: FontWeight.medium,
     },
 
     dashboardCarousel: {
         marginHorizontal: -Spacing.lg,
-        marginBottom: Spacing.lg,
+        marginBottom: Spacing.md,
     },
     dashboardCarouselContent: {
         paddingHorizontal: Spacing.lg,
@@ -1051,10 +1054,10 @@ const styles = StyleSheet.create({
     },
     dashboardSlide: {
         width: 330,
-        minHeight: 284,
+        minHeight: 260,
     },
     trendSlide: {
-        minHeight: 284,
+        minHeight: 260,
     },
     summaryTop: {
         flexDirection: 'row',
@@ -1379,14 +1382,14 @@ const styles = StyleSheet.create({
         fontWeight: FontWeight.bold,
     },
     logHubCard: {
-        marginBottom: Spacing.lg,
+        marginBottom: Spacing.md,
     },
     logHubHeader: {
         flexDirection: 'row',
         alignItems: 'flex-start',
         justifyContent: 'space-between',
         gap: Spacing.md,
-        marginBottom: Spacing.lg,
+        marginBottom: Spacing.md,
     },
     logHubTitle: {
         color: Colors.text,
@@ -1409,7 +1412,7 @@ const styles = StyleSheet.create({
         flex: 1,
         alignItems: 'center',
         gap: 4,
-        paddingVertical: Spacing.md,
+        paddingVertical: Spacing.sm,
         borderRadius: BorderRadius.md,
         backgroundColor: Colors.surfaceLight,
         borderWidth: 1,
@@ -1501,7 +1504,7 @@ const styles = StyleSheet.create({
 
     // Water
     waterCard: {
-        marginBottom: Spacing.lg,
+        marginBottom: Spacing.md,
     },
     waterRow: {
         flexDirection: 'row',
@@ -1679,6 +1682,7 @@ const styles = StyleSheet.create({
     // AI
     aiSuggestion: {
         marginTop: Spacing.sm,
+        marginBottom: Spacing.lg,
         borderColor: Colors.primaryDark,
     },
     aiHeader: {

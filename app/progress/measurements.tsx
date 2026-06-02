@@ -1,5 +1,6 @@
 import { Button, toast } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 import { generateId } from '@/lib/utils';
 import { useProgressStore } from '@/stores/progressStore';
 import type { BodyMeasurement } from '@/types';
@@ -34,6 +35,7 @@ const MEASUREMENT_FIELDS: { key: keyof BodyMeasurement; label: string; icon: str
 
 export default function MeasurementsScreen() {
     const insets = useSafeAreaInsets();
+    const { colors } = useTheme();
     const { addMeasurement, measurements } = useProgressStore();
     const lastMeasurement = measurements[0];
 
@@ -88,27 +90,27 @@ export default function MeasurementsScreen() {
 
     return (
         <KeyboardAvoidingView
-            style={[styles.container, { paddingTop: insets.top }]}
+            style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()}>
-                    <Ionicons name="arrow-back" size={24} color={Colors.text} />
+                    <Ionicons name="arrow-back" size={24} color={colors.text} />
                 </TouchableOpacity>
-                <Text style={styles.title}>Body Measurements</Text>
+                <Text style={[styles.title, { color: colors.text }]}>Body Measurements</Text>
                 <View style={{ width: 24 }} />
             </View>
 
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                <Text style={styles.subtitle}>
+                <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
                     Measure in centimeters. Leave blank to skip a measurement.
                 </Text>
 
                 {lastMeasurement && (
                     <View style={styles.lastDateRow}>
-                        <Ionicons name="time-outline" size={14} color={Colors.textTertiary} />
-                        <Text style={styles.lastDateText}>
+                        <Ionicons name="time-outline" size={14} color={colors.textTertiary} />
+                        <Text style={[styles.lastDateText, { color: colors.textTertiary }]}>
                             Last logged: {new Date(lastMeasurement.logged_at).toLocaleDateString()}
                         </Text>
                     </View>
@@ -117,24 +119,24 @@ export default function MeasurementsScreen() {
                 {MEASUREMENT_FIELDS.map((field) => {
                     const delta = getDelta(field.key, values[field.key]);
                     return (
-                        <View key={field.key} style={styles.fieldRow}>
+                        <View key={field.key} style={[styles.fieldRow, { borderBottomColor: colors.border }]}>
                             <Text style={styles.fieldIcon}>{field.icon}</Text>
-                            <Text style={styles.fieldLabel}>{field.label}</Text>
+                            <Text style={[styles.fieldLabel, { color: colors.text }]}>{field.label}</Text>
                             <View style={styles.inputWrapper}>
                                 <TextInput
-                                    style={styles.fieldInput}
+                                    style={[styles.fieldInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
                                     value={values[field.key]}
                                     onChangeText={(v) => setValues((prev) => ({ ...prev, [field.key]: v }))}
                                     keyboardType="decimal-pad"
                                     placeholder="—"
-                                    placeholderTextColor={Colors.textTertiary}
+                                    placeholderTextColor={colors.textTertiary}
                                 />
-                                <Text style={styles.unitText}>cm</Text>
+                                <Text style={[styles.unitText, { color: colors.textTertiary }]}>cm</Text>
                             </View>
                             {delta && (
                                 <Text style={[
                                     styles.deltaText,
-                                    { color: delta.startsWith('+') ? Colors.error : Colors.success },
+                                    { color: delta.startsWith('+') ? colors.error : colors.success },
                                 ]}>
                                     {delta}
                                 </Text>

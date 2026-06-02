@@ -34,8 +34,9 @@ const PROFILE_CHARACTERS = [
 ];
 
 const CHARACTER_PREFIX = 'character:';
-const SUPPORT_URL = 'https://fudqcomgwnjxcqgocfuw.supabase.co/functions/v1/support';
-const PRIVACY_POLICY_URL = 'https://fudqcomgwnjxcqgocfuw.supabase.co/functions/v1/privacy-policy';
+const HELP_URL = 'https://iamdhairyagandhi.github.io/fitness-app/help/';
+const FEEDBACK_URL = 'https://iamdhairyagandhi.github.io/fitness-app/feedback/';
+const PRIVACY_POLICY_URL = 'https://iamdhairyagandhi.github.io/fitness-app/privacy/';
 
 export default function ProfileScreen() {
     const insets = useSafeAreaInsets();
@@ -115,39 +116,37 @@ export default function ProfileScreen() {
 
     const settingsGroups = [
         {
-            title: 'Account',
+            title: 'Profile & Account',
             items: [
-                { icon: 'person-outline' as const, label: 'Edit Profile', onPress: () => router.push('/settings') },
-                { icon: 'sparkles-outline' as const, label: 'BodyPilot Premium', onPress: () => router.push('/premium' as any) },
-                { icon: 'key-outline' as const, label: 'Account Settings', onPress: () => router.push('/account-settings' as any) },
-                { icon: 'fitness-outline' as const, label: 'Fitness Goals', onPress: () => router.push('/progress/create-goal') },
-                { icon: 'nutrition-outline' as const, label: 'Nutrition Targets', onPress: () => router.push('/nutrition/diet-settings') },
-                { icon: 'body-outline' as const, label: 'Body Measurements', onPress: () => router.push('/progress/measurements') },
+                { icon: 'key-outline' as const, label: 'Account Details', description: 'Username, phone, email, connected accounts, account safety', onPress: () => router.push('/account-settings' as any) },
+                { icon: 'sparkles-outline' as const, label: 'BodyPilot Premium', description: 'Subscription, trial, and AI feature access', onPress: () => router.push('/premium' as any) },
             ],
         },
         {
-            title: 'Preferences',
+            title: 'Settings & Preferences',
             items: [
-                { icon: 'scale-outline' as const, label: 'Units & Settings', onPress: () => router.push('/settings') },
-                { icon: 'notifications-outline' as const, label: 'Notifications', onPress: () => router.push('/settings') },
-                { icon: 'trophy-outline' as const, label: 'Achievements', onPress: () => router.push('/achievements') },
-                { icon: 'analytics-outline' as const, label: 'Analytics', onPress: () => router.push('/analytics') },
+                { icon: 'settings-outline' as const, label: 'App Settings', description: 'Units, rest timer, theme, colors, notifications', onPress: () => router.push('/settings') },
+                { icon: 'options-outline' as const, label: 'Customize Macros', description: 'Calories, protein, carbs, fat, and water targets', onPress: () => router.push('/customize-macros' as any) },
             ],
         },
         {
-            title: 'Integrations',
+            title: 'Health & Planning',
             items: [
-                { icon: 'watch-outline' as const, label: 'Wearable Devices', onPress: () => router.push('/health') },
-                { icon: 'heart-outline' as const, label: 'Apple Health / Google Fit', onPress: () => router.push('/health') },
+                { icon: 'fitness-outline' as const, label: 'Fitness Goals', description: 'Create or update your active goals', onPress: () => router.push('/progress/create-goal') },
+                { icon: 'body-outline' as const, label: 'Body Measurements', description: 'Weight and body measurement tracking', onPress: () => router.push('/progress/measurements') },
+                { icon: 'nutrition-outline' as const, label: 'Diet Preferences', description: 'Diet style, restrictions, and meal planning context', onPress: () => router.push('/nutrition/diet-settings') },
+                { icon: 'watch-outline' as const, label: 'Wearable Devices', description: 'Apple Health and activity sync', onPress: () => router.push('/health') },
+                { icon: 'analytics-outline' as const, label: 'Analytics', description: 'Progress trends and performance reports', onPress: () => router.push('/analytics') },
+                { icon: 'trophy-outline' as const, label: 'Achievements', description: 'Badges and consistency milestones', onPress: () => router.push('/achievements') },
             ],
         },
         {
             title: 'Support',
             items: [
-                { icon: 'help-circle-outline' as const, label: 'Help & FAQ', onPress: () => router.push('/help-faq' as any) },
-                { icon: 'chatbubble-outline' as const, label: 'Send Feedback', onPress: () => handleOpenUrl(SUPPORT_URL, 'support') },
-                { icon: 'document-text-outline' as const, label: 'Privacy Policy', onPress: () => handleOpenUrl(PRIVACY_POLICY_URL, 'privacy policy') },
-                { icon: 'information-circle-outline' as const, label: 'About', onPress: () => router.push('/about' as any) },
+                { icon: 'help-circle-outline' as const, label: 'Help & FAQ', description: 'Answers to common setup and tracking questions', onPress: () => handleOpenUrl(HELP_URL, 'help') },
+                { icon: 'chatbubble-outline' as const, label: 'Send Feedback', description: 'Report an issue or request an improvement', onPress: () => handleOpenUrl(FEEDBACK_URL, 'feedback') },
+                { icon: 'document-text-outline' as const, label: 'Privacy Policy', description: 'How BodyPilot handles your data', onPress: () => handleOpenUrl(PRIVACY_POLICY_URL, 'privacy policy') },
+                { icon: 'information-circle-outline' as const, label: 'About BodyPilot', description: 'Version, product info, and app details', onPress: () => router.push('/about' as any) },
             ],
         },
     ];
@@ -228,17 +227,17 @@ export default function ProfileScreen() {
                     </View>
 
                     {/* Quick Stats */}
-                    <View style={styles.statsRow}>
+                    <View style={[styles.statsRow, { borderTopColor: colors.border }]}>
                         <View style={styles.stat}>
                             <Text style={[styles.statValue, { color: colors.text }]}>{workoutCount}</Text>
                             <Text style={[styles.statLabel, { color: colors.textTertiary }]}>Workouts</Text>
                         </View>
-                        <View style={styles.statDivider} />
+                        <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
                         <View style={styles.stat}>
                             <Text style={[styles.statValue, { color: colors.text }]}>{streakCount}</Text>
                             <Text style={[styles.statLabel, { color: colors.textTertiary }]}>Day Streak</Text>
                         </View>
-                        <View style={styles.statDivider} />
+                        <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
                         <View style={styles.stat}>
                             <Text style={[styles.statValue, { color: colors.text }]}>{prCount}</Text>
                             <Text style={[styles.statLabel, { color: colors.textTertiary }]}>PRs</Text>
@@ -262,8 +261,13 @@ export default function ProfileScreen() {
                                     onPress={item.onPress}
                                     activeOpacity={0.6}
                                 >
-                                    <Ionicons name={item.icon} size={20} color={colors.textSecondary} />
-                                    <Text style={[styles.settingsLabel, { color: colors.text }]}>{item.label}</Text>
+                                    <View style={[styles.settingsIconWrap, { backgroundColor: colors.surfaceLight }]}>
+                                        <Ionicons name={item.icon} size={20} color={colors.primary} />
+                                    </View>
+                                    <View style={styles.settingsCopy}>
+                                        <Text style={[styles.settingsLabel, { color: colors.text }]}>{item.label}</Text>
+                                        <Text style={[styles.settingsDescription, { color: colors.textTertiary }]}>{item.description}</Text>
+                                    </View>
                                     <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
                                 </TouchableOpacity>
                             ))}
@@ -279,7 +283,7 @@ export default function ProfileScreen() {
                     style={{ marginTop: Spacing.lg }}
                 />
 
-                <Text style={styles.version}>BodyPilot v4.0.0 (Phase 4)</Text>
+                <Text style={[styles.version, { color: colors.textTertiary }]}>BodyPilot v4.0.0 (Phase 4)</Text>
             </ScrollView>
 
             <Modal
@@ -510,18 +514,34 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: Spacing.md,
-        paddingVertical: Spacing.md,
+        paddingVertical: Spacing.lg,
         paddingHorizontal: Spacing.lg,
     },
     settingsRowBorder: {
         borderBottomWidth: 1,
         borderBottomColor: Colors.border,
     },
-    settingsLabel: {
+    settingsIconWrap: {
+        width: 42,
+        height: 42,
+        borderRadius: BorderRadius.md,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    settingsCopy: {
         flex: 1,
+    },
+    settingsLabel: {
         color: Colors.text,
         fontSize: FontSize.md,
+        fontWeight: FontWeight.bold,
         letterSpacing: 0.1,
+    },
+    settingsDescription: {
+        color: Colors.textTertiary,
+        fontSize: FontSize.xs,
+        lineHeight: 17,
+        marginTop: 3,
     },
 
     version: {

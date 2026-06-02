@@ -1,5 +1,6 @@
 import { Button, Card, toast } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 import { DIET_TEMPLATES, useMealPlanStore } from '@/stores/mealPlanStore';
 import type { DietPhase, DietTemplate } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
@@ -31,6 +32,7 @@ const FASTING_PROTOCOLS = [
 
 export default function DietSettingsScreen() {
     const insets = useSafeAreaInsets();
+    const { colors } = useTheme();
     const { dietProfile, setDietProfile, setDietTemplate, setDietPhase, toggleMacroCycling } = useMealPlanStore();
     const [showAllergies, setShowAllergies] = useState(false);
 
@@ -45,18 +47,18 @@ export default function DietSettingsScreen() {
     };
 
     return (
-        <View style={[styles.container, { paddingTop: insets.top }]}>
+        <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()}>
-                    <Ionicons name="arrow-back" size={24} color={Colors.text} />
+                    <Ionicons name="arrow-back" size={24} color={colors.text} />
                 </TouchableOpacity>
-                <Text style={styles.title}>Diet Settings</Text>
+                <Text style={[styles.title, { color: colors.text }]}>Diet Settings</Text>
                 <View style={{ width: 24 }} />
             </View>
 
             <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
                 {/* Diet Template */}
-                <Text style={styles.sectionTitle}>Diet Template</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Diet Template</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.templateScroll}>
                     {(Object.keys(DIET_TEMPLATES) as DietTemplate[]).map((key) => {
                         const t = DIET_TEMPLATES[key];
@@ -64,15 +66,19 @@ export default function DietSettingsScreen() {
                         return (
                             <TouchableOpacity
                                 key={key}
-                                style={[styles.templateCard, isActive && styles.templateCardActive]}
+                                style={[
+                                    styles.templateCard,
+                                    { backgroundColor: colors.surface, borderColor: colors.border },
+                                    isActive && { backgroundColor: colors.surfaceLight, borderColor: colors.primary },
+                                ]}
                                 onPress={() => setDietTemplate(key)}
                             >
-                                <Text style={[styles.templateName, isActive && styles.templateNameActive]}>{t.name}</Text>
-                                <Text style={styles.templateDesc}>{t.description}</Text>
+                                <Text style={[styles.templateName, { color: isActive ? colors.primary : colors.text }]}>{t.name}</Text>
+                                <Text style={[styles.templateDesc, { color: colors.textTertiary }]}>{t.description}</Text>
                                 <View style={styles.templateMacros}>
-                                    <Text style={[styles.macroPill, { color: Colors.protein }]}>P {Math.round(t.protein_pct * 100)}%</Text>
-                                    <Text style={[styles.macroPill, { color: Colors.carbs }]}>C {Math.round(t.carbs_pct * 100)}%</Text>
-                                    <Text style={[styles.macroPill, { color: Colors.fat }]}>F {Math.round(t.fat_pct * 100)}%</Text>
+                                    <Text style={[styles.macroPill, { color: colors.protein }]}>P {Math.round(t.protein_pct * 100)}%</Text>
+                                    <Text style={[styles.macroPill, { color: colors.carbs }]}>C {Math.round(t.carbs_pct * 100)}%</Text>
+                                    <Text style={[styles.macroPill, { color: colors.fat }]}>F {Math.round(t.fat_pct * 100)}%</Text>
                                 </View>
                             </TouchableOpacity>
                         );
@@ -80,17 +86,21 @@ export default function DietSettingsScreen() {
                 </ScrollView>
 
                 {/* Diet Phase */}
-                <Text style={styles.sectionTitle}>Current Phase</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Current Phase</Text>
                 <View style={styles.phaseGrid}>
                     {PHASES.map((p) => (
                         <TouchableOpacity
                             key={p.value}
-                            style={[styles.phaseCard, dietProfile.phase === p.value && styles.phaseCardActive]}
+                            style={[
+                                styles.phaseCard,
+                                { backgroundColor: colors.surface, borderColor: colors.border },
+                                dietProfile.phase === p.value && { backgroundColor: colors.surfaceLight, borderColor: colors.primary },
+                            ]}
                             onPress={() => setDietPhase(p.value)}
                         >
                             <Text style={styles.phaseIcon}>{p.icon}</Text>
-                            <Text style={[styles.phaseLabel, dietProfile.phase === p.value && styles.phaseLabelActive]}>{p.label}</Text>
-                            <Text style={styles.phaseDesc}>{p.desc}</Text>
+                            <Text style={[styles.phaseLabel, { color: dietProfile.phase === p.value ? colors.primary : colors.text }]}>{p.label}</Text>
+                            <Text style={[styles.phaseDesc, { color: colors.textTertiary }]}>{p.desc}</Text>
                         </TouchableOpacity>
                     ))}
                 </View>
@@ -99,20 +109,20 @@ export default function DietSettingsScreen() {
                 <Card style={styles.optionCard}>
                     <View style={styles.optionRow}>
                         <View style={{ flex: 1 }}>
-                            <Text style={styles.optionTitle}>Macro Cycling</Text>
-                            <Text style={styles.optionDesc}>Auto-vary carbs/cals by day</Text>
+                            <Text style={[styles.optionTitle, { color: colors.text }]}>Macro Cycling</Text>
+                            <Text style={[styles.optionDesc, { color: colors.textTertiary }]}>Auto-vary carbs/cals by day</Text>
                         </View>
                         <TouchableOpacity
-                            style={[styles.toggle, dietProfile.macro_cycle_enabled && styles.toggleActive]}
+                            style={[styles.toggle, { backgroundColor: dietProfile.macro_cycle_enabled ? colors.primary : colors.border }]}
                             onPress={() => toggleMacroCycling(!dietProfile.macro_cycle_enabled)}
                         >
-                            <View style={[styles.toggleDot, dietProfile.macro_cycle_enabled && styles.toggleDotActive]} />
+                            <View style={[styles.toggleDot, { backgroundColor: dietProfile.macro_cycle_enabled ? colors.textInverse : colors.text }, dietProfile.macro_cycle_enabled && styles.toggleDotActive]} />
                         </TouchableOpacity>
                     </View>
                 </Card>
 
                 {/* Intermittent Fasting */}
-                <Text style={styles.sectionTitle}>Intermittent Fasting</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Intermittent Fasting</Text>
                 <View style={styles.fastingGrid}>
                     {FASTING_PROTOCOLS.map((p) => {
                         const isActive = dietProfile.fasting_enabled &&
@@ -120,7 +130,11 @@ export default function DietSettingsScreen() {
                         return (
                             <TouchableOpacity
                                 key={p.label}
-                                style={[styles.fastingCard, isActive && styles.fastingCardActive]}
+                                style={[
+                                    styles.fastingCard,
+                                    { backgroundColor: colors.surface, borderColor: colors.border },
+                                    isActive && { backgroundColor: colors.surfaceLight, borderColor: colors.primary },
+                                ]}
                                 onPress={() => {
                                     setDietProfile({
                                         fasting_enabled: true,
@@ -129,32 +143,40 @@ export default function DietSettingsScreen() {
                                     });
                                 }}
                             >
-                                <Text style={[styles.fastingLabel, isActive && styles.fastingLabelActive]}>{p.label}</Text>
-                                <Text style={styles.fastingDesc}>{p.desc}</Text>
+                                <Text style={[styles.fastingLabel, { color: isActive ? colors.primary : colors.text }]}>{p.label}</Text>
+                                <Text style={[styles.fastingDesc, { color: colors.textTertiary }]}>{p.desc}</Text>
                             </TouchableOpacity>
                         );
                     })}
                     <TouchableOpacity
-                        style={[styles.fastingCard, !dietProfile.fasting_enabled && styles.fastingCardActive]}
+                        style={[
+                            styles.fastingCard,
+                            { backgroundColor: colors.surface, borderColor: colors.border },
+                            !dietProfile.fasting_enabled && { backgroundColor: colors.surfaceLight, borderColor: colors.primary },
+                        ]}
                         onPress={() => setDietProfile({ fasting_enabled: false, fasting_window_start: null, fasting_window_end: null })}
                     >
-                        <Text style={[styles.fastingLabel, !dietProfile.fasting_enabled && styles.fastingLabelActive]}>Off</Text>
-                        <Text style={styles.fastingDesc}>No fasting</Text>
+                        <Text style={[styles.fastingLabel, { color: !dietProfile.fasting_enabled ? colors.primary : colors.text }]}>Off</Text>
+                        <Text style={[styles.fastingDesc, { color: colors.textTertiary }]}>No fasting</Text>
                     </TouchableOpacity>
                 </View>
 
                 {/* Allergies */}
-                <Text style={styles.sectionTitle}>Allergies & Intolerances</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Allergies & Intolerances</Text>
                 <View style={styles.allergyGrid}>
                     {COMMON_ALLERGIES.map((a) => {
                         const isActive = dietProfile.allergies.includes(a);
                         return (
                             <TouchableOpacity
                                 key={a}
-                                style={[styles.allergyChip, isActive && styles.allergyChipActive]}
+                                style={[
+                                    styles.allergyChip,
+                                    { backgroundColor: colors.surface, borderColor: colors.border },
+                                    isActive && { backgroundColor: colors.surfaceLight, borderColor: colors.error },
+                                ]}
                                 onPress={() => toggleAllergy(a)}
                             >
-                                <Text style={[styles.allergyText, isActive && styles.allergyTextActive]}>
+                                <Text style={[styles.allergyText, { color: isActive ? colors.error : colors.textSecondary }]}>
                                     {isActive ? '⚠️ ' : ''}{a}
                                 </Text>
                             </TouchableOpacity>

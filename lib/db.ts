@@ -222,6 +222,17 @@ export async function saveWorkoutTemplate(template: WorkoutTemplate) {
     if (error) console.warn('saveWorkoutTemplate error:', error.message);
 }
 
+export async function deleteWorkoutTemplate(templateId: string) {
+    const userId = await getAuthUserId();
+    const { error } = await supabase
+        .from('workout_templates')
+        .delete()
+        .eq('id', templateId)
+        .eq('user_id', userId);
+
+    if (error) console.warn('deleteWorkoutTemplate error:', error.message);
+}
+
 // ── Personal Records ─────────────────────────────────────────
 
 export async function fetchPersonalRecords(userId: string): Promise<PersonalRecord[]> {

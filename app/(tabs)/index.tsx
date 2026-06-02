@@ -555,7 +555,7 @@ export default function HomeScreen() {
                     if (requirePremium('ai_meal_plan')) router.push('/ai-meal-plan' as any);
                 }} />
                 <CoachButton icon="barbell-outline" label="AI workout" color={colors.primary} onPress={() => {
-                    if (requirePremium('ai_workout')) router.push('/ai-workout' as any);
+                    if (requirePremium('ai_workout')) router.push('/(tabs)/workout' as any);
                 }} />
                 <CoachButton icon="document-text-outline" label="Report" color={colors.primary} onPress={() => {
                     if (requirePremium('weekly_report')) router.push('/weekly-report' as any);

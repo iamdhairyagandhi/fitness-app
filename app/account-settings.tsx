@@ -1,5 +1,6 @@
 import { Button, Card, Input, toast } from '@/components/ui';
 import { Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 import { checkUsernameAvailable, deleteCurrentAccount, setUsername, updatePhoneNumber } from '@/lib/auth';
 import { useAuthStore } from '@/stores/authStore';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function AccountSettingsScreen() {
     const insets = useSafeAreaInsets();
+    const { colors } = useTheme();
     const { user, updateUser, logout } = useAuthStore();
 
     // Username
@@ -28,7 +30,6 @@ export default function AccountSettingsScreen() {
 
     // Phone
     const [phone, setPhone] = useState(user?.phone_number || '');
-
     const [saving, setSaving] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [successMsg, setSuccessMsg] = useState('');
@@ -149,14 +150,14 @@ export default function AccountSettingsScreen() {
     };
 
     return (
-        <View style={[styles.container, { paddingTop: insets.top }]}>
+        <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()}>
-                    <Ionicons name="arrow-back" size={24} color={Colors.text} />
+                    <Ionicons name="arrow-back" size={24} color={colors.text} />
                 </TouchableOpacity>
-                <Text style={styles.title}>Account</Text>
+                <Text style={[styles.title, { color: colors.text }]}>Account</Text>
                 <TouchableOpacity onPress={handleSave} disabled={saving}>
-                    <Text style={[styles.saveBtn, saving && { opacity: 0.5 }]}>Save</Text>
+                    <Text style={[styles.saveBtn, { color: colors.primary }, saving && { opacity: 0.5 }]}>Save</Text>
                 </TouchableOpacity>
             </View>
 
@@ -166,7 +167,7 @@ export default function AccountSettingsScreen() {
             >
                 <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
                     {/* Username */}
-                    <Text style={styles.sectionTitle}>Username</Text>
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Username</Text>
                     <Card>
                         <Input
                             label="Username"
@@ -175,28 +176,28 @@ export default function AccountSettingsScreen() {
                             onChangeText={setUsernameValue}
                             autoCapitalize="none"
                             autoCorrect={false}
-                            leftIcon={<Text style={styles.atSign}>@</Text>}
+                            leftIcon={<Text style={[styles.atSign, { color: colors.primary }]}>@</Text>}
                             rightIcon={
                                 checkingUsername ? (
-                                    <Ionicons name="hourglass-outline" size={20} color={Colors.textTertiary} />
+                                    <Ionicons name="hourglass-outline" size={20} color={colors.textTertiary} />
                                 ) : usernameAvailable === true ? (
-                                    <Ionicons name="checkmark-circle" size={20} color={Colors.success} />
+                                    <Ionicons name="checkmark-circle" size={20} color={colors.success} />
                                 ) : usernameAvailable === false ? (
-                                    <Ionicons name="close-circle" size={20} color={Colors.error} />
+                                    <Ionicons name="close-circle" size={20} color={colors.error} />
                                 ) : null
                             }
                         />
-                        {usernameError ? <Text style={styles.error}>{usernameError}</Text> : null}
+                        {usernameError ? <Text style={[styles.error, { color: colors.error }]}>{usernameError}</Text> : null}
                         {usernameAvailable === true ? (
-                            <Text style={styles.success}>Available!</Text>
+                            <Text style={[styles.success, { color: colors.success }]}>Available!</Text>
                         ) : null}
-                        <Text style={styles.hint}>
+                        <Text style={[styles.hint, { color: colors.textTertiary }]}>
                             Others can find you by your username on the social tab.
                         </Text>
                     </Card>
 
                     {/* Phone */}
-                    <Text style={styles.sectionTitle}>Phone Number</Text>
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Phone Number</Text>
                     <Card>
                         <Input
                             label="Phone Number"
@@ -205,48 +206,48 @@ export default function AccountSettingsScreen() {
                             onChangeText={setPhone}
                             keyboardType="phone-pad"
                             autoComplete="tel"
-                            leftIcon={<Ionicons name="call-outline" size={20} color={Colors.textTertiary} />}
+                            leftIcon={<Ionicons name="call-outline" size={20} color={colors.textTertiary} />}
                         />
-                        <Text style={styles.hint}>
+                        <Text style={[styles.hint, { color: colors.textTertiary }]}>
                             Optional. Used for account recovery and notifications.
                         </Text>
                     </Card>
 
                     {/* Email (read-only) */}
-                    <Text style={styles.sectionTitle}>Email</Text>
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Email</Text>
                     <Card>
                         <View style={styles.readOnlyRow}>
-                            <Ionicons name="mail-outline" size={20} color={Colors.textTertiary} />
-                            <Text style={styles.readOnlyText}>{user?.email || '—'}</Text>
+                            <Ionicons name="mail-outline" size={20} color={colors.textTertiary} />
+                            <Text style={[styles.readOnlyText, { color: colors.textSecondary }]}>{user?.email || '—'}</Text>
                         </View>
-                        <Text style={styles.hint}>Email cannot be changed here.</Text>
+                        <Text style={[styles.hint, { color: colors.textTertiary }]}>Email cannot be changed here.</Text>
                     </Card>
 
                     {/* Connected accounts */}
-                    <Text style={styles.sectionTitle}>Connected Accounts</Text>
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Connected Accounts</Text>
                     <Card padding={0}>
                         <View style={styles.connectedRow}>
                             <View style={styles.connectedLeft}>
                                 <Ionicons name="logo-google" size={22} color="#DB4437" />
-                                <Text style={styles.connectedLabel}>Google</Text>
+                                <Text style={[styles.connectedLabel, { color: colors.text }]}>Google</Text>
                             </View>
-                            <Text style={styles.connectedStatus}>
+                            <Text style={[styles.connectedStatus, { color: colors.textTertiary }]}>
                                 {user?.email?.includes('gmail') ? 'Connected' : 'Not connected'}
                             </Text>
                         </View>
-                        <View style={[styles.connectedRow, styles.connectedRowBorder]}>
+                        <View style={[styles.connectedRow, styles.connectedRowBorder, { borderTopColor: colors.border }]}>
                             <View style={styles.connectedLeft}>
-                                <Ionicons name="logo-apple" size={22} color={Colors.text} />
-                                <Text style={styles.connectedLabel}>Apple</Text>
+                                <Ionicons name="logo-apple" size={22} color={colors.text} />
+                                <Text style={[styles.connectedLabel, { color: colors.text }]}>Apple</Text>
                             </View>
-                            <Text style={styles.connectedStatus}>Not connected</Text>
+                            <Text style={[styles.connectedStatus, { color: colors.textTertiary }]}>Not connected</Text>
                         </View>
                     </Card>
 
                     {/* Account deletion */}
-                    <Text style={styles.sectionTitle}>Delete Account</Text>
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Delete Account</Text>
                     <Card>
-                        <Text style={styles.dangerText}>
+                        <Text style={[styles.dangerText, { color: colors.textSecondary }]}>
                             Permanently delete your account and personal BodyPilot data. This action cannot be undone.
                         </Text>
                         <Button
@@ -255,13 +256,13 @@ export default function AccountSettingsScreen() {
                             variant="danger"
                             loading={deleting}
                             disabled={saving || deleting}
-                            icon={<Ionicons name="trash-outline" size={18} color={Colors.error} />}
+                            icon={<Ionicons name="trash-outline" size={18} color={colors.error} />}
                             style={{ marginTop: Spacing.md }}
                         />
                     </Card>
 
-                    {successMsg ? <Text style={styles.successMsg}>{successMsg}</Text> : null}
-                    {errorMsg ? <Text style={styles.errorMsg}>{errorMsg}</Text> : null}
+                    {successMsg ? <Text style={[styles.successMsg, { color: colors.success }]}>{successMsg}</Text> : null}
+                    {errorMsg ? <Text style={[styles.errorMsg, { color: colors.error }]}>{errorMsg}</Text> : null}
 
                     <Button
                         title="Save Changes"

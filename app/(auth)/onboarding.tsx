@@ -2,7 +2,7 @@ import { Button, Input, toast } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { upsertProfile } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
-import { calculateBMR, calculateTDEE, lbsToKg } from '@/lib/utils';
+import { buildNutritionPlan, formatNumber, lbsToKg } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
 import type { ActivityLevel, ExperienceLevel, FitnessGoal } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
@@ -48,6 +48,7 @@ type QuestionId =
     | 'stress'
     | 'planBaseline'
     | 'planStrategy'
+    | 'customTargets'
     | 'planNutrition';
 
 const QUESTIONS: QuestionId[] = [
@@ -72,6 +73,7 @@ const QUESTIONS: QuestionId[] = [
     'stress',
     'planBaseline',
     'planStrategy',
+    'customTargets',
     'planNutrition',
 ];
 
@@ -137,6 +139,11 @@ export default function OnboardingScreen() {
     const [activity, setActivity] = useState<ActivityLevel | null>(null);
     const [sleepHours, setSleepHours] = useState('');
     const [stressLevel, setStressLevel] = useState<StressLevel | null>(null);
+    const [customCalories, setCustomCalories] = useState('');
+    const [customProtein, setCustomProtein] = useState('');
+    const [customCarbs, setCustomCarbs] = useState('');
+    const [customFat, setCustomFat] = useState('');
+    const [customWater, setCustomWater] = useState('');
 
     const currentQuestion = QUESTIONS[questionIndex];
     const isPlanQuestion = currentQuestion.startsWith('plan');
@@ -176,34 +183,20 @@ export default function OnboardingScreen() {
         const sessionMinutesNum = clamp(Math.round(numberFrom(sessionMinutes, 50)), 25, 120);
         const mealsNum = clamp(Math.round(numberFrom(mealsPerDay, 3)), 2, 6);
         const sleepNum = clamp(numberFrom(sleepHours, 7), 4, 10);
-        const bmr = calculateBMR(measurements.weightKg, measurements.height, measurements.ageYears, gender || 'male');
-        const tdee = calculateTDEE(bmr, selectedActivity);
-        const paceAdjustments = { steady: 0.9, balanced: 1, aggressive: 1.1 };
-        const paceMultiplier = paceAdjustments[pace];
-
-        let calorieTarget = tdee;
-        if (selectedGoal === 'lose_fat') calorieTarget = Math.round(tdee * (0.86 - 0.06 * paceMultiplier));
-        else if (selectedGoal === 'build_muscle') calorieTarget = Math.round(tdee * (1.06 + 0.04 * paceMultiplier));
-        else if (selectedGoal === 'strength') calorieTarget = Math.round(tdee * 1.05);
-        else if (selectedGoal === 'endurance') calorieTarget = Math.round(tdee * 1.02);
-
-        let proteinPct = 0.3;
-        let carbsPct = 0.4;
-        let fatPct = 0.3;
-        if (selectedGoal === 'lose_fat') { proteinPct = 0.36; carbsPct = 0.34; fatPct = 0.3; }
-        if (selectedGoal === 'build_muscle') { proteinPct = 0.3; carbsPct = 0.45; fatPct = 0.25; }
-        if (selectedGoal === 'endurance') { proteinPct = 0.25; carbsPct = 0.5; fatPct = 0.25; }
-        if (dietStyle === 'low_carb') { proteinPct = 0.35; carbsPct = 0.25; fatPct = 0.4; }
-        if (dietStyle === 'high_protein') { proteinPct = Math.max(proteinPct, 0.36); carbsPct = 0.37; fatPct = 0.27; }
+        const nutrition = buildNutritionPlan({
+            weightKg: measurements.weightKg,
+            heightCm: measurements.height,
+            ageYears: measurements.ageYears,
+            gender: gender || 'male',
+            activityLevel: selectedActivity,
+            goal: selectedGoal,
+            pace,
+            dietStyle,
+            targetWeightKg: measurements.targetWeightKg,
+        });
 
         return {
-            bmr,
-            tdee,
-            calorieTarget,
-            protein: Math.round((calorieTarget * proteinPct) / 4),
-            carbs: Math.round((calorieTarget * carbsPct) / 4),
-            fat: Math.round((calorieTarget * fatPct) / 9),
-            waterMl: Math.round(measurements.weightKg * (selectedActivity === 'very_active' ? 42 : 36)),
+            ...nutrition,
             restSeconds: selectedExperience === 'beginner' ? 90 : selectedGoal === 'strength' ? 150 : 75,
             trainingDaysNum,
             sessionMinutesNum,
@@ -223,6 +216,20 @@ export default function OnboardingScreen() {
                 : 'Recovery looks workable, so your plan can progress steadily.',
         };
     }, [activity, dietStyle, experience, gender, goal, measurements, mealsPerDay, pace, sessionMinutes, sleepHours, stressLevel, trainingDays]);
+
+    const targets = useMemo(() => ({
+        calories: Math.round(numberFrom(customCalories, plan.calorieTarget)),
+        protein: Math.round(numberFrom(customProtein, plan.protein)),
+        carbs: Math.round(numberFrom(customCarbs, plan.carbs)),
+        fat: Math.round(numberFrom(customFat, plan.fat)),
+        waterMl: Math.round(numberFrom(customWater, plan.waterMl)),
+    }), [customCalories, customCarbs, customFat, customProtein, customWater, plan]);
+
+    const targetDelta = targets.calories - plan.tdee;
+    const targetWeeklyChangeKg = (targetDelta * 7) / 7700;
+    const customTimelineWeeks = measurements.targetWeightKg != null && Math.abs(targetWeeklyChangeKg) > 0.05 && Math.sign(measurements.targetWeightKg - measurements.weightKg) === Math.sign(targetWeeklyChangeKg)
+        ? Math.max(1, Math.ceil(Math.abs((measurements.targetWeightKg - measurements.weightKg) / targetWeeklyChangeKg)))
+        : plan.estimatedWeeksToTarget;
 
     const canProceed = () => {
         switch (currentQuestion) {
@@ -279,11 +286,11 @@ export default function OnboardingScreen() {
             activity_level: activity || 'moderate' as const,
             goal: goal || 'maintain' as const,
             experience_level: experience || 'intermediate' as const,
-            daily_calorie_target: plan.calorieTarget,
-            protein_target_g: plan.protein,
-            carbs_target_g: plan.carbs,
-            fat_target_g: plan.fat,
-            water_goal_ml: plan.waterMl,
+            daily_calorie_target: targets.calories,
+            protein_target_g: targets.protein,
+            carbs_target_g: targets.carbs,
+            fat_target_g: targets.fat,
+            water_goal_ml: targets.waterMl,
             unit_system: unitSystem,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
@@ -569,20 +576,49 @@ export default function OnboardingScreen() {
                         </View>
                     </>
                 );
+            case 'customTargets':
+                return (
+                    <>
+                        <QuestionHeader eyebrow="Custom targets" title="Want to adjust the numbers?" subtitle="These are optional. Leave a field blank to use BodyPilot's recommendation." />
+                        <View style={styles.inputRow}>
+                            <View style={styles.inputHalf}>
+                                <Input label="Calories" placeholder={`${plan.calorieTarget}`} value={customCalories} onChangeText={setCustomCalories} keyboardType="number-pad" maxLength={5} />
+                            </View>
+                            <View style={styles.inputHalf}>
+                                <Input label="Protein (g)" placeholder={`${plan.protein}`} value={customProtein} onChangeText={setCustomProtein} keyboardType="number-pad" maxLength={4} />
+                            </View>
+                        </View>
+                        <View style={styles.inputRow}>
+                            <View style={styles.inputHalf}>
+                                <Input label="Carbs (g)" placeholder={`${plan.carbs}`} value={customCarbs} onChangeText={setCustomCarbs} keyboardType="number-pad" maxLength={4} />
+                            </View>
+                            <View style={styles.inputHalf}>
+                                <Input label="Fat (g)" placeholder={`${plan.fat}`} value={customFat} onChangeText={setCustomFat} keyboardType="number-pad" maxLength={4} />
+                            </View>
+                        </View>
+                        <Input label="Water (ml)" placeholder={`${plan.waterMl}`} value={customWater} onChangeText={setCustomWater} keyboardType="number-pad" maxLength={5} />
+                        <Text style={styles.mathText}>
+                            Current target: {formatNumber(targets.calories)} kcal, {targets.protein}g protein, {targets.carbs}g carbs, {targets.fat}g fat, {Math.round(targets.waterMl / 100) / 10} L water.
+                        </Text>
+                    </>
+                );
             case 'planNutrition':
                 return (
                     <>
                         <QuestionHeader eyebrow="Nutrition targets" title="Your first daily targets" subtitle={`A practical starting point for ${trackingStyle || 'macro'} tracking across ${plan.mealsNum} meals per day.`} />
                         <View style={styles.caloriePanel}>
-                            <Text style={styles.calorieValue}>{plan.calorieTarget}</Text>
+                            <Text style={styles.calorieValue}>{targets.calories}</Text>
                             <Text style={styles.calorieLabel}>calories/day</Text>
                         </View>
                         <View style={styles.macroBars}>
-                            <Macro label="Protein" value={plan.protein} color={Colors.protein} max={Math.max(plan.protein, plan.carbs, plan.fat)} />
-                            <Macro label="Carbs" value={plan.carbs} color={Colors.carbs} max={Math.max(plan.protein, plan.carbs, plan.fat)} />
-                            <Macro label="Fat" value={plan.fat} color={Colors.fat} max={Math.max(plan.protein, plan.carbs, plan.fat)} />
+                            <Macro label="Protein" value={targets.protein} color={Colors.protein} max={Math.max(targets.protein, targets.carbs, targets.fat)} />
+                            <Macro label="Carbs" value={targets.carbs} color={Colors.carbs} max={Math.max(targets.protein, targets.carbs, targets.fat)} />
+                            <Macro label="Fat" value={targets.fat} color={Colors.fat} max={Math.max(targets.protein, targets.carbs, targets.fat)} />
                         </View>
-                        <Text style={styles.waterText}>Hydration target: {Math.round(plan.waterMl / 100) / 10} L/day</Text>
+                        <Text style={styles.waterText}>Hydration target: {Math.round(targets.waterMl / 100) / 10} L/day</Text>
+                        <Text style={styles.mathText}>
+                            Math: BMR {formatNumber(plan.bmr)} kcal plus your activity gives an estimated TDEE of {formatNumber(plan.tdee)} kcal. This target is {Math.abs(targetDelta)} kcal/day {targetDelta < 0 ? 'below' : targetDelta > 0 ? 'above' : 'at'} maintenance, or {formatNumber(Math.abs(targetDelta * 7))} kcal/week. Using about 7,700 kcal per kg, that estimates {Math.abs(targetWeeklyChangeKg) < 0.05 ? 'roughly stable weight' : `${Math.abs(targetWeeklyChangeKg).toFixed(2)} kg/week ${targetWeeklyChangeKg < 0 ? 'loss' : 'gain'}`}{customTimelineWeeks ? `, or about ${customTimelineWeeks} weeks to your target weight.` : '.'}
+                        </Text>
                     </>
                 );
             default:
@@ -933,6 +969,17 @@ const styles = StyleSheet.create({
         fontSize: FontSize.md,
         textAlign: 'center',
         marginTop: Spacing.xl,
+    },
+    mathText: {
+        color: Colors.textSecondary,
+        fontSize: FontSize.sm,
+        lineHeight: 20,
+        marginTop: Spacing.xl,
+        padding: Spacing.lg,
+        borderRadius: BorderRadius.md,
+        backgroundColor: Colors.surface,
+        borderWidth: 1,
+        borderColor: Colors.borderLight,
     },
     navButtons: {
         flexDirection: 'row',

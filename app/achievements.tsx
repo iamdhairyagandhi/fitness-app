@@ -1,5 +1,6 @@
 import { Card } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 import { useRecoveryStore } from '@/stores/recoveryStore';
 import type { Achievement } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +19,7 @@ const CATEGORIES = ['All', 'Workout', 'Strength', 'Streak', 'Nutrition', 'Body',
 
 export default function AchievementsScreen() {
     const insets = useSafeAreaInsets();
+    const { colors } = useTheme();
     const { achievements, challenges } = useRecoveryStore();
     const [selectedCategory, setSelectedCategory] = useState('All');
     const [tab, setTab] = useState<'achievements' | 'challenges'>('achievements');
@@ -31,30 +33,36 @@ export default function AchievementsScreen() {
     const locked = filtered.filter((a) => !a.unlocked_at);
 
     const renderAchievement = (a: Achievement) => (
-        <Card key={a.id} style={StyleSheet.flatten([styles.achieveCard, a.unlocked_at ? styles.achieveCardUnlocked : {}])}>
+        <Card
+            key={a.id}
+            style={StyleSheet.flatten([
+                styles.achieveCard,
+                a.unlocked_at ? { opacity: 1, borderColor: colors.primary, borderWidth: 1 } : {},
+            ])}
+        >
             <View style={styles.achieveRow}>
-                <View style={[styles.achieveIconBox, a.unlocked_at && styles.achieveIconBoxUnlocked]}>
+                <View style={[styles.achieveIconBox, { backgroundColor: a.unlocked_at ? colors.surfaceLight : colors.surfaceLight }]}>
                     <Text style={styles.achieveIcon}>{a.icon}</Text>
                 </View>
                 <View style={styles.achieveInfo}>
-                    <Text style={[styles.achieveName, a.unlocked_at && styles.achieveNameUnlocked]}>{a.title}</Text>
-                    <Text style={styles.achieveDesc}>{a.description}</Text>
+                    <Text style={[styles.achieveName, { color: a.unlocked_at ? colors.text : colors.textSecondary }]}>{a.title}</Text>
+                    <Text style={[styles.achieveDesc, { color: colors.textTertiary }]}>{a.description}</Text>
                     {!a.unlocked_at && (
                         <View style={styles.progressContainer}>
-                            <View style={styles.progressBar}>
-                                <View style={[styles.progressFill, { width: `${a.progress}%` }]} />
+                            <View style={[styles.progressBar, { backgroundColor: colors.surfaceLight }]}>
+                                <View style={[styles.progressFill, { width: `${a.progress}%`, backgroundColor: colors.primary }]} />
                             </View>
-                            <Text style={styles.progressText}>{a.progress}%</Text>
+                            <Text style={[styles.progressText, { color: colors.textTertiary }]}>{a.progress}%</Text>
                         </View>
                     )}
                 </View>
                 <View style={styles.achieveXP}>
-                    <Text style={styles.xpValue}>+{a.xp_reward}</Text>
-                    <Text style={styles.xpLabel}>XP</Text>
+                    <Text style={[styles.xpValue, { color: colors.secondary }]}>+{a.xp_reward}</Text>
+                    <Text style={[styles.xpLabel, { color: colors.textTertiary }]}>XP</Text>
                 </View>
             </View>
             {a.unlocked_at && (
-                <Text style={styles.unlockedDate}>
+                <Text style={[styles.unlockedDate, { color: colors.textTertiary }]}>
                     Unlocked {new Date(a.unlocked_at).toLocaleDateString()}
                 </Text>
             )}
@@ -62,30 +70,30 @@ export default function AchievementsScreen() {
     );
 
     return (
-        <View style={[styles.container, { paddingTop: insets.top }]}>
+        <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()}>
-                    <Ionicons name="arrow-back" size={24} color={Colors.text} />
+                    <Ionicons name="arrow-back" size={24} color={colors.text} />
                 </TouchableOpacity>
-                <Text style={styles.title}>Achievements</Text>
+                <Text style={[styles.title, { color: colors.text }]}>Achievements</Text>
                 <View style={{ width: 24 }} />
             </View>
 
             {/* Tabs */}
-            <View style={styles.tabs}>
+            <View style={[styles.tabs, { backgroundColor: colors.surface }]}>
                 <TouchableOpacity
-                    style={[styles.tab, tab === 'achievements' && styles.tabActive]}
+                    style={[styles.tab, tab === 'achievements' && { backgroundColor: colors.primary }]}
                     onPress={() => setTab('achievements')}
                 >
-                    <Text style={[styles.tabText, tab === 'achievements' && styles.tabTextActive]}>
+                    <Text style={[styles.tabText, { color: tab === 'achievements' ? colors.textInverse : colors.textSecondary }]}>
                         🏆 Achievements
                     </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                    style={[styles.tab, tab === 'challenges' && styles.tabActive]}
+                    style={[styles.tab, tab === 'challenges' && { backgroundColor: colors.primary }]}
                     onPress={() => setTab('challenges')}
                 >
-                    <Text style={[styles.tabText, tab === 'challenges' && styles.tabTextActive]}>
+                    <Text style={[styles.tabText, { color: tab === 'challenges' ? colors.textInverse : colors.textSecondary }]}>
                         ⚔️ Challenges
                     </Text>
                 </TouchableOpacity>
@@ -94,20 +102,20 @@ export default function AchievementsScreen() {
             {tab === 'achievements' ? (
                 <>
                     {/* Stats */}
-                    <View style={styles.statsRow}>
+                    <View style={[styles.statsRow, { borderBottomColor: colors.border }]}>
                         <View style={styles.statItem}>
-                            <Text style={styles.statValue}>{achievements.filter((a) => a.unlocked_at).length}</Text>
-                            <Text style={styles.statLabel}>Unlocked</Text>
+                            <Text style={[styles.statValue, { color: colors.text }]}>{achievements.filter((a) => a.unlocked_at).length}</Text>
+                            <Text style={[styles.statLabel, { color: colors.textTertiary }]}>Unlocked</Text>
                         </View>
                         <View style={styles.statItem}>
-                            <Text style={styles.statValue}>{achievements.length}</Text>
-                            <Text style={styles.statLabel}>Total</Text>
+                            <Text style={[styles.statValue, { color: colors.text }]}>{achievements.length}</Text>
+                            <Text style={[styles.statLabel, { color: colors.textTertiary }]}>Total</Text>
                         </View>
                         <View style={styles.statItem}>
-                            <Text style={styles.statValue}>
+                            <Text style={[styles.statValue, { color: colors.text }]}>
                                 {achievements.filter((a) => a.unlocked_at).reduce((sum, a) => sum + a.xp_reward, 0)}
                             </Text>
-                            <Text style={styles.statLabel}>XP Earned</Text>
+                            <Text style={[styles.statLabel, { color: colors.textTertiary }]}>XP Earned</Text>
                         </View>
                     </View>
 
@@ -116,21 +124,24 @@ export default function AchievementsScreen() {
                         {CATEGORIES.map((cat) => (
                             <TouchableOpacity
                                 key={cat}
-                                style={[styles.catChip, selectedCategory === cat && styles.catChipActive]}
+                                style={[
+                                    styles.catChip,
+                                    { backgroundColor: selectedCategory === cat ? colors.primary : colors.surface },
+                                ]}
                                 onPress={() => setSelectedCategory(cat)}
                             >
-                                <Text style={[styles.catText, selectedCategory === cat && styles.catTextActive]}>{cat}</Text>
+                                <Text style={[styles.catText, { color: selectedCategory === cat ? colors.textInverse : colors.textSecondary }]}>{cat}</Text>
                             </TouchableOpacity>
                         ))}
                     </ScrollView>
 
                     <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
                         {unlocked.length > 0 && (
-                            <Text style={styles.sectionTitle}>✅ Unlocked ({unlocked.length})</Text>
+                            <Text style={[styles.sectionTitle, { color: colors.text }]}>✅ Unlocked ({unlocked.length})</Text>
                         )}
                         {unlocked.map(renderAchievement)}
 
-                        <Text style={styles.sectionTitle}>🔒 Locked ({locked.length})</Text>
+                        <Text style={[styles.sectionTitle, { color: colors.text }]}>🔒 Locked ({locked.length})</Text>
                         {locked.map(renderAchievement)}
                     </ScrollView>
                 </>
@@ -138,7 +149,7 @@ export default function AchievementsScreen() {
                 <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
                     {challenges.length === 0 ? (
                         <View style={styles.empty}>
-                            <Text style={styles.emptyText}>No active challenges</Text>
+                            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No active challenges</Text>
                         </View>
                     ) : (
                         challenges.map((c) => {
@@ -146,28 +157,28 @@ export default function AchievementsScreen() {
                             return (
                                 <Card key={c.id} style={styles.challengeCard}>
                                     <View style={styles.challengeHeader}>
-                                        <Text style={styles.challengeTitle}>{c.title}</Text>
-                                        <View style={[styles.challengeStatus, { backgroundColor: c.status === 'completed' ? Colors.success : Colors.primary }]}>
-                                            <Text style={styles.challengeStatusText}>
+                                        <Text style={[styles.challengeTitle, { color: colors.text }]}>{c.title}</Text>
+                                        <View style={[styles.challengeStatus, { backgroundColor: c.status === 'completed' ? colors.success : colors.primary }]}>
+                                            <Text style={[styles.challengeStatusText, { color: c.status === 'completed' ? colors.text : colors.textInverse }]}>
                                                 {c.status === 'completed' ? '✓ Done' : c.status}
                                             </Text>
                                         </View>
                                     </View>
-                                    <Text style={styles.challengeDesc}>{c.description}</Text>
+                                    <Text style={[styles.challengeDesc, { color: colors.textSecondary }]}>{c.description}</Text>
 
                                     <View style={styles.challengeProgressContainer}>
-                                        <View style={styles.challengeProgressBar}>
-                                            <View style={[styles.challengeProgressFill, { width: `${pct}%` }]} />
+                                        <View style={[styles.challengeProgressBar, { backgroundColor: colors.surfaceLight }]}>
+                                            <View style={[styles.challengeProgressFill, { width: `${pct}%`, backgroundColor: colors.primary }]} />
                                         </View>
-                                        <Text style={styles.challengeProgressText}>
+                                        <Text style={[styles.challengeProgressText, { color: colors.textSecondary }]}>
                                             {c.current_value}/{c.target_value} {c.unit}
                                         </Text>
                                     </View>
 
                                     <View style={styles.challengeFooter}>
-                                        <Text style={styles.challengeReward}>🏆 +{c.reward_xp} XP</Text>
+                                        <Text style={[styles.challengeReward, { color: colors.secondary }]}>🏆 +{c.reward_xp} XP</Text>
                                         {c.participants && (
-                                            <Text style={styles.challengeParticipants}>
+                                            <Text style={[styles.challengeParticipants, { color: colors.textTertiary }]}>
                                                 👥 {c.participants.toLocaleString()} participants
                                             </Text>
                                         )}
