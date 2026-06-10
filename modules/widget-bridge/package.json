@@ -1,0 +1,7 @@
+{
+  "name": "widget-bridge",
+  "version": "0.1.0",
+  "description": "Local Expo module: writes a JSON snapshot to the BodyPilot App Group UserDefaults and reloads iOS widget timelines.",
+  "main": "index.ts",
+  "private": true
+}

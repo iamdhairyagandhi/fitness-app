@@ -26,7 +26,10 @@
           "Default"
         ],
         "com.apple.developer.healthkit": true,
-        "com.apple.developer.healthkit.background-delivery": true
+        "com.apple.developer.healthkit.background-delivery": true,
+        "com.apple.security.application-groups": [
+          "group.com.dhairyagandhi.fitfusion"
+        ]
       },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -88,7 +91,8 @@
             "deploymentTarget": "16.4"
           }
         }
-      ]
+      ],
+      "@bacons/apple-targets"
     ],
     "web": {
       "bundler": "metro",

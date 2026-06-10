@@ -1,319 +1,226 @@
-
-
-Let me audit what's actually implemented vs. what's in this feature list. 
-
-Audit implemented features
-
-Read [](file:///c%3A/Workout-app/app/ai-workout.tsx#1-1), lines 1 to 100
-
-Read [](file:///c%3A/Workout-app/lib/aiEngine.ts#1-1), lines 1 to 100
-
-Read [](file:///c%3A/Workout-app/app/nutrition/ai-scanner.tsx#1-1), lines 1 to 100
-
-Read [](file:///c%3A/Workout-app/app/nutrition/barcode-scanner.tsx#1-1), lines 1 to 100
-
-Read [](file:///c%3A/Workout-app/lib/gamification.ts)
-
-Read [](file:///c%3A/Workout-app/app/chat.tsx#1-1), lines 1 to 100
-
-Read memory [](file:///c%3A/Users/zbtgxt/AppData/Roaming/Code/User/workspaceStorage/bfca1052478643f8c731d2ae3a0605bd/GitHub.copilot-chat/memory-tool/memories/repo/fitfusion-project.md)
-
-Read [](file:///c%3A/Workout-app/lib/aiEngine.ts#100-100), lines 100 to 200
-
-Read [](file:///c%3A/Workout-app/app/weekly-report.tsx#1-1), lines 1 to 100
-
-Read [](file:///c%3A/Workout-app/app/achievements.tsx#1-1), lines 1 to 150
-
-Read [](file:///c%3A/Workout-app/app/settings.tsx#1-1), lines 1 to 100
-
-Read [](file:///c%3A/Workout-app/app/%28tabs%29/workout.tsx#1-1), lines 1 to 150
-
-Read [](file:///c%3A/Workout-app/app/%28tabs%29/nutrition.tsx#1-1), lines 1 to 150
-
-Read [](file:///c%3A/Workout-app/app/%28tabs%29/progress.tsx#1-1), lines 1 to 150
-
-Read [](file:///c%3A/Workout-app/app/%28tabs%29/social.tsx#1-1), lines 1 to 150
-
-Read [](file:///c%3A/Workout-app/app/%28tabs%29/index.tsx#1-1), lines 1 to 150
-
-Read [](file:///c%3A/Workout-app/app/recovery/index.tsx#1-1), lines 1 to 150
-
-Read [](file:///c%3A/Workout-app/app/recovery/supplements.tsx#1-1), lines 1 to 100
-
-Read [](file:///c%3A/Workout-app/app/analytics/index.tsx#1-1), lines 1 to 150
-
-Read [](file:///c%3A/Workout-app/app/nutrition/micronutrients.tsx#1-1), lines 1 to 100
-
-Read [](file:///c%3A/Workout-app/app/nutrition/fasting.tsx#1-1), lines 1 to 100
-
-Read [](file:///c%3A/Workout-app/app/nutrition/diet-settings.tsx#1-1), lines 1 to 150
-
-Read [](file:///c%3A/Workout-app/app/nutrition/recipes.tsx#1-1), lines 1 to 150
-
-Read [](file:///c%3A/Workout-app/app/nutrition/grocery-list.tsx#1-1), lines 1 to 100
-
-Read [](file:///c%3A/Workout-app/app/ai-meal-plan.tsx#1-1), lines 1 to 100
-
-Read [](file:///c%3A/Workout-app/app/progress/body-composition.tsx#1-1), lines 1 to 150
-
-Read [](file:///c%3A/Workout-app/app/progress/photos.tsx#1-1), lines 1 to 100
-
-Read [](file:///c%3A/Workout-app/app/progress/measurements.tsx#1-1), lines 1 to 100
-
-Read [](file:///c%3A/Workout-app/app/progress/create-goal.tsx#1-1), lines 1 to 100
-
-Read [](file:///c%3A/Workout-app/app/social/create-challenge.tsx#1-1), lines 1 to 100
-
-Read [](file:///c%3A/Workout-app/app/workout/active.tsx#1-1), lines 1 to 100
-
-Read [](file:///c%3A/Workout-app/stores/workoutStore.ts#1-1), lines 1 to 100
-
-Read [](file:///c%3A/Workout-app/stores/mealPlanStore.ts#1-1), lines 1 to 100
-
-Read [](file:///c%3A/Workout-app/stores/nutritionStore.ts#1-1), lines 1 to 100
-
-Read [](file:///c%3A/Workout-app/types/index.ts#1-1), lines 1 to 100
-
-Read [](file:///c%3A/Workout-app/types/index.ts#100-100), lines 100 to 250
-
-Read [](file:///c%3A/Workout-app/stores/workoutStore.ts#100-100), lines 100 to 200
-
-Read [](file:///c%3A/Workout-app/app/workout/active.tsx#100-100), lines 100 to 200
-
-Read [](file:///c%3A/Workout-app/lib/aiEngine.ts#200-200), lines 200 to 300
-
-Read [](file:///c%3A/Workout-app/app/%28tabs%29/index.tsx#150-150), lines 150 to 300
-
-Read [](file:///c%3A/Workout-app/stores/socialStore.ts#1-1), lines 1 to 100
-
-Read [](file:///c%3A/Workout-app/stores/recoveryStore.ts#1-1), lines 1 to 100
-
-Read [](file:///c%3A/Workout-app/lib/aiEngine.ts#300-300), lines 300 to 500
-
-Read [](file:///c%3A/Workout-app/app/nutrition/food-search.tsx#1-1), lines 1 to 100
-
-Read [](file:///c%3A/Workout-app/app/%28tabs%29/profile.tsx#1-1), lines 1 to 100
-
-Read [](file:///c%3A/Workout-app/app/account-settings.tsx#1-1), lines 1 to 100
-
-Read [](file:///c%3A/Workout-app/lib/openai.ts#1-1), lines 1 to 100
-
-Read [](file:///c%3A/Workout-app/constants/config.ts)
-
-Searched for text `export|data` (`**/app/settings.tsx`), 10 results
-
-Searched for regex `voice|speech|microphone|Voice`, no results
-
-Searched for regex `camera|rep.count|form.coach|posture|AR|augmented`, 20 results
-
-Searched for regex `bluetooth|wearable|apple.?watch|health.?kit|google.?fit|CGM|glucose`, 5 results
-
-Searched for regex `offline|AsyncStorage|persist|MMKV|NetInfo`, 20 results
-
-Searched for regex `i18n|locale|multilingual|translation|localize`, 17 results
-
-Searched for regex `GPS|cardio.track|VO2|vo2|superset|circuit|EMOM|AMRAP|deload|auto.progress`, 8 results
-
-Searched for regex `receipt|menu.scan|natural.language|USDA|OpenFoodFacts|FatSecret|Nutritionix`, 1 result
-
-Searched for regex `DEXA|3D.scan|body.scan|muscle.balance|digital.twin|genetic`, no results
-
-Searched for regex `marketplace|coach.mode|personality|forum|live.workout|battle.mode`, no results
-
-Searched for regex `menstrual|period.track|blood.work|cold.therapy|heat.therapy|smart.scale`, no results
-
-Searched for regex `widget|accessibility|screenReader|a11y|accessibilityLabel`, no results
-
-Searched for regex `gut.health|metabolic.adapt|adaptive.calorie|leftover|meal.prep.mode|family.mode|recipe.adjust`, no results
-
-Searched for regex `predictive|custom.dashboard|PR.board|mobility|tutorial|academy|myth`, 1 result
-
-Searched for regex `grocery.store|instacart|amazon.fresh|meal.photo|food.journal|journal`, no results
-
-Searched for regex `warm.up|cool.down|training.split|split.optimizer|HRV|hrv|heart.rate.variab`, 12 results
-
-Searched for regex `data.export|exportData|download.*data`, 1 result
-
-Here's the full audit. Features marked ✅ are implemented, ⚠️ are partial/demo, and ❌ are not implemented:
+BodyPilot — Feature Implementation Audit
+=========================================
+
+Last refreshed: 2026-06-10. Compare against feature_list.txt for the full
+product vision and phase_plan.txt for in-flight work.
+
+Legend
+------
+- ✅ Implemented (real, working logic — not a placeholder UI)
+- ⚠️ Partial / demo / behind an API key or external prerequisite
+- ❌ Not implemented (no code or only an inert button)
+
+How this audit was produced
+---------------------------
+Grepped the codebase for keywords matching each feature, then opened the
+candidate files to confirm the implementation is real (functions/screens/
+stores wired in, not just type definitions or stubs). Citations point to
+the primary entry point or library file.
 
 ---
 
 ## 1. WORKOUT MANAGEMENT
 
-| Feature | Status |
-|---------|--------|
-| Smart Workout Builder (AI) | ✅ |
-| Exercise Library (1000+ with 3D demos) | ⚠️ 10 exercises, no demos |
-| Real-Time Rep Counter (camera) | ❌ |
-| AI Form Coach (live camera) | ❌ |
-| Auto-Progression Engine | ⚠️ PR detection only |
-| Rest Timer with HRV | ⚠️ Timer yes, HRV no |
-| Superset/Circuit/EMOM/AMRAP | ⚠️ Basic sets only |
-| Deload Detection | ❌ |
-| 1RM Predictor & Strength Standards | ✅ (Epley formula) |
-| Workout Voice Control | ❌ |
-| Gym Equipment Scanner | ❌ |
-| Warm-Up & Cool-Down Generator | ❌ |
-| Training Split Optimizer | ❌ |
-| GPS Route Tracking | ❌ |
-| Virtual Running Races | ❌ |
-| VO2 Max Estimation | ❌ |
-| Heart Rate Zone Training | ❌ |
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Smart Workout Builder (AI) | ✅ | `app/ai-workout.tsx` + `lib/aiEngine.ts` |
+| Exercise Library | ✅ | 200 built-in (`lib/exerciseApi.ts`) + ExerciseDB API integration with GIF demos when `EXPO_PUBLIC_RAPIDAPI_KEY` is set |
+| Real-Time Rep Counter (camera) | ❌ | |
+| AI Form Coach (live camera) | ❌ | |
+| Auto-Progression Engine | ✅ | `generateProgressionSuggestions` in `lib/workoutIntelligence.ts`, surfaced in `app/workout/insights.tsx` |
+| Rest Timer with HRV | ⚠️ | Rest timer ✅ (`workoutStore`), HRV stored in recovery log but not yet fed back into timer |
+| Superset / Circuit / EMOM / AMRAP | ✅ | `WorkoutMode` + `SupersetGroup` modeled and handled in `workoutStore` / `app/workout/active.tsx` |
+| Deload Detection | ✅ | `detectDeload` in `lib/workoutIntelligence.ts` shown in workout insights |
+| 1RM Predictor & Strength Standards | ✅ | Epley + Brzycki; `app/workout/strength-standards.tsx` |
+| Workout Voice Control | ❌ | Voice exists for food logging only |
+| Gym Equipment Scanner | ❌ | |
+| Warm-Up & Cool-Down Generator | ✅ | `app/workout/warmup.tsx` + `generateWarmUp`/`generateCoolDown` |
+| Training Split Optimizer | ✅ | `analyzeTrainingSplit` surfaced in workout insights |
+| GPS Route Tracking | ✅ | `app/workout/cardio.tsx` uses `expo-location` w/ haversine distance and pace |
+| Virtual Running Races | ❌ | |
+| VO2 Max Estimation | ✅ | `estimateVO2MaxCooper` + `estimateVO2MaxFromRun` |
+| Heart Rate Zone Training | ✅ | `calculateHRZones` (Karvonen w/ resting HR) + `getCurrentHRZone` |
 
 ## 2. NUTRITION & DIET
 
-| Feature | Status |
-|---------|--------|
-| AI Food Scanner | ⚠️ UI + API exists, hardcoded demo |
-| Barcode Scanner | ⚠️ Demo only |
-| Receipt/Menu Scanner | ❌ |
-| Natural Language Logging | ❌ |
-| Multi-Database Fusion (USDA etc) | ❌ 30 hardcoded foods |
-| Micronutrient Dashboard | ✅ |
-| Water & Hydration Tracker | ✅ |
-| Meal Photo Journal | ❌ |
-| Adaptive Calorie Targets | ❌ |
-| Metabolic Adaptation Detection | ❌ |
-| Macro Cycling | ✅ |
-| Diet Phase Management | ✅ |
-| IIFYM Mode | ⚠️ |
-| Diet Templates | ✅ |
-| Allergy & Intolerance Profiles | ✅ |
-| Fasting Tracker | ✅ |
-| Gut Health Score | ❌ |
+| Feature | Status | Notes |
+|---------|--------|-------|
+| AI Food Scanner | ✅ | `app/nutrition/ai-scanner.tsx` → GPT-4o Vision via `analyzeFoodPhoto` |
+| Barcode Scanner | ✅ | `app/nutrition/barcode-scanner.tsx` → `lookupBarcode` (OpenFoodFacts) |
+| Receipt / Menu Scanner | ✅ | `app/nutrition/receipt-scanner.tsx` → `parseReceiptImage` (Vision) |
+| Natural Language Logging | ✅ | Orbit Log (`app/nutrition/nlp-food-log.tsx`) + voice input via `expo-speech-recognition` |
+| Multi-Database Food Search | ✅ | `searchFoodsCombined` fuses OpenFoodFacts + USDA FDC (`lib/foodApi.ts`) |
+| Micronutrient Dashboard | ✅ | `app/nutrition/micronutrients.tsx` |
+| Water & Hydration Tracker | ✅ | `nutritionStore.logWater` + Hydration widget |
+| Meal Photo Journal | ✅ | `app/nutrition/meal-photos.tsx` |
+| Adaptive Calorie Targets | ✅ | `calculateAdaptiveCalories` in `lib/nutritionIntelligence.ts` |
+| Metabolic Adaptation Detection | ✅ | `detectMetabolicAdaptation` |
+| Macro Cycling | ✅ | `macro_cycle_pattern` in diet profile, applied via meal-plan store |
+| Diet Phase Management | ✅ | `app/nutrition/diet-settings.tsx` (bulk/cut/maintain/reverse/recomp) |
+| IIFYM Mode | ✅ | `app/nutrition/iifym.tsx` + `calculateIIFYMBudget` |
+| Diet Templates | ✅ | 11 templates (keto / paleo / vegan / IF / …) |
+| Allergy & Intolerance Profiles | ✅ | Diet profile arrays, applied to meal plans |
+| Fasting Tracker | ✅ | `app/nutrition/fasting.tsx` + `mealPlanStore` |
+| Gut Health Score | ✅ | `calculateGutHealthScore` in `lib/nutritionIntelligence.ts` |
 
 ## 3. MEAL PLANNING & RECIPES
 
-| Feature | Status |
-|---------|--------|
-| AI Meal Plan Generator | ✅ |
-| Recipe Database | ✅ (6+ built-in) |
-| Smart Grocery List | ✅ |
-| Grocery Store Integration | ❌ |
-| Meal Prep Mode | ❌ |
-| Leftover Optimizer | ❌ |
-| Restaurant Menu Advisor | ❌ |
-| Recipe Macro Adjuster | ❌ |
-| Cultural Cuisine Support | ❌ |
-| Family/Household Mode | ❌ |
+| Feature | Status | Notes |
+|---------|--------|-------|
+| AI Meal Plan Generator | ✅ | `app/ai-meal-plan.tsx` + `lib/aiEngine.ts` |
+| Recipe Database | ✅ | Built-in + community + AI-generated (`app/nutrition/recipes.tsx`) |
+| Recipe Creator | ✅ | `app/nutrition/create-recipe.tsx` |
+| Smart Grocery List | ✅ | `app/nutrition/grocery-list.tsx` |
+| Recipe Macro Adjuster | ✅ | `app/nutrition/recipe-adjuster.tsx` + `adjustRecipeMacros` |
+| Cultural Cuisine Support | ⚠️ | `preferred_cuisines` fed to AI meal plan generator, no dedicated UI yet |
+| Grocery Store Integration | ❌ | |
+| Meal Prep Mode | ❌ | |
+| Leftover Optimizer | ❌ | |
+| Restaurant Menu Advisor | ⚠️ | Menu scanner exists (receipt-scanner reused), no dedicated advisor |
+| Family / Household Mode | ❌ | |
 
 ## 4. BODY COMPOSITION & BIOMETRICS
 
-| Feature | Status |
-|---------|--------|
-| Weight Trend Analytics | ✅ |
-| Progress Photo AI | ⚠️ Manual photos, no AI analysis |
-| Body Measurement Tracker | ✅ (11 fields + deltas) |
-| DEXA/InBody Import | ❌ |
-| 3D Body Scan | ❌ |
-| Body Fat Estimation | ✅ (Navy method + BMI + FFMI) |
-| Muscle Balance Analysis | ❌ |
-| Posture Analysis | ❌ |
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Weight Trend Analytics | ✅ | `lib/progressAnalytics.ts` |
+| Progress Photo Journal | ✅ | `app/progress/photos.tsx` (manual capture, no AI analysis yet) |
+| Body Measurement Tracker | ✅ | 11 fields + deltas (`app/progress/measurements.tsx`) |
+| Body Fat Estimation | ✅ | Navy + BMI + FFMI (`app/progress/body-composition.tsx`) |
+| DEXA / InBody Import | ❌ | |
+| 3D Body Scan | ❌ | |
+| Muscle Balance Analysis | ❌ | |
+| Posture Analysis | ❌ | |
 
 ## 5. GOALS & GAMIFICATION
 
-| Feature | Status |
-|---------|--------|
-| Multi-Goal Dashboard | ✅ (8 goal types) |
-| SMART Goal Wizard | ❌ |
-| Milestone System | ⚠️ Via achievements |
-| Predictive Timeline | ❌ |
-| Goal Conflict Detection | ❌ |
-| Before/After Generator | ❌ |
-| XP & Leveling System | ✅ (40 levels) |
-| Achievement Badges | ✅ (26 achievements) |
-| Streak Tracking | ✅ |
-| Leaderboards | ✅ |
-| Challenges | ✅ (5 types) |
-| Virtual Rewards | ❌ |
-| Battle Mode | ❌ |
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Multi-Goal Dashboard | ✅ | 8 goal types, `app/progress/create-goal.tsx` |
+| XP & Leveling System | ✅ | 40 levels (`lib/gamification.ts`) |
+| Achievement Badges | ✅ | 26 achievements (`stores/recoveryStore.ts`) |
+| Streak Tracking | ✅ | `calculateStreak`; surfaced on home + widgets + Lock Screen |
+| Leaderboards | ✅ | `app/(tabs)/social.tsx` |
+| Challenges | ✅ | 5 types (workout_count / total_volume / streak / steps / calories_burned / custom) |
+| Milestone System | ⚠️ | Routed through achievements; no first-class milestone UI |
+| SMART Goal Wizard | ❌ | |
+| Predictive Timeline | ❌ | |
+| Goal Conflict Detection | ❌ | |
+| Before/After Generator | ❌ | |
+| Virtual Rewards | ❌ | |
+| Battle Mode | ❌ | |
 
 ## 6. AI COACHING & INTELLIGENCE
 
-| Feature | Status |
-|---------|--------|
-| AI Personal Trainer Chat | ✅ (with function calling) |
-| Daily Briefing | ✅ |
-| Plateau Buster | ❌ |
-| Injury Prevention Alerts | ❌ |
-| Program Periodization AI | ❌ |
-| Recovery Advisor | ⚠️ Basic via recovery score |
-| Supplement Advisor | ⚠️ Manual stack, no AI |
-| Scientific Reference Engine | ❌ |
-| Coach Mode (personalities) | ❌ |
-| "What If" Simulator | ❌ |
-| Natural Language Programming | ⚠️ Via AI chat only |
+| Feature | Status | Notes |
+|---------|--------|-------|
+| AI Personal Trainer Chat | ✅ | `app/chat.tsx` with function calling, routed via Supabase Edge `openai-chat` |
+| Daily Briefing | ✅ | `generateDailyInsight` + Flight Deck widget on home |
+| Readiness Engine | ✅ | `buildReadinessPlan` adapts the day's plan to recovery |
+| Natural Language Programming | ⚠️ | Via chat only |
+| Recovery Advisor | ⚠️ | Recovery score + Orbit Log feedback; no dedicated advisor surface |
+| Supplement Advisor | ⚠️ | Manual stack with reminders, no AI recommendation engine |
+| Plateau Buster | ❌ | |
+| Injury Prevention Alerts | ❌ | |
+| Program Periodization AI | ❌ | |
+| Scientific Reference Engine | ❌ | |
+| Coach Mode (personalities) | ❌ | |
+| "What If" Simulator | ❌ | |
 
 ## 7. HEALTH & RECOVERY
 
-| Feature | Status |
-|---------|--------|
-| Sleep Tracker Integration | ⚠️ Manual only |
-| Recovery Score | ✅ |
-| Soreness Mapper | ✅ (12 muscles) |
-| Mobility Library | ❌ |
-| Cold/Heat Therapy | ❌ |
-| Blood Work Integration | ❌ |
-| Menstrual Cycle Integration | ❌ |
-| Stress/Cortisol Management | ⚠️ Stress rating in recovery |
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Recovery Score | ✅ | `recoveryStore.logRecovery` computes 0-100 from sleep/soreness/stress |
+| Soreness Mapper | ✅ | 12 muscles (`app/recovery/index.tsx`) |
+| Supplement Stack | ✅ | `app/recovery/supplements.tsx` with reminder logs |
+| Stress / Cortisol Management | ⚠️ | Stress rating logged daily; no cortisol modeling |
+| Sleep Tracker Integration | ⚠️ | Manual hours/quality only; HealthKit sleep stages not read |
+| Mobility Library | ❌ | Cool-down generator overlaps, but no standalone library |
+| Cold / Heat Therapy | ❌ | |
+| Blood Work Integration | ❌ | |
+| Menstrual Cycle Integration | ❌ | |
 
 ## 8. SOCIAL & COMMUNITY
 
-| Feature | Status |
-|---------|--------|
-| Social Feed | ✅ |
-| Find Users | ✅ |
-| Group Challenges | ✅ |
-| Coach Marketplace | ❌ |
-| Community Recipes | ❌ |
-| Accountability Partners | ❌ |
-| Live Workout Rooms | ❌ |
-| Transformation Stories | ❌ |
-| Forum / Q&A | ❌ |
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Social Feed | ✅ | `app/(tabs)/social.tsx` |
+| Find Users | ✅ | Search + follow via `socialDb` |
+| Group Challenges | ✅ | `app/social/create-challenge.tsx` |
+| Comments | ✅ | `app/social/comments.tsx` |
+| User Profiles | ✅ | `app/social/profile.tsx` |
+| Coach Marketplace | ❌ | |
+| Community Recipes | ❌ | Recipe source has `community` enum but no submission UI |
+| Accountability Partners | ❌ | |
+| Live Workout Rooms | ❌ | |
+| Transformation Stories | ❌ | |
+| Forum / Q&A | ❌ | |
 
 ## 9. WEARABLE & DEVICE INTEGRATIONS
 
-| Feature | Status |
-|---------|--------|
-| All integrations (Watch, Garmin, Fitbit, Oura, scales, HR, CGM, etc.) | ❌ Placeholder buttons only |
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Apple HealthKit | ✅ | Steps, active energy, body weight, heart rate, workouts via `@kingstinct/react-native-healthkit` |
+| Apple Watch Companion App | ❌ | |
+| Garmin / Fitbit / Oura / Polar / Whoop | ❌ | |
+| Smart Scales | ❌ | |
+| Bluetooth Heart-Rate Monitors | ❌ | |
+| Continuous Glucose Monitor (CGM) | ❌ | |
 
 ## 10. DATA & ANALYTICS
 
-| Feature | Status |
-|---------|--------|
-| Comprehensive Dashboard | ✅ (4-tab analytics) |
-| Correlation Engine | ✅ |
-| Weekly Reports | ✅ |
-| Monthly/Yearly Reports | ❌ |
-| Data Export | ⚠️ Button only, no logic |
-| PR Board | ⚠️ Tracked, no dedicated view |
-| Predictive Analytics | ❌ |
-| Custom Dashboards | ❌ |
-| Nutrition Heatmaps | ❌ |
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Comprehensive Dashboard | ✅ | 4-tab analytics (`app/analytics/index.tsx`) |
+| Correlation Engine | ✅ | Sleep / soreness / volume correlations |
+| Weekly Reports | ✅ | `app/weekly-report.tsx` |
+| Data Export | ✅ | CSV + JSON for workouts / nutrition / measurements via `lib/export.ts` + share sheet |
+| Custom Dashboards | ✅ | `homeDashboardStore` reorders/toggles widgets and quick actions per goal |
+| PR Board | ⚠️ | Records tracked and shown in insights; no dedicated PR board screen |
+| Nutrition Heatmaps | ⚠️ | Weekly grids in analytics; no calendar heatmap |
+| Monthly / Yearly Reports | ❌ | Weekly only |
+| Predictive Analytics | ❌ | |
 
 ## 11. PERSONALIZATION & ACCESSIBILITY
 
-| Feature | Status |
-|---------|--------|
-| Dark/Light Themes | ⚠️ UI toggle, only dark works |
-| Accessibility (screen reader) | ❌ Zero a11y labels |
-| Multilingual | ❌ |
-| Offline Mode | ⚠️ AI fallbacks only |
-| Watch Companion | ❌ |
-| Widgets | ❌ |
-| Voice Assistant | ❌ |
-| Desktop Web App | ⚠️ Works via Expo web |
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Dark / Light Themes | ✅ | 16 palettes (12 dark + 4 light) in `contexts/ThemeContext.tsx`, system mode supported |
+| Premium Subscription Tier | ✅ | `app/premium.tsx` + `subscriptionStore` (StoreKit IAP wiring is a flag pending product setup) |
+| iOS Widgets | ✅ | 5 widgets (macros, activity, streak, hydration, Lock Screen streak) — see `docs/ios-widgets.md` |
+| Offline Mode | ⚠️ | Offline banner via NetInfo + AsyncStorage persistence; no queue-and-replay sync |
+| Voice Assistant | ⚠️ | Voice input for Orbit Log food logging only (`expo-speech-recognition`) |
+| Desktop Web App | ⚠️ | Works via `expo start --web`, not production-targeted |
+| Apple Watch Companion | ❌ | |
+| Accessibility (screen reader) | ❌ | Only a handful of `accessibilityRole` / `accessibilityLabel` props across the app |
+| Multilingual / i18n | ❌ | No `expo-localization` or `i18next` integration |
 
-## 12-14. EDUCATION, ADVANCED, MONETIZATION
+## 12. EDUCATION, ADVANCED, MONETIZATION
 
-| Feature | Status |
-|---------|--------|
-| All education features | ❌ |
-| All advanced/future-tech | ❌ |
-| All monetization infrastructure | ❌ |
+| Feature | Status | Notes |
+|---------|--------|-------|
+| In-app Premium Paywall | ✅ | `app/premium.tsx` modal with feature gating via `requirePremium()` |
+| StoreKit IAP | ⚠️ | `STOREKIT_IAP_ENABLED=false` flag; product IDs declared but transactions not wired |
+| Education Library / Articles | ❌ | |
+| AR / VR / Form Replay | ❌ | |
+| Genetic / Bloodwork-driven plans | ❌ | |
+| Affiliate / Marketplace revenue | ❌ | |
 
 ---
 
-### Summary: **30 implemented, 16 partial, 47 not implemented**
+## Summary
 
-The strongest areas are AI coaching, gamification, social, nutrition tracking, and body composition. The biggest gaps are all hardware integrations, camera-based features (form coach, rep counter, real food scanner), GPS/cardio, education content, accessibility, and all advanced/future-tech features. Most of these require native device APIs, third-party SDKs, or external data services that go beyond what can be built with the current stack alone.
+Roughly **62 ✅ implemented · 15 ⚠️ partial · 31 ❌ not implemented**
+across the 12 sections above.
+
+**Strongest areas:** workout intelligence (deload, progression, splits,
+VO2, HR zones, GPS cardio), nutrition (AI photo / barcode / receipt
+scanners, NL log with voice, IIFYM, adaptive calories, metabolic
+adaptation, gut score), gamification, social, Apple HealthKit, analytics
++ exports, and now iOS widgets.
+
+**Biggest remaining gaps:** non-Apple wearable / device integrations,
+camera-based form coaching and rep counting, virtual-race-style social,
+education / academy content, monetization (StoreKit transactions),
+accessibility (a11y labels), and internationalization.

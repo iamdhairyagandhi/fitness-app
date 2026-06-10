@@ -7,6 +7,7 @@ import { getLocalDateKey } from '@/lib/date';
 import { buildNutritionSummary } from '@/lib/nutritionSummary';
 import { addNotificationRoutingListener } from '@/lib/notifications';
 import { supabase } from '@/lib/supabase';
+import { clearWidgetSnapshot, useWidgetSync } from '@/lib/widgetSync';
 import { useAppleHealthStore } from '@/stores/appleHealthStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useMealPlanStore } from '@/stores/mealPlanStore';
@@ -17,7 +18,7 @@ import { useWorkoutStore } from '@/stores/workoutStore';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { Component, useCallback, useEffect } from 'react';
+import React, { Component, useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, AppState, StyleSheet, Text, View } from 'react-native';
 
 // Error boundary to catch runtime crashes
@@ -49,6 +50,9 @@ const queryClient = new QueryClient({
 
 function RootLayoutContent() {
     const { isLoading, setSession, setLoading, setUser, setOnboarded } = useAuthStore();
+    const [storesHydrated, setStoresHydrated] = useState(false);
+
+    useWidgetSync(storesHydrated);
 
     const hydrateFromSupabase = useCallback(async (userId: string) => {
         try {
@@ -123,6 +127,8 @@ function RootLayoutContent() {
             useAppleHealthStore.getState().refreshStatus().catch(() => { });
         } catch (err) {
             console.warn('Hydration error:', err);
+        } finally {
+            setStoresHydrated(true);
         }
     }, [setUser, setOnboarded]);
 
@@ -148,10 +154,12 @@ function RootLayoutContent() {
                 // Hydrate stores from Supabase
                 hydrateFromSupabase(session.user.id).finally(() => setLoading(false));
             } else {
+                setStoresHydrated(true);
                 setLoading(false);
             }
         }).catch(() => {
             clearTimeout(timeout);
+            setStoresHydrated(true);
             setLoading(false);
         });
 
@@ -162,6 +170,8 @@ function RootLayoutContent() {
                     setSession({ access_token: session.access_token });
                 } else {
                     setSession(null);
+                    // Clear shared widget data so widgets switch to signed-out state.
+                    clearWidgetSnapshot();
                 }
             }
         );
