@@ -5,6 +5,7 @@ import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants
 import { useTheme } from '@/contexts/ThemeContext';
 import { generateDailyInsight } from '@/lib/aiEngine';
 import { requirePremium } from '@/lib/premium';
+import { buildReadinessPlan } from '@/lib/readinessEngine';
 import { displayWeightFromKg, formatNumber, formatVolume, getGreeting, getPercentage } from '@/lib/utils';
 import { useAppleHealthStore } from '@/stores/appleHealthStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -124,6 +125,7 @@ export default function HomeScreen() {
     const { colors } = useTheme();
     const user = useAuthStore((s) => s.user);
     const todaySummary = useNutritionStore((s) => s.todaySummary);
+    const nutritionHistory = useNutritionStore((s) => s.nutritionHistory);
     const logWater = useNutritionStore((s) => s.logWater);
     const ensureToday = useNutritionStore((s) => s.ensureToday);
     const activeWorkout = useWorkoutStore((s) => s.activeWorkout);
@@ -167,6 +169,12 @@ export default function HomeScreen() {
     const streak = user?.streak_count || 0;
     const displayName = user?.display_name || 'Athlete';
     const recovery = todayRecovery || recoveryLogs[0] || null;
+    const yesterdaySummary = useMemo(() => {
+        const date = new Date();
+        date.setDate(date.getDate() - 1);
+        const key = `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, '0')}-${`${date.getDate()}`.padStart(2, '0')}`;
+        return nutritionHistory.find((summary) => summary.date === key) ?? null;
+    }, [nutritionHistory]);
     const activeEnergyKcal = healthSnapshot.status === 'authorized' ? healthSnapshot.activeEnergyKcal : 0;
     const netCalories = Math.max(todaySummary.total_calories - activeEnergyKcal, 0);
     const caloriesRemaining = Math.max(calorieTarget - netCalories, 0);
@@ -181,6 +189,21 @@ export default function HomeScreen() {
     const displayWeightDelta = weightDelta !== null ? displayWeightFromKg(Math.abs(weightDelta), user?.unit_system) : null;
     const weightUnit = user?.unit_system === 'imperial' ? 'lb' : 'kg';
     const nextTemplate = templates[0] || null;
+    const readinessPlan = useMemo(
+        () => buildReadinessPlan({
+            recovery,
+            recoveryLogs,
+            recentWorkouts,
+            todaySummary,
+            yesterdaySummary,
+            calorieTarget,
+            proteinTarget,
+            carbsTarget,
+            fatTarget,
+            goal,
+        }),
+        [carbsTarget, calorieTarget, fatTarget, goal, proteinTarget, recentWorkouts, recovery, recoveryLogs, todaySummary, yesterdaySummary],
+    );
 
     const customizeWidgetOrder = useMemo(
         () => mergeWidgetOrder(widgetOrderPreference, goal),
@@ -210,14 +233,14 @@ export default function HomeScreen() {
         );
     }, [caloriePct, isWorkoutActive, latestWorkout, proteinPct, recovery?.recovery_score, waterPct]);
 
-    const pilotTone = pilotScore >= 80 ? 'Ready to push' : pilotScore >= 60 ? 'Steady build' : 'Recover and reset';
+    const pilotTone = readinessPlan.title;
     const dailyFocus = proteinPct < 70
         ? 'Prioritize protein early today.'
         : waterPct < 60
             ? 'Hydration is the easiest win right now.'
             : isWorkoutActive
                 ? 'Workout is live. Keep the session clean.'
-                : GOAL_FOCUS[goal];
+                : readinessPlan.summary || GOAL_FOCUS[goal];
 
     const onRefresh = useCallback(() => {
         ensureToday();
@@ -398,6 +421,13 @@ export default function HomeScreen() {
                     <MiniMetric label="PRs" value={`${personalRecords.length}`} />
                     <MiniMetric label="Completed" value={`${user?.workouts_completed || recentWorkouts.length}`} />
                 </View>
+                <View style={[styles.readinessBrief, { backgroundColor: `${colors.recovery}12`, borderColor: `${colors.recovery}35` }]}>
+                    <View style={styles.readinessBriefHeader}>
+                        <Ionicons name="pulse" size={16} color={colors.recovery} />
+                        <Text style={[styles.readinessBriefTitle, { color: colors.text }]}>{readinessPlan.workout.title}</Text>
+                    </View>
+                    <Text style={[styles.readinessBriefText, { color: colors.textSecondary }]}>{readinessPlan.workout.guidance}</Text>
+                </View>
             </Card>
         </View>
     );
@@ -429,6 +459,9 @@ export default function HomeScreen() {
                         <MacroPill label="C" value={todaySummary.total_carbs_g} target={carbsTarget} color={colors.carbs} />
                         <MacroPill label="F" value={todaySummary.total_fat_g} target={fatTarget} color={colors.fat} />
                     </View>
+                    <Text style={[styles.factText, { color: colors.textSecondary }]}>
+                        {readinessPlan.nutrition.title}: {readinessPlan.nutrition.guidance}
+                    </Text>
                 </Card>
 
                 <Card style={[styles.gridCard, isCompact && styles.gridCardCompact]}>
@@ -1106,6 +1139,26 @@ const styles = StyleSheet.create({
         padding: Spacing.md,
     },
     planCard: {},
+    readinessBrief: {
+        borderWidth: 1,
+        borderRadius: BorderRadius.md,
+        padding: Spacing.md,
+        marginTop: Spacing.md,
+        gap: Spacing.xs,
+    },
+    readinessBriefHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.sm,
+    },
+    readinessBriefTitle: {
+        fontSize: FontSize.sm,
+        fontWeight: FontWeight.bold,
+    },
+    readinessBriefText: {
+        fontSize: FontSize.xs,
+        lineHeight: 18,
+    },
     planHeader: {
         flexDirection: 'row',
         alignItems: 'center',

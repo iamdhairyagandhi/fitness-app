@@ -11,6 +11,7 @@ import {
     type WaterTrendInsight,
     type WeightTrendInsight,
 } from '@/lib/nutritionAnalytics';
+import { buildReadinessPlan } from '@/lib/readinessEngine';
 import AsyncStorage from '@/lib/storage';
 import { requirePremium } from '@/lib/premium';
 import { displayWeightFromKg, formatNumber, getPercentage, getWeightUnit } from '@/lib/utils';
@@ -19,6 +20,8 @@ import { useAuthStore } from '@/stores/authStore';
 import { DIET_TEMPLATES, useMealPlanStore } from '@/stores/mealPlanStore';
 import { useNutritionStore } from '@/stores/nutritionStore';
 import { useProgressStore } from '@/stores/progressStore';
+import { useRecoveryStore } from '@/stores/recoveryStore';
+import { useWorkoutStore } from '@/stores/workoutStore';
 import type { DietPhase, DietTemplate, FoodLogEntry, MealType } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -62,6 +65,9 @@ export default function NutritionScreen() {
     const syncAppleHealth = useAppleHealthStore((s) => s.sync);
     const { dietProfile, setDietProfile } = useMealPlanStore();
     const weightEntries = useProgressStore((s) => s.weightEntries);
+    const recoveryLogs = useRecoveryStore((s) => s.recoveryLogs);
+    const todayRecovery = useRecoveryStore((s) => s.todayRecovery);
+    const recentWorkouts = useWorkoutStore((s) => s.recentWorkouts);
     const [showDietSetup, setShowDietSetup] = React.useState(false);
     const [setupTemplate, setSetupTemplate] = React.useState<DietTemplate>(
         dietProfile.template === 'custom' ? 'standard' : dietProfile.template
@@ -141,6 +147,22 @@ export default function NutritionScreen() {
             goal: user?.goal ?? 'maintain',
         }),
         [calorieTarget, user?.goal, waterTarget, weekSummaries, weightEntries],
+    );
+    const yesterdaySummary = React.useMemo(() => weekSummaries[weekSummaries.length - 2] ?? null, [weekSummaries]);
+    const readinessPlan = React.useMemo(
+        () => buildReadinessPlan({
+            recovery: todayRecovery || recoveryLogs[0] || null,
+            recoveryLogs,
+            recentWorkouts,
+            todaySummary,
+            yesterdaySummary,
+            calorieTarget,
+            proteinTarget,
+            carbsTarget,
+            fatTarget,
+            goal: user?.goal ?? 'maintain',
+        }),
+        [calorieTarget, carbsTarget, fatTarget, proteinTarget, recentWorkouts, recoveryLogs, todayRecovery, todaySummary, user?.goal, yesterdaySummary],
     );
 
     const handleAddWater = () => {
@@ -362,6 +384,24 @@ export default function NutritionScreen() {
                         colors={colors}
                     />
                 </ScrollView>
+
+                <Card style={styles.readinessNutritionCard}>
+                    <View style={styles.readinessHeader}>
+                        <View style={[styles.readinessIcon, { backgroundColor: colors.recovery + '18' }]}>
+                            <Ionicons name="pulse" size={20} color={colors.recovery} />
+                        </View>
+                        <View style={styles.readinessCopy}>
+                            <Text style={[styles.readinessTitle, { color: colors.text }]}>{readinessPlan.nutrition.title}</Text>
+                            <Text style={[styles.readinessText, { color: colors.textSecondary }]}>{readinessPlan.nutrition.guidance}</Text>
+                        </View>
+                    </View>
+                    <View style={styles.readinessTargets}>
+                        <MetricTile label="Coach kcal" value={`${readinessPlan.nutrition.calorieTarget}`} color={colors.calories} />
+                        <MetricTile label="Protein" value={`${readinessPlan.nutrition.proteinTarget}g`} color={colors.protein} />
+                        <MetricTile label="Carbs" value={`${readinessPlan.nutrition.carbsTarget}g`} color={colors.carbs} />
+                        <MetricTile label="Around training" value={`${readinessPlan.nutrition.periWorkoutCarbsG}g`} color={colors.fat} />
+                    </View>
+                </Card>
 
                 <Card style={styles.logHubCard}>
                     <View style={styles.logHubHeader}>
@@ -1380,6 +1420,41 @@ const styles = StyleSheet.create({
         color: Colors.text,
         fontSize: FontSize.sm,
         fontWeight: FontWeight.bold,
+    },
+    readinessNutritionCard: {
+        marginBottom: Spacing.md,
+        gap: Spacing.md,
+    },
+    readinessHeader: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: Spacing.md,
+    },
+    readinessIcon: {
+        width: 42,
+        height: 42,
+        borderRadius: BorderRadius.full,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    readinessCopy: {
+        flex: 1,
+    },
+    readinessTitle: {
+        color: Colors.text,
+        fontSize: FontSize.md,
+        fontWeight: FontWeight.bold,
+    },
+    readinessText: {
+        color: Colors.textSecondary,
+        fontSize: FontSize.sm,
+        lineHeight: 20,
+        marginTop: 2,
+    },
+    readinessTargets: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: Spacing.sm,
     },
     logHubCard: {
         marginBottom: Spacing.md,

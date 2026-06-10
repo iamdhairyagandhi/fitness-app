@@ -137,9 +137,9 @@ const MEAL_OPTIONS: { label: string; value: MealType; icon: string }[] = [
 ];
 
 const QUICK_EXAMPLES = [
-    'I had Greek yogurt with berries for breakfast and drank 500ml water',
+    'Log Greek yogurt with berries for breakfast and 500ml water',
+    'Find what I should eat after a hard leg day',
     'Slept 7.5 hours, energy 4, stress low, sore legs',
-    'Finished a 45 minute push workout',
     'Start a leg day workout',
 ];
 
@@ -185,11 +185,35 @@ const mealName = (meal: MealType) => meal.charAt(0).toUpperCase() + meal.slice(1
 
 const isConfirmPhrase = (phrase: string) => /\b(yes|confirm|log it|save it|do it|looks good|that's right|that is right)\b/i.test(phrase.trim());
 
+function getOrbitGuidanceReply(phrase: string): string | null {
+    const normalized = phrase.trim().toLowerCase();
+    const soundsLikeQuestion = /\b(what should|what can|find|search|look up|recommend|suggest|how much|help me)\b/i.test(normalized);
+    if (!soundsLikeQuestion) return null;
+
+    if (/\b(post[- ]?workout|after.*workout|leg day|push day|pull day|trained|training)\b/i.test(normalized)) {
+        return 'After training, go protein plus carbs. Good picks: Greek yogurt with banana, chicken and rice, eggs with toast, or a protein shake with oats. Tell me what you choose and I can prep the log.';
+    }
+
+    if (/\b(sleep|tired|recovery|sore|stress|hrv)\b/i.test(normalized)) {
+        return 'For recovery, I would check sleep, soreness, stress, and hydration first. Tell me those details in one sentence and I can prepare a recovery log.';
+    }
+
+    if (/\b(water|hydration|drink)\b/i.test(normalized)) {
+        return 'A simple hydration target is steady water through the day, then extra around training. Say an amount like "log 500ml water" and I will add it.';
+    }
+
+    if (/\b(food|eat|meal|breakfast|lunch|dinner|snack|protein|calories)\b/i.test(normalized)) {
+        return 'Give me your goal or what ingredients you have, and I can narrow it down. If you already ate, say the meal and portion and I will prepare the log.';
+    }
+
+    return 'I can help with food, training, water, sleep, and recovery. Ask naturally, or tell me what happened and I will prepare a review card.';
+}
+
 const INITIAL_MESSAGES: ChatMessage[] = [
     {
         id: 'intro',
         role: 'assistant',
-        text: 'I am Orbit. Talk to me normally and I can prepare food, water, sleep, recovery, and workout logs. Nothing is saved until you confirm.',
+        text: 'I am Orbit. Speak naturally, and I will turn what I hear into something you can review before it is saved.',
     },
 ];
 
@@ -303,12 +327,13 @@ export default function NLPFoodLogScreen() {
             const foodCount = parsed?.items.length ?? 0;
             const actionCount = nextActions.length;
             const totalCount = foodCount + actionCount;
+            const guidanceReply = totalCount ? null : getOrbitGuidanceReply(phrase);
             appendMessage({
                 role: 'assistant',
-                text: totalCount
+                text: guidanceReply ?? (totalCount
                     ? `I prepared ${totalCount} log${totalCount > 1 ? 's' : ''}: ${foodCount ? `${foodCount} food estimate${foodCount > 1 ? 's' : ''}` : ''}${foodCount && actionCount ? ', plus ' : ''}${actionCount ? `${actionCount} health/action item${actionCount > 1 ? 's' : ''}` : ''}. Review them and confirm when they look right.`
-                    : 'I did not find a loggable detail yet. Try saying something like “I ate chicken and rice, drank 500ml water, slept 7 hours.”',
-                tone: totalCount ? 'default' : 'warning',
+                    : 'I did not find a loggable detail yet. Try saying something like “I ate chicken and rice, drank 500ml water, slept 7 hours.”'),
+                tone: totalCount || guidanceReply ? 'default' : 'warning',
             });
         } catch {
             appendMessage({
@@ -610,8 +635,8 @@ export default function NLPFoodLogScreen() {
     return (
         <KeyboardAvoidingView
             style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            keyboardVerticalOffset={8}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={0}
         >
             <View style={[styles.header, { borderBottomColor: colors.border }]}>
                 <TouchableOpacity
@@ -634,19 +659,45 @@ export default function NLPFoodLogScreen() {
 
             <ScrollView
                 ref={scrollRef}
+                style={styles.scrollView}
                 contentContainerStyle={styles.scroll}
                 keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="interactive"
                 showsVerticalScrollIndicator={false}
                 onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
             >
                 <View style={[styles.robotCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                    <View style={[styles.robotAvatar, { backgroundColor: colors.primary + '18' }]}>
-                        <Ionicons name={isListening ? 'mic' : 'hardware-chip'} size={22} color={colors.primary} />
-                    </View>
+                    <TouchableOpacity
+                        style={[
+                            styles.robotAvatar,
+                            {
+                                backgroundColor: isListening ? colors.primary : colors.primary + '18',
+                                borderColor: isListening ? colors.primary : colors.primary + '30',
+                            },
+                        ]}
+                        onPress={isListening ? stopListening : startListening}
+                        disabled={isParsing}
+                        activeOpacity={0.86}
+                    >
+                        <Ionicons
+                            name={isListening ? 'stop' : 'mic'}
+                            size={28}
+                            color={isListening ? colors.textInverse : colors.primary}
+                        />
+                    </TouchableOpacity>
                     <View style={styles.robotCopy}>
-                        <Text style={[styles.robotTitle, { color: colors.text }]}>Talk to {BOT_NAME}</Text>
+                        <View style={styles.robotTitleRow}>
+                            <Text style={[styles.robotTitle, { color: colors.text }]}>
+                                {isListening ? 'Listening' : 'Ask Orbit'}
+                            </Text>
+                            <View style={[styles.modeBadge, { backgroundColor: colors.primary + '14' }]}>
+                                <Text style={[styles.modeBadgeText, { color: colors.primary }]}>Voice first</Text>
+                            </View>
+                        </View>
                         <Text style={[styles.robotText, { color: colors.textSecondary }]}>
-                            Say food, water, sleep, recovery, or workout details in one normal message. {BOT_NAME} prepares the logs, then you approve them.
+                            {isListening
+                                ? (text.trim() || 'Say a meal, workout, recovery note, or question.')
+                                : 'Talk, type, or search your day. Orbit prepares the next action and waits for your confirmation.'}
                         </Text>
                     </View>
                 </View>
@@ -923,7 +974,16 @@ export default function NLPFoodLogScreen() {
                 )}
             </ScrollView>
 
-            <View style={[styles.composerWrap, { paddingBottom: Math.max(insets.bottom, Spacing.md), backgroundColor: colors.background }]}>
+            <View
+                style={[
+                    styles.composerWrap,
+                    {
+                        paddingBottom: Math.max(insets.bottom, Spacing.md),
+                        backgroundColor: colors.background,
+                        borderTopColor: colors.border,
+                    },
+                ]}
+            >
                 <View style={[styles.composer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                     <TouchableOpacity
                         style={[
@@ -946,7 +1006,8 @@ export default function NLPFoodLogScreen() {
                         style={[styles.composerInput, { color: colors.text }]}
                         value={text}
                         onChangeText={setText}
-                        placeholder={isListening ? 'Listening...' : `Tell ${BOT_NAME} what to log...`}
+                        onFocus={() => requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }))}
+                        placeholder={isListening ? 'Listening...' : `Ask or tell ${BOT_NAME}...`}
                         placeholderTextColor={colors.textTertiary}
                         multiline
                         maxLength={500}
@@ -974,6 +1035,9 @@ export default function NLPFoodLogScreen() {
 
 const styles = StyleSheet.create({
     container: {
+        flex: 1,
+    },
+    scrollView: {
         flex: 1,
     },
     header: {
@@ -1011,7 +1075,7 @@ const styles = StyleSheet.create({
     scroll: {
         paddingHorizontal: Spacing.lg,
         paddingTop: Spacing.lg,
-        paddingBottom: 170,
+        paddingBottom: Spacing.xl,
     },
     robotCard: {
         flexDirection: 'row',
@@ -1023,17 +1087,33 @@ const styles = StyleSheet.create({
         marginBottom: Spacing.lg,
     },
     robotAvatar: {
-        width: 48,
-        height: 48,
+        width: 58,
+        height: 58,
         borderRadius: BorderRadius.full,
+        borderWidth: 1,
         alignItems: 'center',
         justifyContent: 'center',
     },
     robotCopy: {
         flex: 1,
     },
+    robotTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.sm,
+        flexWrap: 'wrap',
+    },
     robotTitle: {
         fontSize: FontSize.md,
+        fontWeight: FontWeight.bold,
+    },
+    modeBadge: {
+        borderRadius: BorderRadius.full,
+        paddingHorizontal: Spacing.sm,
+        paddingVertical: 3,
+    },
+    modeBadgeText: {
+        fontSize: FontSize.xxs,
         fontWeight: FontWeight.bold,
     },
     robotText: {
@@ -1325,12 +1405,9 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     composerWrap: {
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        bottom: 0,
         paddingHorizontal: Spacing.lg,
         paddingTop: Spacing.sm,
+        borderTopWidth: 1,
     },
     composer: {
         minHeight: 56,

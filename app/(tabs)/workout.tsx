@@ -8,6 +8,7 @@ import {
     EXERCISE_DIRECTORY_SOURCE,
     fetchOpenExerciseDirectory,
 } from '@/lib/openExerciseDirectory';
+import { buildReadinessPlan } from '@/lib/readinessEngine';
 import { formatDurationLong, formatVolume, generateId } from '@/lib/utils';
 import {
     buildWorkoutHistoryInsight,
@@ -19,6 +20,7 @@ import {
 } from '@/lib/workoutAnalytics';
 import { detectDeload } from '@/lib/workoutIntelligence';
 import { useAuthStore } from '@/stores/authStore';
+import { useNutritionStore } from '@/stores/nutritionStore';
 import { useRecoveryStore } from '@/stores/recoveryStore';
 import { useWorkoutStore } from '@/stores/workoutStore';
 import type { Exercise, WorkoutSession, WorkoutSet, WorkoutTemplate, WorkoutTemplateExercise, WorkoutTemplateSet } from '@/types';
@@ -366,6 +368,9 @@ export default function WorkoutScreen() {
     const startWorkoutFromTemplate = useWorkoutStore((s) => s.startWorkoutFromTemplate);
     const user = useAuthStore((s) => s.user);
     const recoveryLogs = useRecoveryStore((s) => s.recoveryLogs);
+    const todayRecovery = useRecoveryStore((s) => s.todayRecovery);
+    const todaySummary = useNutritionStore((s) => s.todaySummary);
+    const nutritionHistory = useNutritionStore((s) => s.nutritionHistory);
     const [workoutQuery, setWorkoutQuery] = useState('');
     const [selectedWorkoutCategory, setSelectedWorkoutCategory] = useState<(typeof WORKOUT_CATEGORIES)[number]>('All');
     const [showCreateWorkout, setShowCreateWorkout] = useState(false);
@@ -400,6 +405,31 @@ export default function WorkoutScreen() {
     }, [templates.length]);
 
     const deload = useMemo(() => detectDeload(recentWorkouts, recoveryLogs), [recentWorkouts, recoveryLogs]);
+    const calorieTarget = user?.daily_calorie_target || 2200;
+    const proteinTarget = user?.protein_target_g || 165;
+    const carbsTarget = user?.carbs_target_g || 220;
+    const fatTarget = user?.fat_target_g || 73;
+    const yesterdaySummary = useMemo(() => {
+        const date = new Date();
+        date.setDate(date.getDate() - 1);
+        const key = `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, '0')}-${`${date.getDate()}`.padStart(2, '0')}`;
+        return nutritionHistory.find((summary) => summary.date === key) ?? null;
+    }, [nutritionHistory]);
+    const readinessPlan = useMemo(
+        () => buildReadinessPlan({
+            recovery: todayRecovery || recoveryLogs[0] || null,
+            recoveryLogs,
+            recentWorkouts,
+            todaySummary,
+            yesterdaySummary,
+            calorieTarget,
+            proteinTarget,
+            carbsTarget,
+            fatTarget,
+            goal: user?.goal ?? 'maintain',
+        }),
+        [calorieTarget, carbsTarget, fatTarget, proteinTarget, recentWorkouts, recoveryLogs, todayRecovery, todaySummary, user?.goal, yesterdaySummary],
+    );
     const historyInsight = useMemo(
         () => buildWorkoutHistoryInsight(recentWorkouts, personalRecords),
         [personalRecords, recentWorkouts],
@@ -834,6 +864,22 @@ export default function WorkoutScreen() {
                     </View>
                     <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
                 </TouchableOpacity>
+                <View style={[styles.readinessWorkoutCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <View style={[styles.readinessWorkoutIcon, { backgroundColor: colors.primary + '18' }]}>
+                        <Ionicons name="pulse" size={20} color={colors.primary} />
+                    </View>
+                    <View style={styles.readinessWorkoutCopy}>
+                        <Text style={[styles.readinessWorkoutEyebrow, { color: colors.primary }]}>
+                            {readinessPlan.title} · {readinessPlan.score}/100
+                        </Text>
+                        <Text style={[styles.readinessWorkoutTitle, { color: colors.text }]}>
+                            {readinessPlan.workout.title}
+                        </Text>
+                        <Text style={[styles.readinessWorkoutText, { color: colors.textSecondary }]}>
+                            {readinessPlan.workout.guidance}
+                        </Text>
+                    </View>
+                </View>
                 <View style={styles.quickActions}>
                     <TouchableOpacity style={[styles.quickAction, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/workout/warmup')}>
                         <Ionicons name="flame" size={20} color={colors.primary} />
@@ -2442,6 +2488,40 @@ const styles = StyleSheet.create({
     ctaContainer: {
         paddingHorizontal: Spacing.lg,
         marginBottom: Spacing.lg,
+    },
+    readinessWorkoutCard: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: Spacing.md,
+        borderWidth: 1,
+        borderRadius: BorderRadius.lg,
+        padding: Spacing.md,
+        marginTop: Spacing.md,
+    },
+    readinessWorkoutIcon: {
+        width: 42,
+        height: 42,
+        borderRadius: BorderRadius.full,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    readinessWorkoutCopy: {
+        flex: 1,
+    },
+    readinessWorkoutEyebrow: {
+        fontSize: FontSize.xs,
+        fontWeight: FontWeight.heavy,
+        textTransform: 'uppercase',
+        marginBottom: 2,
+    },
+    readinessWorkoutTitle: {
+        fontSize: FontSize.md,
+        fontWeight: FontWeight.bold,
+    },
+    readinessWorkoutText: {
+        fontSize: FontSize.sm,
+        lineHeight: 19,
+        marginTop: 3,
     },
     tabs: {
         flexDirection: 'row',

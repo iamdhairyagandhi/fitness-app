@@ -7,8 +7,10 @@ import { createEmptyNutritionDay } from '@/lib/nutritionSummary';
 import { seedSevenDayTestData } from '@/lib/seedWeekTestData';
 import {
     DEFAULT_NOTIFICATION_PREFERENCES,
+    DEFAULT_NOTIFICATION_TIMING,
     NotificationPreferenceKey,
     NotificationPreferences,
+    NotificationTimingSettings,
     clearBodyPilotNotifications,
     getNotificationState,
     scheduleBodyPilotNotifications,
@@ -53,15 +55,17 @@ export default function SettingsScreen() {
     const [units, setUnits] = useState<UnitSystem>(user?.unit_system || 'metric');
     const [restTimer, setRestTimer] = useState(user?.preferred_rest_seconds || 90);
     const [notifications, setNotifications] = useState<NotificationPreferences>(DEFAULT_NOTIFICATION_PREFERENCES);
+    const [notificationTiming, setNotificationTiming] = useState<NotificationTimingSettings>(DEFAULT_NOTIFICATION_TIMING);
     const [notificationStatus, setNotificationStatus] = useState<string>('unknown');
     const [notificationBusy, setNotificationBusy] = useState(false);
     const [seedBusy, setSeedBusy] = useState(false);
 
-    const syncNotifications = async (next: NotificationPreferences) => {
+    const syncNotifications = async (next: NotificationPreferences, timing = notificationTiming) => {
         setNotificationBusy(true);
         try {
-            const state = await scheduleBodyPilotNotifications(next);
+            const state = await scheduleBodyPilotNotifications(next, timing);
             setNotifications(state.preferences);
+            setNotificationTiming(state.timing);
             setNotificationStatus(state.permissionStatus);
             if (state.permissionStatus === 'granted') {
                 toast.success('Notifications updated', 'BodyPilot reminders are scheduled.');
@@ -84,6 +88,11 @@ export default function SettingsScreen() {
         syncNotifications(next);
     };
 
+    const updateNotificationTiming = (next: NotificationTimingSettings) => {
+        setNotificationTiming(next);
+        syncNotifications(notifications, next);
+    };
+
     useEffect(() => {
         setUnits(user?.unit_system || 'metric');
         setRestTimer(user?.preferred_rest_seconds || 90);
@@ -93,6 +102,7 @@ export default function SettingsScreen() {
         getNotificationState()
             .then((state) => {
                 setNotifications(state.preferences);
+                setNotificationTiming(state.timing);
                 setNotificationStatus(state.permissionStatus);
             })
             .catch(() => { });
@@ -241,6 +251,20 @@ export default function SettingsScreen() {
             </View>
         </View>
     );
+
+    const notificationItems: { key: NotificationPreferenceKey; label: string; description: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+        { key: 'workoutReminder', label: 'Workout reminder', description: 'One nudge near your normal training time.', icon: 'barbell-outline' },
+        { key: 'recoveryReminder', label: 'Recovery check-in', description: 'Morning sleep, soreness, stress, and energy log.', icon: 'moon-outline' },
+        { key: 'mealReminder', label: 'Meal logging reminders', description: 'Breakfast, lunch, and dinner logging prompts.', icon: 'restaurant-outline' },
+        { key: 'waterReminder', label: 'Hydration nudges', description: 'Three daytime checks, never overnight.', icon: 'water-outline' },
+        { key: 'weeklyReport', label: 'Weekly report', description: 'A weekly training, nutrition, and recovery recap.', icon: 'analytics-outline' },
+        { key: 'achievements', label: 'Achievement alerts', description: 'Reserved for meaningful streaks and wins.', icon: 'trophy-outline' },
+        { key: 'socialActivity', label: 'Social activity', description: 'Challenge and friend activity when social features are active.', icon: 'people-outline' },
+    ];
+
+    const workoutWindow = `${notificationTiming.workoutHour}:${notificationTiming.workoutMinute}`;
+    const recoveryWindow = `${notificationTiming.recoveryHour}:${notificationTiming.recoveryMinute}`;
+    const quietWindow = `${notificationTiming.quietStartHour}-${notificationTiming.quietEndHour}`;
 
     return (
         <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
@@ -391,16 +415,64 @@ export default function SettingsScreen() {
                             <Text style={[styles.testButtonText, { color: colors.primary }]}>Test</Text>
                         </TouchableOpacity>
                     </View>
-                    {[
-                        { key: 'workoutReminder' as const, label: 'Workout Reminders', icon: '🏋️' },
-                        { key: 'mealReminder' as const, label: 'Meal Logging Reminders', icon: '🍽️' },
-                        { key: 'waterReminder' as const, label: 'Water Reminders', icon: '💧' },
-                        { key: 'weeklyReport' as const, label: 'Weekly Report', icon: '📊' },
-                        { key: 'achievements' as const, label: 'Achievement Alerts', icon: '🏆' },
-                        { key: 'socialActivity' as const, label: 'Social Activity', icon: '👥' },
-                    ].map((item, idx) => (
+                    <View style={[styles.notificationTimingPanel, { borderColor: colors.border, backgroundColor: colors.background }]}>
+                        <Text style={[styles.notificationTitle, { color: colors.text }]}>Coach timing</Text>
+                        <Text style={[styles.notificationSubtitle, { color: colors.textTertiary }]}>
+                            BodyPilot keeps defaults light and moves reminders out of quiet hours.
+                        </Text>
+                        <OptionRow
+                            icon="barbell-outline"
+                            label="Workout window"
+                            value={workoutWindow}
+                            options={[
+                                { label: 'Morning', value: '7:30' },
+                                { label: 'Lunch', value: '12:30' },
+                                { label: 'Evening', value: '18:30' },
+                            ]}
+                            onSelect={(value: string) => {
+                                const [hour, minute] = value.split(':').map(Number);
+                                updateNotificationTiming({ ...notificationTiming, workoutHour: hour, workoutMinute: minute });
+                            }}
+                        />
+                        <OptionRow
+                            icon="moon-outline"
+                            label="Recovery check-in"
+                            value={recoveryWindow}
+                            options={[
+                                { label: '7 AM', value: '7:0' },
+                                { label: '8 AM', value: '8:0' },
+                                { label: '9 AM', value: '9:0' },
+                            ]}
+                            onSelect={(value: string) => {
+                                const [hour, minute] = value.split(':').map(Number);
+                                updateNotificationTiming({ ...notificationTiming, recoveryHour: hour, recoveryMinute: minute });
+                            }}
+                        />
+                        <OptionRow
+                            icon="notifications-off-outline"
+                            label="Quiet hours"
+                            value={quietWindow}
+                            options={[
+                                { label: '9 PM-8 AM', value: '21-8' },
+                                { label: '10 PM-7 AM', value: '22-7' },
+                                { label: 'Off', value: '0-0' },
+                            ]}
+                            onSelect={(value: string) => {
+                                const [quietStartHour, quietEndHour] = value.split('-').map(Number);
+                                updateNotificationTiming({ ...notificationTiming, quietStartHour, quietEndHour });
+                            }}
+                        />
+                    </View>
+
+                    {notificationItems.map((item, idx) => (
                         <View key={item.key} style={[styles.notifRow, idx > 0 && styles.notifRowBorder, idx > 0 && { borderTopColor: colors.border }]}>
-                            <Text style={[styles.notifLabel, { color: colors.text }]}>{item.icon} {item.label}</Text>
+                            <View style={styles.notifCopy}>
+                                <View style={styles.notifLabelRow}>
+                                    <Ionicons name={item.icon} size={18} color={colors.textSecondary} />
+                                    <Text style={[styles.notifLabel, { color: colors.text }]}>{item.label}</Text>
+                                </View>
+                                <Text style={[styles.notifDescription, { color: colors.textTertiary }]}>{item.description}</Text>
+                            </View>
                             <Toggle value={notifications[item.key]} onPress={() => toggleNotif(item.key)} />
                         </View>
                     ))}
@@ -647,12 +719,16 @@ const styles = StyleSheet.create({
     toggleDot: { width: 22, height: 22, borderRadius: 11, backgroundColor: Colors.text },
     toggleDotActive: { alignSelf: 'flex-end' },
 
-    notifRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: Spacing.md },
+    notifRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: Spacing.md, paddingVertical: Spacing.md },
     notifRowBorder: { borderTopWidth: 1, borderTopColor: Colors.border },
-    notifLabel: { color: Colors.text, fontSize: FontSize.sm },
+    notifCopy: { flex: 1 },
+    notifLabelRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+    notifLabel: { color: Colors.text, fontSize: FontSize.sm, fontWeight: FontWeight.bold },
+    notifDescription: { color: Colors.textTertiary, fontSize: FontSize.xs, lineHeight: 17, marginTop: 3 },
     notificationHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingBottom: Spacing.md },
     notificationTitle: { color: Colors.text, fontSize: FontSize.md, fontWeight: FontWeight.bold },
-    notificationSubtitle: { color: Colors.textTertiary, fontSize: FontSize.xs, marginTop: 2, textTransform: 'capitalize' },
+    notificationSubtitle: { color: Colors.textTertiary, fontSize: FontSize.xs, marginTop: 2 },
+    notificationTimingPanel: { borderWidth: 1, borderRadius: BorderRadius.md, padding: Spacing.md, marginBottom: Spacing.sm },
     testButton: { borderWidth: 1, borderRadius: BorderRadius.full, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm },
     testButtonText: { color: Colors.primary, fontSize: FontSize.sm, fontWeight: FontWeight.bold },
     clearNotificationsButton: { borderTopWidth: 1, borderTopColor: Colors.border, paddingTop: Spacing.md, marginTop: Spacing.xs },

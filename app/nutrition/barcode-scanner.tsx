@@ -9,6 +9,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
 import {
     ActivityIndicator,
+    KeyboardAvoidingView,
     Platform,
     ScrollView,
     StyleSheet,
@@ -22,7 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export default function BarcodeScannerScreen() {
     const insets = useSafeAreaInsets();
     const params = useLocalSearchParams<{ meal?: string }>();
-    const mealType = (params.meal as MealType) || 'snack';
+    const initialMealType = (params.meal as MealType) || 'snack';
     const { logFood } = useNutritionStore();
 
     const [permission, requestPermission] = useCameraPermissions();
@@ -30,6 +31,17 @@ export default function BarcodeScannerScreen() {
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<FoodItem | null>(null);
     const [manualCode, setManualCode] = useState('');
+    const [selectedMeal, setSelectedMeal] = useState<MealType>(initialMealType);
+    const [servings, setServings] = useState('1');
+
+    const parsedServings = Math.max(0, parseFloat(servings) || 0);
+
+    const mealOptions: { value: MealType; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+        { value: 'breakfast', label: 'Breakfast', icon: 'sunny-outline' },
+        { value: 'lunch', label: 'Lunch', icon: 'restaurant-outline' },
+        { value: 'dinner', label: 'Dinner', icon: 'moon-outline' },
+        { value: 'snack', label: 'Snack', icon: 'cafe-outline' },
+    ];
 
     const handleBarCodeScanned = async (barcode: string) => {
         if (scanned || loading) return;
@@ -54,15 +66,23 @@ export default function BarcodeScannerScreen() {
 
     const handleLogFood = () => {
         if (!result) return;
-        logFood(result, 1, mealType);
-        toast.success('Logged!', `${result.name} added to ${mealType}`);
+        if (parsedServings <= 0) {
+            toast.error('Invalid servings', 'Enter a valid serving amount.');
+            return;
+        }
+
+        logFood(result, parsedServings, selectedMeal);
+        toast.success('Logged!', `${result.name} added to ${selectedMeal}`);
         router.back();
     };
 
     // If we have a result, show it
     if (result) {
         return (
-            <View style={[styles.container, { paddingTop: insets.top }]}>
+            <KeyboardAvoidingView
+                style={[styles.container, { paddingTop: insets.top }]}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            >
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => { setResult(null); setScanned(false); }}>
                         <Ionicons name="arrow-back" size={24} color={Colors.text} />
@@ -84,32 +104,79 @@ export default function BarcodeScannerScreen() {
 
                     <View style={styles.macroGrid}>
                         <View style={[styles.macroBox, { borderColor: Colors.calories }]}>
-                            <Text style={[styles.macroValue, { color: Colors.calories }]}>{result.calories}</Text>
+                            <Text style={[styles.macroValue, { color: Colors.calories }]}>{Math.round(result.calories * parsedServings)}</Text>
                             <Text style={styles.macroLabel}>kcal</Text>
                         </View>
                         <View style={[styles.macroBox, { borderColor: Colors.protein }]}>
-                            <Text style={[styles.macroValue, { color: Colors.protein }]}>{result.protein_g}g</Text>
+                            <Text style={[styles.macroValue, { color: Colors.protein }]}>{(result.protein_g * parsedServings).toFixed(1)}g</Text>
                             <Text style={styles.macroLabel}>Protein</Text>
                         </View>
                         <View style={[styles.macroBox, { borderColor: Colors.carbs }]}>
-                            <Text style={[styles.macroValue, { color: Colors.carbs }]}>{result.carbs_g}g</Text>
+                            <Text style={[styles.macroValue, { color: Colors.carbs }]}>{(result.carbs_g * parsedServings).toFixed(1)}g</Text>
                             <Text style={styles.macroLabel}>Carbs</Text>
                         </View>
                         <View style={[styles.macroBox, { borderColor: Colors.fat }]}>
-                            <Text style={[styles.macroValue, { color: Colors.fat }]}>{result.fat_g}g</Text>
+                            <Text style={[styles.macroValue, { color: Colors.fat }]}>{(result.fat_g * parsedServings).toFixed(1)}g</Text>
                             <Text style={styles.macroLabel}>Fat</Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.sectionBlock}>
+                        <Text style={styles.sectionLabel}>Meal</Text>
+                        <View style={styles.mealGrid}>
+                            {mealOptions.map((meal) => {
+                                const active = selectedMeal === meal.value;
+                                return (
+                                    <TouchableOpacity
+                                        key={meal.value}
+                                        style={[styles.mealChip, active && styles.mealChipActive]}
+                                        onPress={() => setSelectedMeal(meal.value)}
+                                    >
+                                        <Ionicons name={meal.icon} size={16} color={active ? Colors.textInverse : Colors.textSecondary} />
+                                        <Text style={[styles.mealChipText, active && styles.mealChipTextActive]}>{meal.label}</Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+                    </View>
+
+                    <View style={styles.sectionBlock}>
+                        <Text style={styles.sectionLabel}>Servings</Text>
+                        <View style={styles.servingsRow}>
+                            <TouchableOpacity
+                                style={styles.servingStepButton}
+                                onPress={() => setServings(String(Math.max(0.25, parsedServings - 0.25)))}
+                            >
+                                <Ionicons name="remove" size={18} color={Colors.text} />
+                            </TouchableOpacity>
+                            <TextInput
+                                style={styles.servingsInput}
+                                value={servings}
+                                onChangeText={setServings}
+                                keyboardType="decimal-pad"
+                                textAlign="center"
+                            />
+                            <TouchableOpacity
+                                style={styles.servingStepButton}
+                                onPress={() => setServings(String((parsedServings || 0) + 0.25))}
+                            >
+                                <Ionicons name="add" size={18} color={Colors.text} />
+                            </TouchableOpacity>
+                            <Text style={styles.servingsUnit}>
+                                x {result.serving_size_g}{result.serving_unit === 'g' ? 'g' : ` ${result.serving_unit}`}
+                            </Text>
                         </View>
                     </View>
 
                     <TouchableOpacity style={styles.logButton} onPress={handleLogFood}>
                         <Ionicons name="add-circle" size={22} color="#fff" />
-                        <Text style={styles.logButtonText}>Log to {mealType}</Text>
+                        <Text style={styles.logButtonText}>Log to {selectedMeal}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.scanAgainBtn} onPress={() => { setResult(null); setScanned(false); }}>
                         <Text style={styles.scanAgainText}>Scan Another</Text>
                     </TouchableOpacity>
                 </ScrollView>
-            </View>
+            </KeyboardAvoidingView>
         );
     }
 
@@ -290,7 +357,7 @@ const styles = StyleSheet.create({
     resultBrand: { color: Colors.textSecondary, fontSize: FontSize.md, marginTop: Spacing.xs },
     resultServing: { color: Colors.textTertiary, fontSize: FontSize.sm, marginTop: Spacing.xs, marginBottom: Spacing.xl },
     macroGrid: {
-        flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md, marginBottom: Spacing.xxl,
+        flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md, marginBottom: Spacing.xl,
     },
     macroBox: {
         width: '46%', backgroundColor: Colors.surface, borderRadius: BorderRadius.lg,
@@ -298,6 +365,78 @@ const styles = StyleSheet.create({
     },
     macroValue: { fontSize: FontSize.xxl, fontWeight: FontWeight.bold },
     macroLabel: { color: Colors.textTertiary, fontSize: FontSize.sm, marginTop: Spacing.xs },
+    sectionBlock: {
+        width: '100%',
+        marginBottom: Spacing.xl,
+    },
+    sectionLabel: {
+        color: Colors.textSecondary,
+        fontSize: FontSize.sm,
+        fontWeight: FontWeight.bold,
+        marginBottom: Spacing.sm,
+    },
+    mealGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: Spacing.sm,
+    },
+    mealChip: {
+        width: '48%',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: Spacing.xs,
+        backgroundColor: Colors.surface,
+        borderColor: Colors.border,
+        borderWidth: 1,
+        borderRadius: BorderRadius.md,
+        paddingVertical: Spacing.md,
+    },
+    mealChipActive: {
+        backgroundColor: Colors.primary,
+        borderColor: Colors.primary,
+    },
+    mealChipText: {
+        color: Colors.textSecondary,
+        fontSize: FontSize.sm,
+        fontWeight: FontWeight.bold,
+    },
+    mealChipTextActive: {
+        color: Colors.textInverse,
+    },
+    servingsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.sm,
+        width: '100%',
+    },
+    servingStepButton: {
+        width: 42,
+        height: 42,
+        borderRadius: BorderRadius.full,
+        backgroundColor: Colors.surface,
+        borderColor: Colors.border,
+        borderWidth: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    servingsInput: {
+        width: 72,
+        height: 44,
+        backgroundColor: Colors.surface,
+        borderColor: Colors.border,
+        borderWidth: 1,
+        borderRadius: BorderRadius.md,
+        color: Colors.text,
+        fontSize: FontSize.md,
+        fontWeight: FontWeight.bold,
+    },
+    servingsUnit: {
+        flex: 1,
+        color: Colors.textTertiary,
+        fontSize: FontSize.sm,
+        fontWeight: FontWeight.medium,
+    },
     logButton: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm,
         backgroundColor: Colors.primary, borderRadius: BorderRadius.md,

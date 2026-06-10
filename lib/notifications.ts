@@ -13,6 +13,7 @@ try {
 
 export type NotificationPreferenceKey =
     | 'workoutReminder'
+    | 'recoveryReminder'
     | 'mealReminder'
     | 'waterReminder'
     | 'weeklyReport'
@@ -21,10 +22,32 @@ export type NotificationPreferenceKey =
 
 export type NotificationPreferences = Record<NotificationPreferenceKey, boolean>;
 
+export type NotificationTimingSettings = {
+    workoutHour: number;
+    workoutMinute: number;
+    recoveryHour: number;
+    recoveryMinute: number;
+    weeklyWeekday: number;
+    weeklyHour: number;
+    weeklyMinute: number;
+    quietStartHour: number;
+    quietEndHour: number;
+};
+
 export type NotificationState = {
     preferences: NotificationPreferences;
+    timing: NotificationTimingSettings;
     permissionStatus: string;
-    scheduledIds: Partial<Record<NotificationPreferenceKey | 'lunchReminder' | 'dinnerReminder', string>>;
+    scheduledIds: Partial<Record<
+        NotificationPreferenceKey
+        | 'breakfastReminder'
+        | 'lunchReminder'
+        | 'dinnerReminder'
+        | 'waterMorning'
+        | 'waterAfternoon'
+        | 'waterEvening',
+        string
+    >>;
 };
 
 const STORAGE_KEY = '@bodypilot_notification_settings';
@@ -32,11 +55,24 @@ const CHANNEL_ID = 'bodypilot-reminders';
 
 export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
     workoutReminder: true,
-    mealReminder: true,
+    recoveryReminder: true,
+    mealReminder: false,
     waterReminder: false,
     weeklyReport: true,
     achievements: true,
     socialActivity: false,
+};
+
+export const DEFAULT_NOTIFICATION_TIMING: NotificationTimingSettings = {
+    workoutHour: 18,
+    workoutMinute: 30,
+    recoveryHour: 8,
+    recoveryMinute: 0,
+    weeklyWeekday: 1,
+    weeklyHour: 10,
+    weeklyMinute: 0,
+    quietStartHour: 21,
+    quietEndHour: 8,
 };
 
 Notifications?.setNotificationHandler({
@@ -66,6 +102,7 @@ export async function getNotificationState(): Promise<NotificationState> {
     if (!stored) {
         return {
             preferences: DEFAULT_NOTIFICATION_PREFERENCES,
+            timing: DEFAULT_NOTIFICATION_TIMING,
             permissionStatus: permissions?.status ?? 'unknown',
             scheduledIds: {},
         };
@@ -75,12 +112,14 @@ export async function getNotificationState(): Promise<NotificationState> {
         const parsed = JSON.parse(stored) as Partial<NotificationState>;
         return {
             preferences: { ...DEFAULT_NOTIFICATION_PREFERENCES, ...parsed.preferences },
+            timing: { ...DEFAULT_NOTIFICATION_TIMING, ...parsed.timing },
             permissionStatus: permissions?.status ?? parsed.permissionStatus ?? 'unknown',
             scheduledIds: parsed.scheduledIds ?? {},
         };
     } catch {
         return {
             preferences: DEFAULT_NOTIFICATION_PREFERENCES,
+            timing: DEFAULT_NOTIFICATION_TIMING,
             permissionStatus: permissions?.status ?? 'unknown',
             scheduledIds: {},
         };
@@ -171,36 +210,65 @@ async function scheduleWeekly(
     });
 }
 
-export async function scheduleBodyPilotNotifications(preferences: NotificationPreferences) {
+function isQuietHour(hour: number, timing: NotificationTimingSettings) {
+    const { quietStartHour, quietEndHour } = timing;
+    if (quietStartHour === quietEndHour) return false;
+    if (quietStartHour < quietEndHour) return hour >= quietStartHour && hour < quietEndHour;
+    return hour >= quietStartHour || hour < quietEndHour;
+}
+
+function quietSafeTime(hour: number, minute: number, timing: NotificationTimingSettings) {
+    if (!isQuietHour(hour, timing)) return { hour, minute };
+    return { hour: timing.quietEndHour, minute: 0 };
+}
+
+export async function scheduleBodyPilotNotifications(
+    preferences: NotificationPreferences,
+    timingOverride?: Partial<NotificationTimingSettings>,
+) {
     const current = await getNotificationState();
     await cancelIds(current.scheduledIds);
+    const timing = { ...current.timing, ...timingOverride };
 
     const permissions = await requestNotificationPermissions();
     const scheduledIds: NotificationState['scheduledIds'] = {};
     if (!permissions.granted || !Notifications) {
-        const nextState = { preferences, permissionStatus: permissions.status, scheduledIds };
+        const nextState = { preferences, timing, permissionStatus: permissions.status, scheduledIds };
         await saveNotificationState(nextState);
         return nextState;
     }
 
     if (preferences.workoutReminder) {
+        const workoutTime = quietSafeTime(timing.workoutHour, timing.workoutMinute, timing);
         scheduledIds.workoutReminder = await scheduleDaily(
             'workoutReminder',
-            18,
-            30,
+            workoutTime.hour,
+            workoutTime.minute,
             'Ready to train?',
-            'Open BodyPilot and start today’s workout plan.',
+            'Open BodyPilot when you are ready and start today’s workout plan.',
             '/(tabs)/workout'
         );
     }
 
+    if (preferences.recoveryReminder) {
+        const recoveryTime = quietSafeTime(timing.recoveryHour, timing.recoveryMinute, timing);
+        scheduledIds.recoveryReminder = await scheduleDaily(
+            'recoveryReminder',
+            recoveryTime.hour,
+            recoveryTime.minute,
+            'Recovery check-in',
+            'Log sleep, soreness, stress, and energy so today’s plan can adapt.',
+            '/recovery'
+        );
+    }
+
     if (preferences.mealReminder) {
-        scheduledIds.mealReminder = await scheduleDaily(
-            'mealReminder',
+        scheduledIds.breakfastReminder = await scheduleDaily(
+            'breakfastReminder',
             8,
             30,
-            'Log breakfast',
-            'Keep your macros accurate with a quick breakfast log.',
+            'Breakfast check-in',
+            'Log breakfast if you want today’s macros to stay accurate.',
             '/(tabs)/nutrition'
         );
         scheduledIds.lunchReminder = await scheduleDaily(
@@ -215,43 +283,52 @@ export async function scheduleBodyPilotNotifications(preferences: NotificationPr
             'dinnerReminder',
             19,
             30,
-            'Dinner wrap-up',
-            'Finish today’s food log and see your macro picture.',
+            'Close your food log',
+            'Add dinner or ask Orbit to clean up anything you missed.',
             '/(tabs)/nutrition'
         );
     }
 
     if (preferences.waterReminder) {
-        scheduledIds.waterReminder = await Notifications.scheduleNotificationAsync({
-            identifier: 'waterReminder',
-            content: {
-                title: 'Hydration check',
-                body: 'Add a glass of water and keep the streak moving.',
-                sound: true,
-                data: { route: '/(tabs)/nutrition', kind: 'waterReminder' },
-            },
-            trigger: {
-                type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-                seconds: 3 * 60 * 60,
-                repeats: true,
-                channelId: CHANNEL_ID,
-            },
-        });
+        scheduledIds.waterMorning = await scheduleDaily(
+            'waterMorning',
+            10,
+            30,
+            'Hydration check',
+            'Add a glass of water if you have been running dry.',
+            '/(tabs)/nutrition'
+        );
+        scheduledIds.waterAfternoon = await scheduleDaily(
+            'waterAfternoon',
+            14,
+            30,
+            'Water nudge',
+            'Quick water log now keeps the day from getting away from you.',
+            '/(tabs)/nutrition'
+        );
+        scheduledIds.waterEvening = await scheduleDaily(
+            'waterEvening',
+            17,
+            30,
+            'Last hydration check',
+            'Top off before evening so reminders stay out of your quiet hours.',
+            '/(tabs)/nutrition'
+        );
     }
 
     if (preferences.weeklyReport) {
         scheduledIds.weeklyReport = await scheduleWeekly(
             'weeklyReport',
-            1,
-            10,
-            0,
+            timing.weeklyWeekday,
+            timing.weeklyHour,
+            timing.weeklyMinute,
             'Your weekly BodyPilot report is ready',
             'Review training, nutrition, weight, and recovery trends.',
             '/weekly-report'
         );
     }
 
-    const nextState = { preferences, permissionStatus: permissions.status, scheduledIds };
+    const nextState = { preferences, timing, permissionStatus: permissions.status, scheduledIds };
     await saveNotificationState(nextState);
     return nextState;
 }
