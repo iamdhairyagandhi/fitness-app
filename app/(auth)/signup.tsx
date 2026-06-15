@@ -28,7 +28,7 @@ export default function SignUpScreen() {
     const { setSession, setUser, setOnboarded } = useAuthStore();
 
     const finishSocialSignIn = async (session: Session) => {
-        setSession({ access_token: session.access_token });
+        setSession({ access_token: session.access_token, email: session.user.email });
         const profile = await fetchProfile(session.user.id);
 
         if (profile) {
@@ -78,7 +78,7 @@ export default function SignUpScreen() {
         }
 
         if (data.session) {
-            setSession({ access_token: data.session.access_token });
+            setSession({ access_token: data.session.access_token, email: data.session.user.email });
             router.replace('/onboarding' as any);
         } else {
             const msg = 'Check your email for a confirmation link. It will bring you back to BodyPilot automatically.';

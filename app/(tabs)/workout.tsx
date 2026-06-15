@@ -101,6 +101,7 @@ type AiTrainingEnvironment = 'full_gym' | 'home' | 'dumbbells' | 'bodyweight';
 
 const WORKOUT_CATEGORIES: ('All' | WorkoutCategory | 'Mine')[] = [
     'All',
+    'Mine',
     'Popular',
     'Split Workouts',
     'Full-body',
@@ -110,7 +111,6 @@ const WORKOUT_CATEGORIES: ('All' | WorkoutCategory | 'Mine')[] = [
     'HIIT',
     'Glutes & Core',
     'Mobility',
-    'Mine',
 ];
 
 const BUILDER_MUSCLE_FILTERS = ['All', 'Chest', 'Back', 'Shoulders', 'Arms', 'Legs', 'Core', 'Glutes'] as const;
@@ -843,59 +843,60 @@ export default function WorkoutScreen() {
 
             {/* Start Workout CTA */}
             <View style={styles.ctaContainer}>
-                <Button
-                    title="🏋️  Start Empty Workout"
-                    onPress={() => router.push('/workout/active')}
-                    size="lg"
-                />
-                <TouchableOpacity
-                    style={[styles.aiWorkoutButton, { backgroundColor: colors.surface, borderColor: colors.primary + '3D' }]}
-                    onPress={openAiWorkout}
-                    activeOpacity={0.84}
-                >
-                    <View style={[styles.aiWorkoutIcon, { backgroundColor: colors.primary + '18' }]}>
-                        <Ionicons name="sparkles" size={20} color={colors.primary} />
+                <Card style={styles.workoutFocusCard}>
+                    <View style={styles.workoutFocusHeader}>
+                        <View style={[styles.readinessWorkoutIcon, { backgroundColor: colors.primary + '18' }]}>
+                            <Ionicons name="pulse" size={20} color={colors.primary} />
+                        </View>
+                        <View style={styles.readinessWorkoutCopy}>
+                            <Text style={[styles.readinessWorkoutEyebrow, { color: colors.primary }]}>
+                                {readinessPlan.title} · {readinessPlan.score}/100
+                            </Text>
+                            <Text style={[styles.readinessWorkoutTitle, { color: colors.text }]}>
+                                {readinessPlan.workout.title}
+                            </Text>
+                            <Text style={[styles.readinessWorkoutText, { color: colors.textSecondary }]}>
+                                {readinessPlan.workout.guidance}
+                            </Text>
+                        </View>
                     </View>
-                    <View style={styles.aiWorkoutCopy}>
-                        <Text style={[styles.aiWorkoutTitle, { color: colors.text }]}>Create workout with AI</Text>
-                        <Text style={[styles.aiWorkoutText, { color: colors.textSecondary }]}>
-                            Pick muscles, time, intensity, warm-up, and training style.
-                        </Text>
+
+                    <View style={styles.workoutPrimaryActions}>
+                        <TouchableOpacity
+                            style={[styles.workoutPrimaryButton, { backgroundColor: colors.primary }]}
+                            onPress={() => router.push('/workout/active')}
+                            activeOpacity={0.86}
+                        >
+                            <Ionicons name="play" size={18} color={colors.textInverse} />
+                            <Text style={[styles.workoutPrimaryText, { color: colors.textInverse }]}>Start</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.workoutSecondaryButton, { borderColor: colors.primary + '3D', backgroundColor: colors.primary + '12' }]}
+                            onPress={openAiWorkout}
+                            activeOpacity={0.86}
+                        >
+                            <Ionicons name="sparkles" size={18} color={colors.primary} />
+                            <Text style={[styles.workoutSecondaryText, { color: colors.primary }]}>AI Build</Text>
+                        </TouchableOpacity>
                     </View>
-                    <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
-                </TouchableOpacity>
-                <View style={[styles.readinessWorkoutCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                    <View style={[styles.readinessWorkoutIcon, { backgroundColor: colors.primary + '18' }]}>
-                        <Ionicons name="pulse" size={20} color={colors.primary} />
-                    </View>
-                    <View style={styles.readinessWorkoutCopy}>
-                        <Text style={[styles.readinessWorkoutEyebrow, { color: colors.primary }]}>
-                            {readinessPlan.title} · {readinessPlan.score}/100
-                        </Text>
-                        <Text style={[styles.readinessWorkoutTitle, { color: colors.text }]}>
-                            {readinessPlan.workout.title}
-                        </Text>
-                        <Text style={[styles.readinessWorkoutText, { color: colors.textSecondary }]}>
-                            {readinessPlan.workout.guidance}
-                        </Text>
-                    </View>
-                </View>
-                <View style={styles.quickActions}>
-                    <TouchableOpacity style={[styles.quickAction, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/workout/warmup')}>
-                        <Ionicons name="flame" size={20} color={colors.primary} />
-                        <Text style={[styles.quickActionText, { color: colors.textSecondary }]}>Warm-Up</Text>
+                </Card>
+
+                <View style={styles.workoutToolGrid}>
+                    <TouchableOpacity style={[styles.workoutToolTile, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/workout/warmup')}>
+                        <Ionicons name="flame" size={18} color={colors.primary} />
+                        <Text style={[styles.workoutToolText, { color: colors.textSecondary }]}>Warm-Up</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={[styles.quickAction, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/workout/cardio')}>
-                        <Ionicons name="fitness" size={20} color="#EF4444" />
-                        <Text style={[styles.quickActionText, { color: colors.textSecondary }]}>Cardio</Text>
+                    <TouchableOpacity style={[styles.workoutToolTile, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/workout/cardio')}>
+                        <Ionicons name="fitness" size={18} color="#EF4444" />
+                        <Text style={[styles.workoutToolText, { color: colors.textSecondary }]}>Cardio</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={[styles.quickAction, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/workout/insights')}>
-                        <Ionicons name="analytics" size={20} color="#8B5CF6" />
-                        <Text style={[styles.quickActionText, { color: colors.textSecondary }]}>Insights</Text>
+                    <TouchableOpacity style={[styles.workoutToolTile, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/workout/insights')}>
+                        <Ionicons name="analytics" size={18} color="#8B5CF6" />
+                        <Text style={[styles.workoutToolText, { color: colors.textSecondary }]}>Insights</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={[styles.quickAction, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/workout/strength-standards')}>
-                        <Ionicons name="trophy" size={20} color="#10B981" />
-                        <Text style={[styles.quickActionText, { color: colors.textSecondary }]}>Standards</Text>
+                    <TouchableOpacity style={[styles.workoutToolTile, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/workout/strength-standards')}>
+                        <Ionicons name="trophy" size={18} color="#10B981" />
+                        <Text style={[styles.workoutToolText, { color: colors.textSecondary }]}>Standards</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -969,7 +970,7 @@ export default function WorkoutScreen() {
                                             selectedWorkoutCategory === category && { color: colors.textInverse },
                                         ]}
                                     >
-                                        {category}
+                                        {category === 'Mine' ? 'My Workouts' : category}
                                     </Text>
                                 </TouchableOpacity>
                             ))}
@@ -2488,6 +2489,66 @@ const styles = StyleSheet.create({
     ctaContainer: {
         paddingHorizontal: Spacing.lg,
         marginBottom: Spacing.lg,
+    },
+    workoutFocusCard: {
+        marginBottom: Spacing.sm,
+    },
+    workoutFocusHeader: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: Spacing.md,
+    },
+    workoutPrimaryActions: {
+        flexDirection: 'row',
+        gap: Spacing.sm,
+        marginTop: Spacing.md,
+    },
+    workoutPrimaryButton: {
+        flex: 1,
+        minHeight: 48,
+        borderRadius: BorderRadius.md,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: Spacing.xs,
+    },
+    workoutSecondaryButton: {
+        flex: 1,
+        minHeight: 48,
+        borderRadius: BorderRadius.md,
+        borderWidth: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: Spacing.xs,
+    },
+    workoutPrimaryText: {
+        fontSize: FontSize.md,
+        fontWeight: FontWeight.bold,
+    },
+    workoutSecondaryText: {
+        fontSize: FontSize.md,
+        fontWeight: FontWeight.bold,
+    },
+    workoutToolGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: Spacing.sm,
+    },
+    workoutToolTile: {
+        flexBasis: '47%',
+        flexGrow: 1,
+        minHeight: 44,
+        borderRadius: BorderRadius.md,
+        borderWidth: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: Spacing.xs,
+    },
+    workoutToolText: {
+        fontSize: FontSize.sm,
+        fontWeight: FontWeight.semibold,
     },
     readinessWorkoutCard: {
         flexDirection: 'row',

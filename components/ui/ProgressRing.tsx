@@ -12,6 +12,7 @@ interface ProgressRingProps {
     bgColor?: string;
     label?: string;
     value?: string;
+    valueColor?: string;
     sublabel?: string;
 }
 
@@ -23,6 +24,7 @@ export function ProgressRing({
     bgColor = Colors.border,
     label,
     value,
+    valueColor,
     sublabel,
 }: ProgressRingProps) {
     const { colors } = useTheme();
@@ -56,7 +58,7 @@ export function ProgressRing({
                 />
             </Svg>
             <View style={styles.labelContainer}>
-                {value && <Text style={[styles.value, { fontSize: size > 80 ? FontSize.xl : FontSize.md, color: colors.text }]}>{value}</Text>}
+                {value && <Text style={[styles.value, { fontSize: size > 80 ? FontSize.xl : FontSize.md, color: valueColor || colors.text }]}>{value}</Text>}
                 {label && <Text style={[styles.label, { fontSize: size > 80 ? FontSize.xs : 9, color: colors.textSecondary }]}>{label}</Text>}
                 {sublabel && <Text style={[styles.sublabel, { fontSize: 9, color: colors.textTertiary }]}>{sublabel}</Text>}
             </View>

@@ -5,15 +5,20 @@ import type { UserProfile } from '@/types';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+export type AuthSession = {
+    access_token: string;
+    email?: string | null;
+};
+
 interface AuthState {
     user: UserProfile | null;
-    session: { access_token: string } | null;
+    session: AuthSession | null;
     isLoading: boolean;
     isOnboarded: boolean;
     isAdmin: boolean;
     setUser: (user: UserProfile | null) => void;
     updateUser: (updates: Partial<UserProfile>) => void;
-    setSession: (session: { access_token: string } | null) => void;
+    setSession: (session: AuthSession | null) => void;
     setLoading: (loading: boolean) => void;
     setOnboarded: (onboarded: boolean) => void;
     setAdmin: (isAdmin: boolean) => void;

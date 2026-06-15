@@ -4,6 +4,7 @@ import { WATER_SERVING_ML } from '@/constants/config';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { generateDailyInsight } from '@/lib/aiEngine';
+import { getLocalDateKey } from '@/lib/date';
 import { requirePremium } from '@/lib/premium';
 import { buildReadinessPlan } from '@/lib/readinessEngine';
 import { displayWeightFromKg, formatNumber, formatVolume, getGreeting, getPercentage } from '@/lib/utils';
@@ -28,6 +29,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+    AppState,
     Modal,
     RefreshControl,
     ScrollView,
@@ -154,10 +156,31 @@ export default function HomeScreen() {
     const [aiInsight, setAiInsight] = useState<{ text: string; type: string } | null>(null);
     const [refreshing, setRefreshing] = useState(false);
     const [customizeOpen, setCustomizeOpen] = useState(false);
+    const [morningCheckInPrompted, setMorningCheckInPrompted] = useState(false);
 
     useEffect(() => {
         ensureToday();
     }, [ensureToday]);
+
+    useEffect(() => {
+        const maybeOpenMorningCheckIn = () => {
+            const now = new Date();
+            const hour = now.getHours();
+            const todayKey = getLocalDateKey(now);
+            const hasTodayRecovery = todayRecovery?.date === todayKey || recoveryLogs.some((log) => log.date === todayKey);
+            if (!user?.id || hasTodayRecovery || morningCheckInPrompted || hour < 4 || hour >= 12) return;
+
+            setMorningCheckInPrompted(true);
+            setTimeout(() => router.push('/recovery?required=1'), 350);
+        };
+
+        maybeOpenMorningCheckIn();
+        const subscription = AppState.addEventListener('change', (state) => {
+            if (state === 'active') maybeOpenMorningCheckIn();
+        });
+
+        return () => subscription.remove();
+    }, [morningCheckInPrompted, recoveryLogs, todayRecovery?.date, user?.id]);
 
     const goal = (user?.goal ?? 'maintain') as FitnessGoal;
     const isCompact = density === 'compact';
@@ -280,6 +303,13 @@ export default function HomeScreen() {
                 if (requirePremium('ai_quick_log')) router.push('/nutrition/nlp-food-log');
             },
         },
+        recovery: {
+            label: 'Recovery',
+            description: 'Sleep and readiness.',
+            icon: 'moon',
+            color: colors.recovery,
+            onPress: () => router.push('/recovery'),
+        },
         logWater: {
             label: 'Water',
             description: `Add ${WATER_SERVING_ML}ml.`,
@@ -316,6 +346,7 @@ export default function HomeScreen() {
         colors.calories,
         colors.primary,
         colors.protein,
+        colors.recovery,
         colors.secondary,
         handleStartWorkout,
         isWorkoutActive,

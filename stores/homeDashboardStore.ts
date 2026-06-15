@@ -15,6 +15,7 @@ export type HomeWidgetId =
 export type HomeQuickActionId =
     | 'startWorkout'
     | 'pilotLog'
+    | 'recovery'
     | 'logWater'
     | 'logFood'
     | 'coach'
@@ -50,6 +51,7 @@ export const ALL_HOME_WIDGETS: HomeWidgetId[] = [
 export const ALL_HOME_QUICK_ACTIONS: HomeQuickActionId[] = [
     'startWorkout',
     'pilotLog',
+    'recovery',
     'logWater',
     'logFood',
     'coach',
@@ -57,13 +59,13 @@ export const ALL_HOME_QUICK_ACTIONS: HomeQuickActionId[] = [
 ];
 
 const DEFAULT_QUICK_ACTIONS: Record<FitnessGoal | 'default', HomeQuickActionId[]> = {
-    lose_fat: ['pilotLog', 'logWater', 'startWorkout', 'progress'],
-    maintain: ['startWorkout', 'pilotLog', 'logWater', 'coach'],
-    build_muscle: ['startWorkout', 'pilotLog', 'logFood', 'progress'],
-    recomp: ['startWorkout', 'pilotLog', 'logWater', 'progress'],
-    strength: ['startWorkout', 'progress', 'logFood', 'coach'],
-    endurance: ['startWorkout', 'logWater', 'pilotLog', 'progress'],
-    default: ['startWorkout', 'pilotLog', 'logWater', 'progress'],
+    lose_fat: ['pilotLog', 'recovery', 'logWater', 'startWorkout'],
+    maintain: ['startWorkout', 'recovery', 'pilotLog', 'logWater'],
+    build_muscle: ['startWorkout', 'recovery', 'pilotLog', 'logFood'],
+    recomp: ['startWorkout', 'recovery', 'pilotLog', 'logWater'],
+    strength: ['startWorkout', 'recovery', 'progress', 'logFood'],
+    endurance: ['startWorkout', 'recovery', 'logWater', 'pilotLog'],
+    default: ['startWorkout', 'recovery', 'pilotLog', 'logWater'],
 };
 
 const DEFAULT_WIDGET_ORDER: Record<FitnessGoal | 'default', HomeWidgetId[]> = {

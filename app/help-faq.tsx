@@ -31,7 +31,7 @@ const FAQ_ITEMS = [
     },
     {
         question: 'Why are some features marked Premium?',
-        answer: 'Premium tools are included in this release. Future subscription options will be managed through the App Store if they are offered.',
+        answer: 'Premium tools require an active subscription. Eligible promo codes can be entered on the Premium screen.',
     },
 ];
 

@@ -1,8 +1,9 @@
 import { Button, Card, toast } from '@/components/ui';
 import {
     PREMIUM_FEATURE_COPY,
+    PREMIUM_FREE_CODE,
     PREMIUM_PLANS,
-    PREMIUM_TEST_ACCESS_DAYS,
+    PREMIUM_PROMO_CODE,
     PremiumFeature,
     STOREKIT_IAP_ENABLED,
 } from '@/constants/subscription';
@@ -12,7 +13,7 @@ import { useSubscriptionStore, type PremiumPlan } from '@/stores/subscriptionSto
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import React from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const HERO_FEATURES: PremiumFeature[] = [
@@ -28,23 +29,47 @@ export default function PremiumScreen() {
     const insets = useSafeAreaInsets();
     const { colors } = useTheme();
     const params = useLocalSearchParams<{ feature?: PremiumFeature }>();
-    const { isPremium, status, plan, trialEndsAt, startTrial } = useSubscriptionStore();
-    const [selectedPlan, setSelectedPlan] = React.useState<PremiumPlan>('yearly');
+    const { isPremium, status, plan, trialEndsAt, activeUntil, activatePremium, activatePromoSubscription } = useSubscriptionStore();
+    const [selectedPlan, setSelectedPlan] = React.useState<PremiumPlan>('quarterly');
+    const [promoCode, setPromoCode] = React.useState('');
     const requestedFeature = params.feature && PREMIUM_FEATURE_COPY[params.feature]
         ? PREMIUM_FEATURE_COPY[params.feature]
         : null;
+    const normalizedPromoCode = promoCode.trim().toUpperCase();
+    const freeCodeApplied = normalizedPromoCode === PREMIUM_FREE_CODE;
+    const promoApplied = selectedPlan === 'quarterly' && normalizedPromoCode === PREMIUM_PROMO_CODE;
+    const selectedPlanCopy = PREMIUM_PLANS[selectedPlan];
 
-    const handleStartTrial = () => {
-        if (!STOREKIT_IAP_ENABLED) {
-            toast.info('Included', 'Premium tools are available in this version.');
+    const handleSubscribe = () => {
+        if (normalizedPromoCode && normalizedPromoCode !== PREMIUM_PROMO_CODE && normalizedPromoCode !== PREMIUM_FREE_CODE) {
+            toast.error('Invalid code', 'That promo code is not active.');
+            return;
+        }
+
+        if (freeCodeApplied) {
+            activatePremium('yearly');
+            toast.success('Premium active', 'Free Premium access has been activated.');
             router.back();
             return;
         }
 
-        startTrial(selectedPlan);
+        if (normalizedPromoCode === PREMIUM_PROMO_CODE && selectedPlan !== 'quarterly') {
+            toast.info('3-month offer', 'This promo applies to the 3-month plan.');
+            setSelectedPlan('quarterly');
+            return;
+        }
+
+        if (promoApplied) {
+            activatePromoSubscription('quarterly', 3);
+        } else {
+            activatePremium(selectedPlan);
+        }
+
         toast.success(
-            'Premium unlocked',
-            `Your ${PREMIUM_TEST_ACCESS_DAYS}-day BodyPilot Premium trial is active.`
+            'Subscription active',
+            promoApplied
+                ? 'Promo applied. Your 3-month Premium subscription is active for $1.99.'
+                : `${selectedPlanCopy.label} Premium subscription started.`
         );
         router.back();
     };
@@ -64,14 +89,12 @@ export default function PremiumScreen() {
                     <Ionicons name="sparkles" size={34} color={colors.primary} />
                 </View>
                 <Text style={[styles.title, { color: colors.text }]}>
-                    {STOREKIT_IAP_ENABLED ? 'Unlock AI-powered coaching' : 'Premium tools included'}
+                    Unlock AI-powered coaching
                 </Text>
                 <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
                     {requestedFeature
                         ? `${requestedFeature.title} is included with Premium.`
-                        : STOREKIT_IAP_ENABLED
-                            ? 'Turn manual tracking into personalized recommendations, automation, and deeper insights.'
-                            : 'AI coaching, meal tools, analytics, and advanced tracking are available in this version.'}
+                        : 'Turn manual tracking into personalized recommendations, automation, and deeper insights.'}
                 </Text>
 
                 {isPremium() ? (
@@ -85,6 +108,8 @@ export default function PremiumScreen() {
                                 <Text style={[styles.activeCopy, { color: colors.textSecondary }]}>
                                     {status === 'trialing' && trialEndsAt
                                         ? `Access ends ${new Date(trialEndsAt).toLocaleDateString()}`
+                                        : activeUntil
+                                            ? `Access active until ${new Date(activeUntil).toLocaleDateString()}`
                                         : `${plan ? PREMIUM_PLANS[plan].label : 'Premium'} plan enabled`}
                                 </Text>
                             </View>
@@ -92,11 +117,11 @@ export default function PremiumScreen() {
                     </Card>
                 ) : null}
 
-                {STOREKIT_IAP_ENABLED ? (
-                    <View style={styles.planRow}>
-                        {(['yearly', 'monthly'] as PremiumPlan[]).map((item) => {
+                <View style={styles.planRow}>
+                        {(['monthly', 'quarterly', 'yearly'] as PremiumPlan[]).map((item) => {
                             const planCopy = PREMIUM_PLANS[item];
                             const selected = selectedPlan === item;
+                            const showPromoPrice = item === 'quarterly' && promoApplied;
                             return (
                                 <TouchableOpacity
                                     key={item}
@@ -114,26 +139,46 @@ export default function PremiumScreen() {
                                         </View>
                                     ) : null}
                                     <Text style={[styles.planLabel, { color: colors.text }]}>{planCopy.label}</Text>
-                                    <Text style={[styles.planPrice, { color: colors.text }]}>{planCopy.price}</Text>
+                                    {showPromoPrice ? (
+                                        <Text style={[styles.planOriginalPrice, { color: colors.textTertiary }]}>{planCopy.price}</Text>
+                                    ) : null}
+                                    <Text style={[styles.planPrice, { color: showPromoPrice ? colors.primary : colors.text }]}>
+                                        {showPromoPrice && 'promoPrice' in planCopy ? planCopy.promoPrice : planCopy.price}
+                                    </Text>
                                     <Text style={[styles.planCadence, { color: colors.textTertiary }]}>/{planCopy.cadence}</Text>
                                     <Text style={[styles.planTrial, { color: colors.primary }]}>{planCopy.trialLabel}</Text>
                                     {planCopy.savings ? <Text style={[styles.planSavings, { color: colors.textSecondary }]}>{planCopy.savings}</Text> : null}
                                 </TouchableOpacity>
                             );
                         })}
+                </View>
+
+                <Card style={styles.promoCard}>
+                    <View style={styles.promoHeader}>
+                        <Ionicons name="ticket-outline" size={20} color={colors.primary} />
+                        <Text style={[styles.promoTitle, { color: colors.text }]}>Promo code</Text>
                     </View>
-                ) : (
-                    <Card style={styles.testingCard}>
-                        <Text style={[styles.testingTitle, { color: colors.text }]}>Available now</Text>
-                        <Text style={[styles.testingCopy, { color: colors.textSecondary }]}>
-                            Premium tools are included in this release. No App Store purchase is required.
-                        </Text>
-                    </Card>
-                )}
+                    <TextInput
+                        value={promoCode}
+                        onChangeText={setPromoCode}
+                        placeholder="Enter code"
+                        placeholderTextColor={colors.textTertiary}
+                        autoCapitalize="characters"
+                        autoCorrect={false}
+                        style={[styles.promoInput, { color: colors.text, backgroundColor: colors.surfaceLight, borderColor: freeCodeApplied || promoApplied ? colors.primary : colors.border }]}
+                    />
+                    <Text style={[styles.promoHint, { color: freeCodeApplied || promoApplied ? colors.primary : colors.textTertiary }]}>
+                        {freeCodeApplied
+                            ? 'Free Premium code applied.'
+                            : promoApplied
+                                ? 'Promo applied: 3 months for $1.99.'
+                                : 'Promo codes apply to eligible plans only.'}
+                    </Text>
+                </Card>
 
                 <Button
-                    title={isPremium() || !STOREKIT_IAP_ENABLED ? 'Continue' : `Start ${PREMIUM_TEST_ACCESS_DAYS}-Day Free Trial`}
-                    onPress={isPremium() ? () => router.back() : handleStartTrial}
+                    title={isPremium() ? 'Continue' : freeCodeApplied ? 'Activate Free Premium' : promoApplied ? 'Start 3 Months for $1.99' : `Start ${selectedPlanCopy.label} Subscription`}
+                    onPress={isPremium() ? () => router.back() : handleSubscribe}
                     size="lg"
                 />
                 {STOREKIT_IAP_ENABLED ? (
@@ -163,9 +208,7 @@ export default function PremiumScreen() {
                 </View>
 
                 <Text style={[styles.footnote, { color: colors.textTertiary }]}>
-                    {STOREKIT_IAP_ENABLED
-                        ? 'Subscriptions are managed through your App Store account.'
-                        : 'Subscriptions are not offered in this version.'}
+                    Subscriptions are managed through your App Store account. Promo pricing applies to the 3-month plan only.
                 </Text>
             </ScrollView>
         </View>
@@ -222,19 +265,15 @@ const styles = StyleSheet.create({
     },
     activeTitle: { fontSize: FontSize.md, fontWeight: FontWeight.bold },
     activeCopy: { fontSize: FontSize.sm, marginTop: 2 },
-    testingCard: { width: '100%', marginTop: Spacing.lg, marginBottom: Spacing.lg },
-    testingTitle: { fontSize: FontSize.md, fontWeight: FontWeight.bold },
-    testingCopy: { fontSize: FontSize.sm, lineHeight: 20, marginTop: Spacing.sm },
     planRow: {
-        flexDirection: 'row',
+        flexDirection: 'column',
         gap: Spacing.md,
         width: '100%',
         marginTop: Spacing.lg,
         marginBottom: Spacing.lg,
     },
     planCard: {
-        flex: 1,
-        minHeight: 168,
+        minHeight: 132,
         borderRadius: BorderRadius.lg,
         borderWidth: 1.5,
         padding: Spacing.lg,
@@ -254,10 +293,24 @@ const styles = StyleSheet.create({
         textTransform: 'uppercase',
     },
     planLabel: { fontSize: FontSize.md, fontWeight: FontWeight.bold },
+    planOriginalPrice: { fontSize: FontSize.sm, textDecorationLine: 'line-through', marginTop: Spacing.sm },
     planPrice: { fontSize: FontSize.xxl, fontWeight: FontWeight.heavy, marginTop: Spacing.sm },
     planCadence: { fontSize: FontSize.sm },
     planTrial: { fontSize: FontSize.xs, fontWeight: FontWeight.bold, marginTop: Spacing.md },
     planSavings: { fontSize: FontSize.xs, marginTop: 3 },
+    promoCard: { width: '100%', marginBottom: Spacing.lg },
+    promoHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.md },
+    promoTitle: { fontSize: FontSize.md, fontWeight: FontWeight.bold },
+    promoInput: {
+        minHeight: 46,
+        borderRadius: BorderRadius.md,
+        borderWidth: 1,
+        paddingHorizontal: Spacing.md,
+        fontSize: FontSize.md,
+        fontWeight: FontWeight.semibold,
+        letterSpacing: 0,
+    },
+    promoHint: { fontSize: FontSize.xs, lineHeight: 17, marginTop: Spacing.sm },
     restoreButton: { paddingVertical: Spacing.md },
     restoreText: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
     featureList: {
