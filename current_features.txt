@@ -32,7 +32,7 @@ the primary entry point or library file.
 | Superset / Circuit / EMOM / AMRAP | ✅ | `WorkoutMode` + `SupersetGroup` modeled and handled in `workoutStore` / `app/workout/active.tsx` |
 | Deload Detection | ✅ | `detectDeload` in `lib/workoutIntelligence.ts` shown in workout insights |
 | 1RM Predictor & Strength Standards | ✅ | Epley + Brzycki; `app/workout/strength-standards.tsx` |
-| Workout Voice Control | ❌ | Voice exists for food logging only |
+| Workout Voice Control | ✅ | Orbit Voice can start/finish workouts via the `log_workout_start` / `log_workout_complete` tools |
 | Gym Equipment Scanner | ❌ | |
 | Warm-Up & Cool-Down Generator | ✅ | `app/workout/warmup.tsx` + `generateWarmUp`/`generateCoolDown` |
 | Training Split Optimizer | ✅ | `analyzeTrainingSplit` surfaced in workout insights |
@@ -190,7 +190,7 @@ the primary entry point or library file.
 | Premium Subscription Tier | ✅ | `app/premium.tsx` + `subscriptionStore` (StoreKit IAP wiring is a flag pending product setup) |
 | iOS Widgets | ✅ | 5 widgets (macros, activity, streak, hydration, Lock Screen streak) — see `docs/ios-widgets.md` |
 | Offline Mode | ⚠️ | Offline banner via NetInfo + AsyncStorage persistence; no queue-and-replay sync |
-| Voice Assistant | ⚠️ | Voice input for Orbit Log food logging only (`expo-speech-recognition`) |
+| Voice Assistant | ✅ | Orbit Voice: full-duplex realtime voice agent via OpenAI Realtime API + WebRTC (`app/orbit/voice.tsx`, `lib/orbit/realtime.ts`). Logs water/food/workouts/recovery, queries today's stats, navigates app via tool calls. Barge-in, server VAD, streaming TTS. |
 | Desktop Web App | ⚠️ | Works via `expo start --web`, not production-targeted |
 | Apple Watch Companion | ❌ | |
 | Accessibility (screen reader) | ❌ | Only a handful of `accessibilityRole` / `accessibilityLabel` props across the app |

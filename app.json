@@ -37,7 +37,7 @@
         "NSHealthShareUsageDescription": "BodyPilot reads Apple Health data such as steps, workouts, active energy, heart rate, and body weight to personalize fitness, nutrition, and recovery insights.",
         "NSHealthUpdateUsageDescription": "BodyPilot can write workouts, body weight, and nutrition updates to Apple Health when you choose to sync them.",
         "NSLocationWhenInUseUsageDescription": "BodyPilot uses your location during cardio sessions to calculate distance, pace, and route data.",
-        "NSMicrophoneUsageDescription": "BodyPilot uses the microphone only when you choose to speak food logs into Pilot Log.",
+        "NSMicrophoneUsageDescription": "BodyPilot uses the microphone for Orbit Voice and for transcribing food logs you choose to dictate.",
         "NSPhotoLibraryUsageDescription": "BodyPilot uses your photo library only when you choose an existing meal, receipt, profile, or progress photo.",
         "NSPhotoLibraryAddUsageDescription": "BodyPilot saves exported reports and progress images only when you choose to share them.",
         "NSSpeechRecognitionUsageDescription": "BodyPilot uses speech recognition only when you choose verbal food logging so it can transcribe meals for your review before saving."
@@ -66,7 +66,7 @@
       [
         "expo-speech-recognition",
         {
-          "microphonePermission": "Allow BodyPilot to use the microphone when you choose verbal food logging.",
+          "microphonePermission": "BodyPilot uses the microphone for Orbit Voice and for transcribing food logs you choose to dictate.",
           "speechRecognitionPermission": "Allow BodyPilot to transcribe spoken food logs for review before saving.",
           "androidSpeechServicePackages": [
             "com.google.android.googlequicksearchbox"
@@ -92,6 +92,7 @@
           }
         }
       ],
+      "@config-plugins/react-native-webrtc",
       "@bacons/apple-targets"
     ],
     "web": {

@@ -687,10 +687,11 @@ export default function NLPFoodLogScreen() {
                     <Text style={[styles.headerSubtitle, { color: colors.textTertiary }]}>Your logging robot</Text>
                 </View>
                 <TouchableOpacity
-                    style={[styles.headerButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                    onPress={() => router.back()}
+                    style={[styles.headerButton, { backgroundColor: colors.primary + '18', borderColor: colors.primary + '55' }]}
+                    onPress={() => router.push('/orbit/voice' as never)}
+                    accessibilityLabel="Open Orbit Voice"
                 >
-                    <Text style={[styles.doneText, { color: colors.primary }]}>Done</Text>
+                    <Ionicons name="radio" size={20} color={colors.primary} />
                 </TouchableOpacity>
             </View>
 

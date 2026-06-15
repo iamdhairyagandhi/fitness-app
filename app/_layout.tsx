@@ -6,6 +6,7 @@ import { hydrateAllStores } from '@/lib/db';
 import { getLocalDateKey } from '@/lib/date';
 import { buildNutritionSummary } from '@/lib/nutritionSummary';
 import { addNotificationRoutingListener } from '@/lib/notifications';
+import { setStoresHydrated, useStoresHydrated } from '@/lib/storesHydrated';
 import { supabase } from '@/lib/supabase';
 import { clearWidgetSnapshot, useWidgetSync } from '@/lib/widgetSync';
 import { useAppleHealthStore } from '@/stores/appleHealthStore';
@@ -18,7 +19,7 @@ import { useWorkoutStore } from '@/stores/workoutStore';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { Component, useCallback, useEffect, useState } from 'react';
+import React, { Component, useCallback, useEffect } from 'react';
 import { ActivityIndicator, AppState, StyleSheet, Text, View } from 'react-native';
 
 // Error boundary to catch runtime crashes
@@ -50,7 +51,7 @@ const queryClient = new QueryClient({
 
 function RootLayoutContent() {
     const { isLoading, setSession, setLoading, setUser, setOnboarded } = useAuthStore();
-    const [storesHydrated, setStoresHydrated] = useState(false);
+    const storesHydrated = useStoresHydrated();
 
     useWidgetSync(storesHydrated);
 
@@ -238,6 +239,13 @@ function RootLayoutContent() {
                     name="chat"
                     options={{
                         presentation: 'modal',
+                        animation: 'slide_from_bottom',
+                    }}
+                />
+                <Stack.Screen
+                    name="orbit/voice"
+                    options={{
+                        presentation: 'fullScreenModal',
                         animation: 'slide_from_bottom',
                     }}
                 />
