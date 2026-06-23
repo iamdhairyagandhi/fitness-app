@@ -12,7 +12,6 @@ import {
     type WeightTrendInsight,
 } from '@/lib/nutritionAnalytics';
 import { requirePremium } from '@/lib/premium';
-import { buildReadinessPlan } from '@/lib/readinessEngine';
 import AsyncStorage from '@/lib/storage';
 import { displayWeightFromKg, formatNumber, getPercentage, getWeightUnit } from '@/lib/utils';
 import { useAppleHealthStore } from '@/stores/appleHealthStore';
@@ -20,8 +19,6 @@ import { useAuthStore } from '@/stores/authStore';
 import { DIET_TEMPLATES, useMealPlanStore } from '@/stores/mealPlanStore';
 import { useNutritionStore } from '@/stores/nutritionStore';
 import { useProgressStore } from '@/stores/progressStore';
-import { useRecoveryStore } from '@/stores/recoveryStore';
-import { useWorkoutStore } from '@/stores/workoutStore';
 import type { DietPhase, DietTemplate, FoodLogEntry, MealType } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -36,6 +33,7 @@ import {
     StyleSheet,
     Text,
     TouchableOpacity,
+    useWindowDimensions,
     View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -58,6 +56,7 @@ type MealDropZone = {
 
 export default function NutritionScreen() {
     const insets = useSafeAreaInsets();
+    const { width: windowWidth } = useWindowDimensions();
     const { colors } = useTheme();
     const user = useAuthStore((s) => s.user);
     const { todaySummary, nutritionHistory, logFood, logWater, recentFoods, removeLogEntry, moveLogEntry, ensureToday } = useNutritionStore();
@@ -65,9 +64,6 @@ export default function NutritionScreen() {
     const syncAppleHealth = useAppleHealthStore((s) => s.sync);
     const { dietProfile, setDietProfile } = useMealPlanStore();
     const weightEntries = useProgressStore((s) => s.weightEntries);
-    const recoveryLogs = useRecoveryStore((s) => s.recoveryLogs);
-    const todayRecovery = useRecoveryStore((s) => s.todayRecovery);
-    const recentWorkouts = useWorkoutStore((s) => s.recentWorkouts);
     const [showDietSetup, setShowDietSetup] = React.useState(false);
     const [setupTemplate, setSetupTemplate] = React.useState<DietTemplate>(
         dietProfile.template === 'custom' ? 'standard' : dietProfile.template
@@ -92,6 +88,41 @@ export default function NutritionScreen() {
     }, [ensureToday, syncAppleHealth]);
 
     React.useEffect(() => {
+        if (!__DEV__ || !user?.id || todaySummary.total_calories > 0) return;
+
+        const seedKey = `bodypilot-calorie-test-meals-${todaySummary.date}`;
+        const timer = setTimeout(async () => {
+            const alreadySeeded = await AsyncStorage.getItem(seedKey).catch(() => null);
+            const latestSummary = useNutritionStore.getState().todaySummary;
+            if (alreadySeeded || latestSummary.total_calories > 0) return;
+
+            const testMeals = [
+                {
+                    meal: 'breakfast' as MealType,
+                    food: { id: '10000000-0000-4000-8000-000000000201', name: 'Protein oats', brand: 'BodyPilot Test', barcode: null, serving_size_g: 320, serving_unit: 'bowl', calories: 430, protein_g: 34, carbs_g: 52, fat_g: 10, fiber_g: 8, sugar_g: 11, sodium_mg: 180, is_custom: true, user_id: user.id, image_url: null },
+                },
+                {
+                    meal: 'lunch' as MealType,
+                    food: { id: '10000000-0000-4000-8000-000000000202', name: 'Chicken rice bowl', brand: 'BodyPilot Test', barcode: null, serving_size_g: 460, serving_unit: 'bowl', calories: 620, protein_g: 51, carbs_g: 71, fat_g: 13, fiber_g: 6, sugar_g: 5, sodium_mg: 720, is_custom: true, user_id: user.id, image_url: null },
+                },
+                {
+                    meal: 'snack' as MealType,
+                    food: { id: '10000000-0000-4000-8000-000000000203', name: 'Protein smoothie', brand: 'BodyPilot Test', barcode: null, serving_size_g: 450, serving_unit: 'shake', calories: 360, protein_g: 42, carbs_g: 34, fat_g: 6, fiber_g: 4, sugar_g: 20, sodium_mg: 190, is_custom: true, user_id: user.id, image_url: null },
+                },
+                {
+                    meal: 'dinner' as MealType,
+                    food: { id: '10000000-0000-4000-8000-000000000204', name: 'Salmon sweet potato plate', brand: 'BodyPilot Test', barcode: null, serving_size_g: 430, serving_unit: 'plate', calories: 690, protein_g: 46, carbs_g: 58, fat_g: 28, fiber_g: 9, sugar_g: 8, sodium_mg: 520, is_custom: true, user_id: user.id, image_url: null },
+                },
+            ];
+
+            testMeals.forEach(({ food, meal }) => logFood(food, 1, meal, { notes: 'Calorie tracker test meal' }));
+            await AsyncStorage.setItem(seedKey, 'true').catch(() => null);
+        }, 1600);
+
+        return () => clearTimeout(timer);
+    }, [logFood, todaySummary.date, todaySummary.total_calories, user?.id]);
+
+    React.useEffect(() => {
         let mounted = true;
         AsyncStorage.getItem('bodypilot-nutrition-diet-setup-complete')
             .then((value) => {
@@ -110,10 +141,15 @@ export default function NutritionScreen() {
     const carbsTarget = user?.carbs_target_g || 220;
     const fatTarget = user?.fat_target_g || 73;
     const waterTarget = user?.water_goal_ml || 2500;
+    const chartSlideWidth = Math.max(280, windowWidth - Spacing.lg * 2);
+    const chartSnapInterval = chartSlideWidth + Spacing.md;
 
     const activeEnergyKcal = healthSnapshot.status === 'authorized' ? healthSnapshot.activeEnergyKcal : 0;
     const netCalories = Math.max(todaySummary.total_calories - activeEnergyKcal, 0);
-    const caloriesRemaining = Math.max(calorieTarget - netCalories, 0);
+    const calorieDelta = calorieTarget - netCalories;
+    const isOverCalories = calorieDelta < 0;
+    const caloriesRemaining = Math.max(calorieDelta, 0);
+    const caloriesOver = Math.max(-calorieDelta, 0);
     const calPct = getPercentage(netCalories, calorieTarget);
     const macroTotal = Math.max(
         todaySummary.total_protein_g * 4 + todaySummary.total_carbs_g * 4 + todaySummary.total_fat_g * 9,
@@ -148,23 +184,6 @@ export default function NutritionScreen() {
         }),
         [calorieTarget, user?.goal, waterTarget, weekSummaries, weightEntries],
     );
-    const yesterdaySummary = React.useMemo(() => weekSummaries[weekSummaries.length - 2] ?? null, [weekSummaries]);
-    const readinessPlan = React.useMemo(
-        () => buildReadinessPlan({
-            recovery: todayRecovery || recoveryLogs[0] || null,
-            recoveryLogs,
-            recentWorkouts,
-            todaySummary,
-            yesterdaySummary,
-            calorieTarget,
-            proteinTarget,
-            carbsTarget,
-            fatTarget,
-            goal: user?.goal ?? 'maintain',
-        }),
-        [calorieTarget, carbsTarget, fatTarget, proteinTarget, recentWorkouts, recoveryLogs, todayRecovery, todaySummary, user?.goal, yesterdaySummary],
-    );
-
     const handleAddWater = () => {
         logWater(WATER_SERVING_ML);
     };
@@ -253,99 +272,27 @@ export default function NutritionScreen() {
                 {/* Header */}
                 <View style={styles.header}>
                     <Text style={[styles.title, { color: colors.text }]}>Nutrition</Text>
-                    <View style={styles.headerActions}>
-                        <TouchableOpacity
-                            style={[styles.headerButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                            onPress={() => {
-                                if (requirePremium('ai_food_scan')) router.push('/nutrition/ai-scanner');
-                            }}
-                        >
-                            <Ionicons name="camera" size={22} color={colors.text} />
-                        </TouchableOpacity>
-                        <TouchableOpacity style={[styles.headerButton, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/nutrition/barcode-scanner')}>
-                            <Ionicons name="barcode-outline" size={22} color={colors.text} />
-                        </TouchableOpacity>
-                    </View>
                 </View>
-
-                {/* Quick Nav */}
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.quickNav} contentContainerStyle={styles.quickNavContent}>
-                    <TouchableOpacity
-                        style={[styles.quickNavItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                        onPress={() => {
-                            if (requirePremium('ai_quick_log')) router.push('/nutrition/nlp-food-log');
-                        }}
-                    >
-                        <Ionicons name="hardware-chip" size={18} color={colors.primary} />
-                        <Text style={[styles.quickNavText, { color: colors.textSecondary }]}>Orbit</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.quickNavItem, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/nutrition/iifym')}>
-                        <Ionicons name="calculator" size={18} color={colors.secondary} />
-                        <Text style={[styles.quickNavText, { color: colors.textSecondary }]}>IIFYM</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.quickNavItem, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/nutrition/receipt-scanner')}>
-                        <Ionicons name="receipt" size={18} color={Colors.accent} />
-                        <Text style={[styles.quickNavText, { color: colors.textSecondary }]}>Receipt</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.quickNavItem, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/nutrition/meal-photos')}>
-                        <Ionicons name="images" size={18} color={Colors.success} />
-                        <Text style={[styles.quickNavText, { color: colors.textSecondary }]}>Photos</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.quickNavItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                        onPress={() => {
-                            if (requirePremium('advanced_analytics')) router.push('/nutrition/nutrition-insights');
-                        }}
-                    >
-                        <Ionicons name="analytics" size={18} color={Colors.analytics} />
-                        <Text style={[styles.quickNavText, { color: colors.textSecondary }]}>Insights</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.quickNavItem, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/nutrition/recipe-adjuster')}>
-                        <Ionicons name="color-wand" size={18} color={Colors.fat} />
-                        <Text style={[styles.quickNavText, { color: colors.textSecondary }]}>Adjuster</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.quickNavItem, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/nutrition/diet-settings')}>
-                        <Ionicons name="options" size={18} color={colors.primary} />
-                        <Text style={[styles.quickNavText, { color: colors.textSecondary }]}>Diet Plan</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.quickNavItem, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/nutrition/recipes')}>
-                        <Ionicons name="book" size={18} color={Colors.recipes} />
-                        <Text style={[styles.quickNavText, { color: colors.textSecondary }]}>Recipes</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.quickNavItem, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/nutrition/fasting')}>
-                        <Ionicons name="timer" size={18} color={colors.secondary} />
-                        <Text style={[styles.quickNavText, { color: colors.textSecondary }]}>Fasting</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.quickNavItem, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/nutrition/grocery-list')}>
-                        <Ionicons name="cart" size={18} color={Colors.success} />
-                        <Text style={[styles.quickNavText, { color: colors.textSecondary }]}>Grocery</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.quickNavItem, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/nutrition/meal-plan')}>
-                        <Ionicons name="calendar" size={18} color={Colors.warning} />
-                        <Text style={[styles.quickNavText, { color: colors.textSecondary }]}>Meal Plan</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.quickNavItem, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/nutrition/micronutrients')}>
-                        <Ionicons name="flask" size={18} color={Colors.micros} />
-                        <Text style={[styles.quickNavText, { color: colors.textSecondary }]}>Micros</Text>
-                    </TouchableOpacity>
-                </ScrollView>
 
                 <ScrollView
                     horizontal
-                    pagingEnabled
+                    decelerationRate="fast"
+                    snapToAlignment="start"
+                    snapToInterval={chartSnapInterval}
                     showsHorizontalScrollIndicator={false}
                     style={styles.dashboardCarousel}
                     contentContainerStyle={styles.dashboardCarouselContent}
                 >
-                    <Card style={styles.dashboardSlide}>
+                    <Card style={[styles.dashboardSlide, { width: chartSlideWidth }]}>
                         <View style={styles.summaryTop}>
                             <ProgressRing
                                 progress={calPct}
                                 size={110}
                                 strokeWidth={10}
-                                color={colors.calories}
-                                value={formatNumber(caloriesRemaining)}
-                                label="remaining"
+                                color={isOverCalories ? colors.error : colors.calories}
+                                value={formatNumber(isOverCalories ? caloriesOver : caloriesRemaining)}
+                                valueColor={isOverCalories ? colors.error : undefined}
+                                label={isOverCalories ? 'over' : 'remaining'}
                                 sublabel="kcal"
                             />
                             <View style={styles.summaryMacros}>
@@ -358,13 +305,19 @@ export default function NutritionScreen() {
                             </View>
                         </View>
                         <View style={styles.todaySignalRow}>
-                            <TodaySignal label="Logged" value={`${formatNumber(todaySummary.total_calories)}`} caption="food kcal" colors={colors} />
+                            <TodaySignal
+                                label="Logged"
+                                value={`${formatNumber(todaySummary.total_calories)}`}
+                                caption={isOverCalories ? `${formatNumber(caloriesOver)} kcal over` : 'food kcal'}
+                                colors={colors}
+                                tone={isOverCalories ? 'error' : undefined}
+                            />
                             <TodaySignal label="Burned" value={`${formatNumber(activeEnergyKcal)}`} caption="Health kcal" colors={colors} />
                             <TodaySignal label="Protein gap" value={`${Math.max(0, Math.round(proteinTarget - todaySummary.total_protein_g))}g`} caption="left today" colors={colors} />
                         </View>
                     </Card>
 
-                    <Card style={styles.dashboardSlide}>
+                    <Card style={[styles.dashboardSlide, { width: chartSlideWidth }]}>
                         <Text style={[styles.slideTitle, { color: colors.text }]}>Macro Split & Micros</Text>
                         <View style={styles.splitBar}>
                             <View style={[styles.splitSegment, { flex: todaySummary.total_protein_g * 4 || 1, backgroundColor: Colors.protein }]} />
@@ -383,6 +336,7 @@ export default function NutritionScreen() {
                         trend={nutritionTrends.weight}
                         unitSystem={user?.unit_system}
                         colors={colors}
+                        slideWidth={chartSlideWidth}
                     />
 
                     <CalorieTrendSlide
@@ -391,6 +345,7 @@ export default function NutritionScreen() {
                         calorieTarget={calorieTarget}
                         unitSystem={user?.unit_system}
                         colors={colors}
+                        slideWidth={chartSlideWidth}
                     />
 
                     <WaterTrendSlide
@@ -398,26 +353,9 @@ export default function NutritionScreen() {
                         trend={nutritionTrends.water}
                         waterTarget={waterTarget}
                         colors={colors}
+                        slideWidth={chartSlideWidth}
                     />
                 </ScrollView>
-
-                <Card style={styles.readinessNutritionCard}>
-                    <View style={styles.readinessHeader}>
-                        <View style={[styles.readinessIcon, { backgroundColor: colors.recovery + '18' }]}>
-                            <Ionicons name="pulse" size={20} color={colors.recovery} />
-                        </View>
-                        <View style={styles.readinessCopy}>
-                            <Text style={[styles.readinessTitle, { color: colors.text }]}>{readinessPlan.nutrition.title}</Text>
-                            <Text style={[styles.readinessText, { color: colors.textSecondary }]}>{readinessPlan.nutrition.guidance}</Text>
-                        </View>
-                    </View>
-                    <View style={styles.readinessTargets}>
-                        <MetricTile label="Coach kcal" value={`${readinessPlan.nutrition.calorieTarget}`} color={colors.calories} />
-                        <MetricTile label="Protein" value={`${readinessPlan.nutrition.proteinTarget}g`} color={colors.protein} />
-                        <MetricTile label="Carbs" value={`${readinessPlan.nutrition.carbsTarget}g`} color={colors.carbs} />
-                        <MetricTile label="Around training" value={`${readinessPlan.nutrition.periWorkoutCarbsG}g`} color={colors.fat} />
-                    </View>
-                </Card>
 
                 <Card style={styles.logHubCard}>
                     <View style={styles.logHubHeader}>
@@ -454,12 +392,45 @@ export default function NutritionScreen() {
                             <Ionicons name="barcode-outline" size={18} color={colors.primary} />
                             <Text style={[styles.logHubActionText, { color: colors.primary }]}>Barcode</Text>
                         </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.logHubAction, { borderColor: colors.primary + '28', backgroundColor: colors.primary + '14' }]}
+                            onPress={() => {
+                                if (requirePremium('ai_food_scan')) router.push('/nutrition/ai-scanner');
+                            }}
+                        >
+                            <Ionicons name="camera-outline" size={18} color={colors.primary} />
+                            <Text style={[styles.logHubActionText, { color: colors.primary }]}>Photo</Text>
+                        </TouchableOpacity>
                         <TouchableOpacity style={[styles.logHubAction, { borderColor: colors.primary + '28', backgroundColor: colors.primary + '14' }]} onPress={() => router.push('/nutrition/create-food')}>
                             <Ionicons name="create-outline" size={18} color={colors.primary} />
-                            <Text style={[styles.logHubActionText, { color: colors.primary }]}>Custom Food</Text>
+                            <Text style={[styles.logHubActionText, { color: colors.primary }]}>Custom</Text>
                         </TouchableOpacity>
                     </View>
                 </Card>
+
+                <View style={styles.toolGrid}>
+                    <TouchableOpacity style={[styles.toolTile, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/nutrition/iifym')}>
+                        <Ionicons name="calculator" size={18} color={colors.secondary} />
+                        <Text style={[styles.toolTileText, { color: colors.textSecondary }]}>IIFYM</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.toolTile, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/nutrition/meal-plan')}>
+                        <Ionicons name="calendar" size={18} color={Colors.warning} />
+                        <Text style={[styles.toolTileText, { color: colors.textSecondary }]}>Plan</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.toolTile, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => router.push('/nutrition/recipes')}>
+                        <Ionicons name="book" size={18} color={Colors.recipes} />
+                        <Text style={[styles.toolTileText, { color: colors.textSecondary }]}>Recipes</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.toolTile, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                        onPress={() => {
+                            if (requirePremium('advanced_analytics')) router.push('/nutrition/nutrition-insights');
+                        }}
+                    >
+                        <Ionicons name="analytics" size={18} color={Colors.analytics} />
+                        <Text style={[styles.toolTileText, { color: colors.textSecondary }]}>Insights</Text>
+                    </TouchableOpacity>
+                </View>
 
                 {recentFoods.length > 0 && (
                     <View style={styles.recentSection}>
@@ -538,11 +509,11 @@ export default function NutritionScreen() {
                             <View style={styles.mealHeader}>
                                 <View style={styles.mealTitleRow}>
                                     <Text style={styles.mealEmoji}>{MEAL_ICONS[mealType]}</Text>
-                                    <Text style={styles.mealTitle}>
+                                    <Text style={[styles.mealTitle, { color: colors.text }]} numberOfLines={1}>
                                         {mealType.charAt(0).toUpperCase() + mealType.slice(1)}
                                     </Text>
                                 </View>
-                                <Text style={styles.mealCalories}>{mealCalories} kcal</Text>
+                                <Text style={[styles.mealCalories, { color: colors.textSecondary }]}>{mealCalories} kcal</Text>
                             </View>
 
                             {meals.length > 0 ? (
@@ -586,10 +557,9 @@ export default function NutritionScreen() {
                         <Text style={styles.aiTitle}>AI Suggestion</Text>
                     </View>
                     <Text style={styles.aiText}>
-                        You have {formatNumber(caloriesRemaining)} kcal and{' '}
-                        {Math.max(proteinTarget - todaySummary.total_protein_g, 0).toFixed(0)}g protein
-                        remaining. Try grilled chicken breast (165g) with rice (150g) and broccoli (100g) for
-                        a balanced meal hitting your targets.
+                        {isOverCalories
+                            ? `You are ${formatNumber(caloriesOver)} kcal over today. Keep the next choice lean and protein-forward. You still have ${Math.max(proteinTarget - todaySummary.total_protein_g, 0).toFixed(0)}g protein left to target.`
+                            : `You have ${formatNumber(caloriesRemaining)} kcal and ${Math.max(proteinTarget - todaySummary.total_protein_g, 0).toFixed(0)}g protein remaining. Try grilled chicken breast (165g) with rice (150g) and broccoli (100g) for a balanced meal hitting your targets.`}
                     </Text>
                 </Card>
 
@@ -700,12 +670,26 @@ function MetricTile({ label, value, color }: { label: string; value: string; col
     );
 }
 
-function TodaySignal({ label, value, caption, colors }: { label: string; value: string; caption: string; colors: ReturnType<typeof useTheme>['colors'] }) {
+function TodaySignal({
+    label,
+    value,
+    caption,
+    colors,
+    tone,
+}: {
+    label: string;
+    value: string;
+    caption: string;
+    colors: ReturnType<typeof useTheme>['colors'];
+    tone?: 'error';
+}) {
+    const accentColor = tone === 'error' ? colors.error : colors.text;
+
     return (
-        <View style={[styles.todaySignal, { backgroundColor: colors.background, borderColor: colors.border }]}>
-            <Text style={[styles.todaySignalValue, { color: colors.text }]} numberOfLines={1}>{value}</Text>
+        <View style={[styles.todaySignal, { backgroundColor: tone === 'error' ? colors.error + '10' : colors.background, borderColor: tone === 'error' ? colors.error + '45' : colors.border }]}>
+            <Text style={[styles.todaySignalValue, { color: accentColor }]} numberOfLines={1}>{value}</Text>
             <Text style={[styles.todaySignalLabel, { color: colors.textTertiary }]}>{label}</Text>
-            <Text style={[styles.todaySignalCaption, { color: colors.textSecondary }]} numberOfLines={1}>{caption}</Text>
+            <Text style={[styles.todaySignalCaption, { color: tone === 'error' ? colors.error : colors.textSecondary }]} numberOfLines={1}>{caption}</Text>
         </View>
     );
 }
@@ -714,10 +698,12 @@ function WeightTrendSlide({
     trend,
     unitSystem,
     colors,
+    slideWidth,
 }: {
     trend: WeightTrendInsight;
     unitSystem?: 'metric' | 'imperial' | null;
     colors: ReturnType<typeof useTheme>['colors'];
+    slideWidth: number;
 }) {
     const weightUnit = getWeightUnit(unitSystem);
     const points = trend.points;
@@ -728,7 +714,7 @@ function WeightTrendSlide({
     const latest = trend.latestKg !== null ? `${displayWeightFromKg(trend.latestKg, unitSystem).toFixed(1)} ${weightUnit}` : '--';
 
     return (
-        <Card style={{ ...styles.dashboardSlide, ...styles.trendSlide }}>
+        <Card style={[styles.dashboardSlide, styles.trendSlide, { width: slideWidth }]}>
             <View style={styles.trendHeader}>
                 <View style={styles.trendHeaderCopy}>
                     <Text style={[styles.slideTitle, { color: colors.text }]}>Weight Trend</Text>
@@ -785,17 +771,19 @@ function CalorieTrendSlide({
     calorieTarget,
     unitSystem,
     colors,
+    slideWidth,
 }: {
     days: NutritionTrendDay[];
     trend: CalorieTrendInsight;
     calorieTarget: number;
     unitSystem?: 'metric' | 'imperial' | null;
     colors: ReturnType<typeof useTheme>['colors'];
+    slideWidth: number;
 }) {
     const maxRatio = Math.max(1.15, ...days.map((day) => day.calorieRatio), 1);
 
     return (
-        <Card style={{ ...styles.dashboardSlide, ...styles.trendSlide }}>
+        <Card style={[styles.dashboardSlide, styles.trendSlide, { width: slideWidth }]}>
             <View style={styles.trendHeader}>
                 <View style={styles.trendHeaderCopy}>
                     <Text style={[styles.slideTitle, { color: colors.text }]}>Weekly Calories</Text>
@@ -838,14 +826,16 @@ function WaterTrendSlide({
     trend,
     waterTarget,
     colors,
+    slideWidth,
 }: {
     days: NutritionTrendDay[];
     trend: WaterTrendInsight;
     waterTarget: number;
     colors: ReturnType<typeof useTheme>['colors'];
+    slideWidth: number;
 }) {
     return (
-        <Card style={{ ...styles.dashboardSlide, ...styles.trendSlide }}>
+        <Card style={[styles.dashboardSlide, styles.trendSlide, { width: slideWidth }]}>
             <View style={styles.trendHeader}>
                 <View style={styles.trendHeaderCopy}>
                     <Text style={[styles.slideTitle, { color: colors.text }]}>Water Rhythm</Text>
@@ -1002,17 +992,17 @@ function DraggableFoodEntry({
                 <Image source={{ uri: entry.photo_uri }} style={styles.foodPhotoThumb} resizeMode="cover" />
             ) : null}
             <View style={styles.foodInfo}>
-                <Text style={styles.foodName}>{entry.food_item.name}</Text>
-                <Text style={styles.foodMacros}>
+                <Text style={[styles.foodName, { color: colors.text }]} numberOfLines={1}>{entry.food_item.name}</Text>
+                <Text style={[styles.foodMacros, { color: colors.textTertiary }]}>
                     {entry.servings} serving • P: {entry.protein_g}g • C:{' '}
                     {entry.carbs_g}g • F: {entry.fat_g}g
                 </Text>
                 {entry.notes ? (
-                    <Text style={styles.foodNotes} numberOfLines={2}>{entry.notes}</Text>
+                    <Text style={[styles.foodNotes, { color: colors.textSecondary }]} numberOfLines={2}>{entry.notes}</Text>
                 ) : null}
             </View>
             <View style={styles.foodTrailing}>
-                <Text style={styles.foodCalories}>{entry.calories}</Text>
+                <Text style={[styles.foodCalories, { color: colors.textSecondary }]}>{entry.calories}</Text>
                 <View style={styles.foodActions}>
                     <TouchableOpacity style={styles.foodActionButton} onPress={() => onPromptMove(entry)}>
                         <Ionicons name="swap-horizontal-outline" size={17} color={colors.textSecondary} />
@@ -1096,7 +1086,6 @@ const styles = StyleSheet.create({
         gap: Spacing.md,
     },
     dashboardSlide: {
-        width: 330,
         minHeight: 260,
     },
     trendSlide: {
@@ -1424,41 +1413,6 @@ const styles = StyleSheet.create({
         fontSize: FontSize.sm,
         fontWeight: FontWeight.bold,
     },
-    readinessNutritionCard: {
-        marginBottom: Spacing.md,
-        gap: Spacing.md,
-    },
-    readinessHeader: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        gap: Spacing.md,
-    },
-    readinessIcon: {
-        width: 42,
-        height: 42,
-        borderRadius: BorderRadius.full,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    readinessCopy: {
-        flex: 1,
-    },
-    readinessTitle: {
-        color: Colors.text,
-        fontSize: FontSize.md,
-        fontWeight: FontWeight.bold,
-    },
-    readinessText: {
-        color: Colors.textSecondary,
-        fontSize: FontSize.sm,
-        lineHeight: 20,
-        marginTop: 2,
-    },
-    readinessTargets: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: Spacing.sm,
-    },
     logHubCard: {
         marginBottom: Spacing.md,
     },
@@ -1506,10 +1460,12 @@ const styles = StyleSheet.create({
     },
     logHubActions: {
         flexDirection: 'row',
+        flexWrap: 'wrap',
         gap: Spacing.sm,
     },
     logHubAction: {
-        flex: 1,
+        flexBasis: '47%',
+        flexGrow: 1,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
@@ -1524,6 +1480,29 @@ const styles = StyleSheet.create({
         color: Colors.primary,
         fontSize: FontSize.xs,
         fontWeight: FontWeight.bold,
+    },
+    toolGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: Spacing.sm,
+        marginBottom: Spacing.lg,
+    },
+    toolTile: {
+        flexBasis: '47%',
+        flexGrow: 1,
+        minHeight: 46,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: Spacing.xs,
+        borderRadius: BorderRadius.md,
+        borderWidth: 1,
+        backgroundColor: Colors.surface,
+        borderColor: Colors.border,
+    },
+    toolTileText: {
+        fontSize: FontSize.sm,
+        fontWeight: FontWeight.semibold,
     },
     recentSection: {
         marginBottom: Spacing.lg,
@@ -1642,6 +1621,8 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: Spacing.sm,
+        flex: 1,
+        paddingRight: Spacing.sm,
     },
     mealEmoji: {
         fontSize: 20,

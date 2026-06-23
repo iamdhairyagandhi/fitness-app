@@ -10,11 +10,14 @@ export type PremiumFeature =
     | 'unlimited_custom_templates'
     | 'premium_themes';
 
-export const STOREKIT_IAP_ENABLED = false;
-export const PREMIUM_TEST_ACCESS_DAYS = 0;
+export const STOREKIT_IAP_ENABLED = true;
+export const PREMIUM_PROMO_CODE = 'GOALS26';
+export const PREMIUM_FREE_CODE = 'DHAIRYA';
+export const PREMIUM_USER_EMAILS = ['dhairya5402@gmail.com'] as const;
 
 export const PREMIUM_PRODUCT_IDS = {
     monthly: 'bodypilot_premium_monthly',
+    quarterly: 'bodypilot_premium_quarterly',
     yearly: 'bodypilot_premium_yearly',
 } as const;
 
@@ -27,6 +30,16 @@ export const PREMIUM_PLANS = {
         trialLabel: 'Premium plan',
         badge: undefined,
         savings: undefined,
+    },
+    quarterly: {
+        id: PREMIUM_PRODUCT_IDS.quarterly,
+        label: '3 Months',
+        price: '$24.99',
+        promoPrice: '$1.99',
+        cadence: '3 months',
+        trialLabel: 'Promo eligible',
+        badge: 'Promo eligible',
+        savings: '$1.99 with valid code',
     },
     yearly: {
         id: PREMIUM_PRODUCT_IDS.yearly,

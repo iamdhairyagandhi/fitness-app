@@ -91,13 +91,12 @@ function RootLayoutContent() {
             const recoveryStore = useRecoveryStore.getState();
             if (data.recoveryLogs.length > 0) {
                 // Set recovery logs + today's recovery
-                const todayStr = new Date().toISOString().split('T')[0];
+                const todayStr = getLocalDateKey();
                 const todayLog = data.recoveryLogs.find((r) => r.date === todayStr);
-                if (todayLog) {
-                    // Directly set today's recovery without triggering save again
-                    recoveryStore.recoveryLogs = data.recoveryLogs;
-                    recoveryStore.todayRecovery = todayLog;
-                }
+                useRecoveryStore.setState({
+                    recoveryLogs: data.recoveryLogs,
+                    todayRecovery: todayLog ?? null,
+                });
             }
             if (data.unlockedIds.length > 0) {
                 const achievements = recoveryStore.achievements.map((a) =>
@@ -151,7 +150,7 @@ function RootLayoutContent() {
         supabase.auth.getSession().then(({ data: { session } }) => {
             clearTimeout(timeout);
             if (session) {
-                setSession({ access_token: session.access_token });
+                setSession({ access_token: session.access_token, email: session.user.email });
                 // Hydrate stores from Supabase
                 hydrateFromSupabase(session.user.id).finally(() => setLoading(false));
             } else {
@@ -168,7 +167,7 @@ function RootLayoutContent() {
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             (_event, session) => {
                 if (session) {
-                    setSession({ access_token: session.access_token });
+                    setSession({ access_token: session.access_token, email: session.user.email });
                 } else {
                     setSession(null);
                     // Clear shared widget data so widgets switch to signed-out state.
@@ -207,49 +206,57 @@ function RootLayoutContent() {
                         headerShown: false,
                         contentStyle: { backgroundColor: Colors.background },
                         animation: 'slide_from_right',
-                    }}
+                        }}
                 >
-                    <Stack.Screen name="(auth)" options={{ animation: 'fade' }} />
-                    <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
-                    <Stack.Screen
-                        name="workout/active"
-                        options={{
-                            presentation: 'fullScreenModal',
-                            animation: 'slide_from_bottom',
-                        }}
-                    />
-                    <Stack.Screen name="nutrition" />
-                    <Stack.Screen name="progress" />
-                    <Stack.Screen name="social" />
-                    <Stack.Screen name="account-settings" />
-                    <Stack.Screen name="customize-macros" />
-                    <Stack.Screen
-                        name="premium"
-                        options={{
-                            presentation: 'modal',
-                            animation: 'slide_from_bottom',
-                        }}
-                    />
-                    <Stack.Screen name="ai-workout" />
-                    <Stack.Screen name="ai-meal-plan" />
-                    <Stack.Screen name="weekly-report" />
-                    <Stack.Screen
-                        name="chat"
-                        options={{
-                            presentation: 'modal',
-                            animation: 'slide_from_bottom',
-                        }}
-                    />
-                    <Stack.Screen
-                        name="orbit/voice"
-                        options={{
-                            presentation: 'fullScreenModal',
-                            animation: 'slide_from_bottom',
-                        }}
-                    />
-                </Stack>
-            </KeyboardAvoidingView>
-        </>
+                        <Stack.Screen name="(auth)" options={{ animation: 'fade' }} />
+                        <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
+                        <Stack.Screen
+                            name="workout/active"
+                            options={{
+                                presentation: 'fullScreenModal',
+                                animation: 'slide_from_bottom',
+                            }}
+                        />
+                        <Stack.Screen name="nutrition" />
+                        <Stack.Screen name="progress" />
+                        <Stack.Screen name="social" />
+                        <Stack.Screen
+                            name="recovery"
+                            options={{
+                                presentation: 'fullScreenModal',
+                                animation: 'slide_from_bottom',
+                                gestureEnabled: false,
+                            }}
+                        />
+                        <Stack.Screen name="account-settings" />
+                        <Stack.Screen name="customize-macros" />
+                        <Stack.Screen
+                            name="premium"
+                            options={{
+                                presentation: 'modal',
+                                animation: 'slide_from_bottom',
+                            }}
+                        />
+                        <Stack.Screen name="ai-workout" />
+                        <Stack.Screen name="ai-meal-plan" />
+                        <Stack.Screen name="weekly-report" />
+                        <Stack.Screen
+                            name="chat"
+                            options={{
+                                presentation: 'modal',
+                                animation: 'slide_from_bottom',
+                            }}
+                        />
+                        <Stack.Screen
+                            name="orbit/voice"
+                            options={{
+                                presentation: 'fullScreenModal',
+                                animation: 'slide_from_bottom',
+                            }}
+                        />
+                    </Stack>
+                </KeyboardAvoidingView>
+            </>
     );
 }
 

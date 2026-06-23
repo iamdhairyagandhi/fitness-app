@@ -67,7 +67,10 @@ const MEAL_KEYWORDS: Record<MealType, RegExp> = {
     snack: /\b(snack|snacks|late night|dessert)\b/i,
 };
 
-const FOOD_HINT = /\b(ate|eaten|had|meal|breakfast|lunch|dinner|snack|food|calories|protein|carbs|fat|serving|grams|g\b|bowl|plate|sandwich|salad|rice|chicken|egg|eggs|toast|oats|yogurt|yoghurt|banana|apple|berries|protein shake|coffee|milk|bread|pasta|pizza|burger|wrap|taco|soup|steak|fish|salmon|potato|avocado|cereal)\b/i;
+const FOOD_INTENT = /\b(ate|eat|eaten|eating|had|having|consumed|log(?:ged)?|add(?:ed)?|record(?:ed)?|tracked)\b/i;
+const FOOD_CONTEXT = /\b(meal|breakfast|lunch|dinner|snack|food|calories|protein|carbs|fat|serving|portion|dish|plate|bowl)\b/i;
+const PORTION_HINT = /\b(\d+(?:\.\d+)?|a|an|one|two|three|four|five|six|seven|eight|nine|ten|half)\s*(?:and\s+a\s+half|and\s+half)?\s*(cups?|bowls?|plates?|pieces?|slices?|servings?|grams?|g|kg|ounces?|oz|lbs?|pounds?|tbsp|tablespoons?|tsp|teaspoons?)\b/i;
+const GLOBAL_FOOD_HINT = /\b(rice|chicken|egg|eggs|toast|oats|yogurt|yoghurt|banana|apple|berries|protein shake|coffee|milk|bread|pasta|pizza|burger|wrap|taco|soup|stew|steak|beef|pork|fish|salmon|shrimp|tofu|tempeh|potato|avocado|cereal|salad|sandwich|beans|lentils|cheese|paneer|sabzi|subzi|sabji|curry|dal|dahl|roti|chapati|naan|garlic naan|garlic naam|paratha|idli|dosa|biryani|chole|rajma|samosa|tandoori|masala|kebab|shawarma|falafel|hummus|pita|tabbouleh|pho|ramen|sushi|sashimi|miso|udon|pad thai|bibimbap|kimchi|bulgogi|dumplings?|bao|congee|jollof|egusi|fufu|injera|tibs|tagine|couscous|arepa|empanada|tamales?|ceviche|paella|risotto|gnocchi|lasagna|pierogi|borscht|adobo|lumpia|satay|rendang|nasi goreng|jerk|plantain|pupusa)\b/i;
 const NON_FOOD_ONLY_HINT = /\b(water|slept|sleep|stress|stressed|energy|mood|sore|soreness|recovery|hrv|heart rate|workout|training|lift|run|cardio|walk|steps)\b/i;
 
 const BODY_PART_ALIASES: { regex: RegExp; group: MuscleGroup }[] = [
@@ -127,11 +130,30 @@ export function guessMealFromText(text: string, now: Date = new Date()): MealTyp
 }
 
 export function shouldParseFood(text: string): boolean {
-    if (!FOOD_HINT.test(text)) return false;
-    const hasFoodWord = /\b(chicken|rice|egg|eggs|toast|oats|yogurt|yoghurt|banana|apple|berries|protein shake|coffee|milk|bread|pasta|pizza|burger|wrap|taco|soup|steak|fish|salmon|potato|avocado|cereal|salad|sandwich)\b/i.test(text);
-    const hasFoodContext = /\b(ate|eaten|meal|breakfast|lunch|dinner|snack|food|calories|protein|carbs|fat|serving|grams|g\b|bowl|plate)\b/i.test(text);
-    const onlyWater = /\b(water|ml|milliliters?|liters?|litres?|ounces?|oz|glass|cup|bottle)\b/i.test(text) && !hasFoodWord;
-    return !onlyWater && (hasFoodWord || hasFoodContext) && (!NON_FOOD_ONLY_HINT.test(text) || hasFoodWord || /\b(breakfast|lunch|dinner|snack|meal|ate|eaten)\b/i.test(text));
+    const normalized = text.trim();
+    if (!normalized) return false;
+
+    const hasFoodIntent = FOOD_INTENT.test(normalized);
+    const hasFoodContext = FOOD_CONTEXT.test(normalized);
+    const hasFoodWord = GLOBAL_FOOD_HINT.test(normalized);
+    const hasPortion = PORTION_HINT.test(normalized);
+    const onlyWater = /\b(water|ml|milliliters?|millilitres?|liters?|litres?|ounces?|oz|fl oz|glass|bottle)\b/i.test(normalized) && !hasFoodWord;
+    if (onlyWater) return false;
+
+    if (hasFoodWord || hasFoodContext || hasPortion) {
+        return !NON_FOOD_ONLY_HINT.test(normalized) || hasFoodIntent || hasFoodWord || hasFoodContext;
+    }
+
+    if (!hasFoodIntent) return false;
+
+    const possibleFood = normalized
+        .replace(FOOD_INTENT, '')
+        .replace(/\b(for|my|the|a|an|some|today|tonight|this morning|this afternoon|this evening)\b/gi, ' ')
+        .trim();
+    if (!possibleFood || possibleFood.length < 3) return false;
+    if (NON_FOOD_ONLY_HINT.test(possibleFood)) return false;
+
+    return /[a-z][a-z' -]{2,}/i.test(possibleFood);
 }
 
 export function parseWaterActions(text: string): OrbitLogAction[] {

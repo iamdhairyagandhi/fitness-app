@@ -35,7 +35,7 @@ export default function LoginScreen() {
     const { setSession, setUser, setOnboarded } = useAuthStore();
 
     const finishLogin = async (session: Session) => {
-        setSession({ access_token: session.access_token });
+        setSession({ access_token: session.access_token, email: session.user.email });
 
         // Hydrate stores from Supabase
         try {
@@ -99,7 +99,7 @@ export default function LoginScreen() {
 
     const startReviewerDemo = () => {
         const now = new Date().toISOString();
-        setSession({ access_token: 'review-demo-session' });
+        setSession({ access_token: 'review-demo-session', email: 'app-review@bodypilot.app' });
         setUser({
             id: 'review-demo-user',
             email: 'app-review@bodypilot.app',

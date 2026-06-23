@@ -2,6 +2,7 @@
 module.exports = {
     type: "widget",
     name: "BodyPilotWidgets",
+    displayName: "BodyPilot",
     icon: "../../assets/icon.png",
     colors: {
         $accent: "#FF6B35",

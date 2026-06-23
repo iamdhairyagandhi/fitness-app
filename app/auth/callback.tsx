@@ -45,7 +45,7 @@ export default function AuthCallbackScreen() {
                 // Get the current session
                 const { data: { session } } = await supabase.auth.getSession();
                 if (session) {
-                    setSession({ access_token: session.access_token });
+                    setSession({ access_token: session.access_token, email: session.user.email });
                     await claimLatestOnboardingLead();
 
                     const profile = await fetchProfile(session.user.id);

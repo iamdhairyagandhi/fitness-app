@@ -1,10 +1,11 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import AsyncStorage from '@/lib/storage';
-import { PREMIUM_TEST_ACCESS_DAYS, STOREKIT_IAP_ENABLED, type PremiumFeature } from '@/constants/subscription';
+import { PREMIUM_USER_EMAILS, STOREKIT_IAP_ENABLED, type PremiumFeature } from '@/constants/subscription';
+import { useAuthStore } from './authStore';
 
 export type SubscriptionStatus = 'free' | 'trialing' | 'active' | 'expired';
-export type PremiumPlan = 'monthly' | 'yearly';
+export type PremiumPlan = 'monthly' | 'quarterly' | 'yearly';
 
 interface SubscriptionState {
     status: SubscriptionStatus;
@@ -14,21 +15,21 @@ interface SubscriptionState {
     activeUntil: string | null;
     isPremium: () => boolean;
     canUseFeature: (feature: PremiumFeature) => boolean;
-    startTrial: (plan: PremiumPlan) => void;
     activatePremium: (plan: PremiumPlan) => void;
+    activatePromoSubscription: (plan: PremiumPlan, months: number) => void;
     expirePremium: () => void;
     resetSubscription: () => void;
 }
 
-const addDays = (date: Date, days: number) => {
-    const next = new Date(date);
-    next.setDate(next.getDate() + days);
-    return next;
-};
-
 const isFuture = (dateString: string | null) => {
     if (!dateString) return false;
     return new Date(dateString).getTime() > Date.now();
+};
+
+const isPremiumUserEmail = () => {
+    const { session, user } = useAuthStore.getState();
+    const email = (user?.email || session?.email)?.trim().toLowerCase();
+    return !!email && PREMIUM_USER_EMAILS.includes(email as (typeof PREMIUM_USER_EMAILS)[number]);
 };
 
 export const useSubscriptionStore = create<SubscriptionState>()(
@@ -41,6 +42,8 @@ export const useSubscriptionStore = create<SubscriptionState>()(
             activeUntil: null,
 
             isPremium: () => {
+                if (isPremiumUserEmail()) return true;
+
                 const { status, trialEndsAt, activeUntil } = get();
                 if (status === 'active') return STOREKIT_IAP_ENABLED && (!activeUntil || isFuture(activeUntil));
                 if (status === 'trialing') return isFuture(trialEndsAt);
@@ -49,29 +52,26 @@ export const useSubscriptionStore = create<SubscriptionState>()(
 
             canUseFeature: () => get().isPremium(),
 
-            startTrial: (plan) => {
-                const now = new Date();
-                set({
-                    status: 'trialing',
-                    plan,
-                    trialStartedAt: now.toISOString(),
-                    trialEndsAt: addDays(now, PREMIUM_TEST_ACCESS_DAYS).toISOString(),
-                    activeUntil: null,
-                });
-            },
-
             activatePremium: (plan) => {
-                if (!STOREKIT_IAP_ENABLED) {
-                    get().startTrial(plan);
-                    return;
-                }
-
                 set({
                     status: 'active',
                     plan,
                     trialStartedAt: null,
                     trialEndsAt: null,
                     activeUntil: null,
+                });
+            },
+
+            activatePromoSubscription: (plan, months) => {
+                const now = new Date();
+                const activeUntil = new Date(now);
+                activeUntil.setMonth(activeUntil.getMonth() + months);
+                set({
+                    status: 'active',
+                    plan,
+                    trialStartedAt: null,
+                    trialEndsAt: null,
+                    activeUntil: activeUntil.toISOString(),
                 });
             },
 

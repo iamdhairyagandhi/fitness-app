@@ -302,7 +302,7 @@ export async function parseNaturalLanguageFood(text: string): Promise<NLPFoodPar
             [
                 {
                     role: 'system',
-                    content: `You are a nutrition parser. Given a natural language food description, extract food items with estimated nutrition values. Return ONLY a JSON array with objects containing: name (string), quantity (number), unit (string like "g","oz","cup","piece"), calories (number), protein_g (number), carbs_g (number), fat_g (number), fiber_g (number), confidence (number 0-1). Be accurate with portion sizes and macros. Use standard USDA nutritional data.`,
+                    content: `You are a global nutrition parser for an international fitness app. Given a natural language food description, extract food items with estimated nutrition values. Handle foods, dishes, and transliterations from any cuisine, including common speech-to-text mistakes. Return ONLY a JSON array with objects containing: name (string), quantity (number), unit (string like "g","oz","cup","piece"), calories (number), protein_g (number), carbs_g (number), fat_g (number), fiber_g (number), confidence (number 0-1). Be accurate with portion sizes and macros. Use standard nutrition references and typical restaurant/home-cooked portions when exact data is unavailable.`,
                 },
                 {
                     role: 'user',
@@ -342,8 +342,35 @@ export async function parseNaturalLanguageFood(text: string): Promise<NLPFoodPar
 
 // Demo fallback for offline / no API key
 export function parseNaturalLanguageFoodDemo(text: string): NLPFoodParseResult {
-    const lower = text.toLowerCase();
+    const lower = text
+        .toLowerCase()
+        .replace(/\bgarlic\s+naam\b/g, 'garlic naan')
+        .replace(/\bsubzi\b/g, 'sabzi')
+        .replace(/\bsabji\b/g, 'sabzi');
     const items: NLPFoodParseResult['items'] = [];
+
+    const scaleItem = (item: NLPFoodParseResult['items'][0], scale: number): NLPFoodParseResult['items'][0] => ({
+        ...item,
+        quantity: Math.round(item.quantity * scale * 10) / 10,
+        calories: Math.round(item.calories * scale),
+        protein_g: Math.round(item.protein_g * scale * 10) / 10,
+        carbs_g: Math.round(item.carbs_g * scale * 10) / 10,
+        fat_g: Math.round(item.fat_g * scale * 10) / 10,
+        fiber_g: Math.round(item.fiber_g * scale * 10) / 10,
+    });
+
+    const quantityNear = (keywords: string[], defaultQuantity: number) => {
+        const keywordPattern = keywords.map((kw) => kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+        const before = lower.match(new RegExp(`(\\d+(?:\\.\\d+)?|one|two|three|four|five|a|an)\\s*(?:and\\s+a\\s+half|and\\s+half)?\\s*(?:cups?|pieces?|servings?|bowls?)?\\s+(?:of\\s+)?(?:${keywordPattern})`, 'i'));
+        const after = lower.match(new RegExp(`(?:${keywordPattern}).{0,24}?(\\d+(?:\\.\\d+)?|one|two|three|four|five|a|an)\\s*(?:and\\s+a\\s+half|and\\s+half)?\\s*(?:cups?|pieces?|servings?|bowls?)`, 'i'));
+        const match = before || after;
+        if (!match) return defaultQuantity;
+
+        const numberWordMap: Record<string, number> = { a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5 };
+        const base = numberWordMap[match[1]] ?? Number(match[1]);
+        if (!Number.isFinite(base)) return defaultQuantity;
+        return match[0].includes('half') ? base + 0.5 : base;
+    };
 
     const patterns: { keywords: string[]; data: NLPFoodParseResult['items'][0] }[] = [
         { keywords: ['chicken breast', 'grilled chicken'], data: { name: 'Grilled Chicken Breast', quantity: 150, unit: 'g', calories: 248, protein_g: 46, carbs_g: 0, fat_g: 5.4, fiber_g: 0, confidence: 0.9 } },
@@ -364,11 +391,26 @@ export function parseNaturalLanguageFoodDemo(text: string): NLPFoodParseResult {
         { keywords: ['apple'], data: { name: 'Apple', quantity: 1, unit: 'medium', calories: 95, protein_g: 0.5, carbs_g: 25, fat_g: 0.3, fiber_g: 4.4, confidence: 0.95 } },
         { keywords: ['steak', 'beef'], data: { name: 'Steak (sirloin)', quantity: 200, unit: 'g', calories: 352, protein_g: 40, carbs_g: 0, fat_g: 20, fiber_g: 0, confidence: 0.8 } },
         { keywords: ['pasta', 'spaghetti'], data: { name: 'Pasta (cooked)', quantity: 200, unit: 'g', calories: 314, protein_g: 11.4, carbs_g: 61.4, fat_g: 1.9, fiber_g: 3.6, confidence: 0.85 } },
+        { keywords: ['paneer sabzi', 'paneer curry', 'paneer vegetable', 'paneer'], data: { name: 'Paneer Sabzi', quantity: 1, unit: 'cup', calories: 320, protein_g: 18, carbs_g: 14, fat_g: 22, fiber_g: 3, confidence: 0.75 } },
+        { keywords: ['garlic naan', 'naan'], data: { name: 'Garlic Naan', quantity: 1, unit: 'piece', calories: 260, protein_g: 8, carbs_g: 42, fat_g: 7, fiber_g: 2, confidence: 0.8 } },
+        { keywords: ['roti', 'chapati'], data: { name: 'Roti', quantity: 1, unit: 'piece', calories: 120, protein_g: 3.5, carbs_g: 20, fat_g: 3, fiber_g: 3, confidence: 0.8 } },
+        { keywords: ['dal', 'dahl'], data: { name: 'Dal', quantity: 1, unit: 'cup', calories: 230, protein_g: 13, carbs_g: 34, fat_g: 5, fiber_g: 10, confidence: 0.75 } },
+        { keywords: ['shawarma'], data: { name: 'Chicken Shawarma', quantity: 1, unit: 'wrap', calories: 520, protein_g: 32, carbs_g: 48, fat_g: 22, fiber_g: 4, confidence: 0.65 } },
+        { keywords: ['falafel'], data: { name: 'Falafel', quantity: 4, unit: 'pieces', calories: 230, protein_g: 8, carbs_g: 24, fat_g: 12, fiber_g: 6, confidence: 0.7 } },
+        { keywords: ['pho'], data: { name: 'Pho', quantity: 1, unit: 'bowl', calories: 450, protein_g: 28, carbs_g: 62, fat_g: 10, fiber_g: 3, confidence: 0.65 } },
+        { keywords: ['ramen'], data: { name: 'Ramen', quantity: 1, unit: 'bowl', calories: 520, protein_g: 22, carbs_g: 68, fat_g: 18, fiber_g: 4, confidence: 0.65 } },
+        { keywords: ['sushi'], data: { name: 'Sushi', quantity: 8, unit: 'pieces', calories: 350, protein_g: 18, carbs_g: 58, fat_g: 6, fiber_g: 3, confidence: 0.65 } },
+        { keywords: ['pad thai'], data: { name: 'Pad Thai', quantity: 1, unit: 'plate', calories: 650, protein_g: 26, carbs_g: 84, fat_g: 24, fiber_g: 5, confidence: 0.65 } },
+        { keywords: ['jollof'], data: { name: 'Jollof Rice', quantity: 1, unit: 'plate', calories: 430, protein_g: 10, carbs_g: 70, fat_g: 13, fiber_g: 4, confidence: 0.65 } },
+        { keywords: ['injera'], data: { name: 'Injera', quantity: 1, unit: 'piece', calories: 160, protein_g: 5, carbs_g: 32, fat_g: 1, fiber_g: 2, confidence: 0.65 } },
+        { keywords: ['arepa'], data: { name: 'Arepa', quantity: 1, unit: 'piece', calories: 220, protein_g: 5, carbs_g: 38, fat_g: 6, fiber_g: 3, confidence: 0.65 } },
+        { keywords: ['adobo'], data: { name: 'Chicken Adobo', quantity: 1, unit: 'serving', calories: 360, protein_g: 30, carbs_g: 6, fat_g: 24, fiber_g: 1, confidence: 0.65 } },
     ];
 
     for (const p of patterns) {
         if (p.keywords.some((kw) => lower.includes(kw))) {
-            items.push({ ...p.data });
+            const quantity = quantityNear(p.keywords, p.data.quantity);
+            items.push(scaleItem({ ...p.data }, quantity / p.data.quantity));
         }
     }
 
