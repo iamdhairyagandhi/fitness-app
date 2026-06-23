@@ -20,6 +20,20 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+function parseDecimalInput(value: string): number {
+    const normalized = value.replace(',', '.').trim();
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatDecimal(value: number): string {
+    return Number(value.toFixed(2)).toString();
+}
+
+function getServingAmountStep(unit: string): number {
+    return unit === 'g' || unit === 'ml' ? 5 : 0.25;
+}
+
 export default function BarcodeScannerScreen() {
     const insets = useSafeAreaInsets();
     const params = useLocalSearchParams<{ meal?: string }>();
@@ -33,8 +47,14 @@ export default function BarcodeScannerScreen() {
     const [manualCode, setManualCode] = useState('');
     const [selectedMeal, setSelectedMeal] = useState<MealType>(initialMealType);
     const [servings, setServings] = useState('1');
+    const [servingAmount, setServingAmount] = useState('0');
 
-    const parsedServings = Math.max(0, parseFloat(servings) || 0);
+    const parsedServings = Math.max(0, parseDecimalInput(servings));
+    const parsedServingAmount = Math.max(0, parseDecimalInput(servingAmount));
+    const servingSizeRatio = result && result.serving_size_g > 0 && parsedServingAmount > 0
+        ? parsedServingAmount / result.serving_size_g
+        : 1;
+    const effectiveServings = parsedServings * servingSizeRatio;
 
     const mealOptions: { value: MealType; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
         { value: 'breakfast', label: 'Breakfast', icon: 'sunny-outline' },
@@ -52,6 +72,8 @@ export default function BarcodeScannerScreen() {
             const food = await lookupBarcode(barcode);
             if (food) {
                 setResult(food);
+                setServings('1');
+                setServingAmount(formatDecimal(food.serving_size_g > 0 ? food.serving_size_g : 1));
             } else {
                 toast.warning('Not Found', `No nutrition data for barcode ${barcode}. Try searching manually.`);
                 setScanned(false);
@@ -70,10 +92,18 @@ export default function BarcodeScannerScreen() {
             toast.error('Invalid servings', 'Enter a valid serving amount.');
             return;
         }
+        if (result.serving_size_g > 0 && parsedServingAmount <= 0) {
+            toast.error('Invalid serving size', 'Enter a serving size greater than zero.');
+            return;
+        }
 
-        logFood(result, parsedServings, selectedMeal);
+        logFood(result, effectiveServings, selectedMeal);
         toast.success('Logged!', `${result.name} added to ${selectedMeal}`);
-        router.back();
+        setResult(null);
+        setScanned(false);
+        setManualCode('');
+        setServings('1');
+        setServingAmount('0');
     };
 
     // If we have a result, show it
@@ -84,7 +114,7 @@ export default function BarcodeScannerScreen() {
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             >
                 <View style={styles.header}>
-                    <TouchableOpacity onPress={() => { setResult(null); setScanned(false); }}>
+                    <TouchableOpacity onPress={() => { setResult(null); setScanned(false); setServings('1'); setServingAmount('0'); }}>
                         <Ionicons name="arrow-back" size={24} color={Colors.text} />
                     </TouchableOpacity>
                     <Text style={styles.title}>Scanned Food</Text>
@@ -99,24 +129,24 @@ export default function BarcodeScannerScreen() {
                     <Text style={styles.resultName}>{result.name}</Text>
                     {result.brand && <Text style={styles.resultBrand}>{result.brand}</Text>}
                     <Text style={styles.resultServing}>
-                        Serving: {result.serving_size_g}g
+                        Base serving: {result.serving_size_g}{result.serving_unit === 'g' ? 'g' : ` ${result.serving_unit}`}
                     </Text>
 
                     <View style={styles.macroGrid}>
                         <View style={[styles.macroBox, { borderColor: Colors.calories }]}>
-                            <Text style={[styles.macroValue, { color: Colors.calories }]}>{Math.round(result.calories * parsedServings)}</Text>
+                            <Text style={[styles.macroValue, { color: Colors.calories }]}>{Math.round(result.calories * effectiveServings)}</Text>
                             <Text style={styles.macroLabel}>kcal</Text>
                         </View>
                         <View style={[styles.macroBox, { borderColor: Colors.protein }]}>
-                            <Text style={[styles.macroValue, { color: Colors.protein }]}>{(result.protein_g * parsedServings).toFixed(1)}g</Text>
+                            <Text style={[styles.macroValue, { color: Colors.protein }]}>{(result.protein_g * effectiveServings).toFixed(1)}g</Text>
                             <Text style={styles.macroLabel}>Protein</Text>
                         </View>
                         <View style={[styles.macroBox, { borderColor: Colors.carbs }]}>
-                            <Text style={[styles.macroValue, { color: Colors.carbs }]}>{(result.carbs_g * parsedServings).toFixed(1)}g</Text>
+                            <Text style={[styles.macroValue, { color: Colors.carbs }]}>{(result.carbs_g * effectiveServings).toFixed(1)}g</Text>
                             <Text style={styles.macroLabel}>Carbs</Text>
                         </View>
                         <View style={[styles.macroBox, { borderColor: Colors.fat }]}>
-                            <Text style={[styles.macroValue, { color: Colors.fat }]}>{(result.fat_g * parsedServings).toFixed(1)}g</Text>
+                            <Text style={[styles.macroValue, { color: Colors.fat }]}>{(result.fat_g * effectiveServings).toFixed(1)}g</Text>
                             <Text style={styles.macroLabel}>Fat</Text>
                         </View>
                     </View>
@@ -141,29 +171,57 @@ export default function BarcodeScannerScreen() {
                     </View>
 
                     <View style={styles.sectionBlock}>
+                        <Text style={styles.sectionLabel}>Serving Size</Text>
+                        <View style={styles.servingsRow}>
+                            <TouchableOpacity
+                                style={styles.servingStepButton}
+                                onPress={() => setServingAmount(formatDecimal(Math.max(getServingAmountStep(result.serving_unit), parsedServingAmount - getServingAmountStep(result.serving_unit))))}
+                            >
+                                <Ionicons name="remove" size={18} color={Colors.text} />
+                            </TouchableOpacity>
+                            <TextInput
+                                style={styles.servingsInput}
+                                value={servingAmount}
+                                onChangeText={(value) => setServingAmount(value.replace(',', '.'))}
+                                keyboardType="decimal-pad"
+                                textAlign="center"
+                            />
+                            <TouchableOpacity
+                                style={styles.servingStepButton}
+                                onPress={() => setServingAmount(formatDecimal((parsedServingAmount || 0) + getServingAmountStep(result.serving_unit)))}
+                            >
+                                <Ionicons name="add" size={18} color={Colors.text} />
+                            </TouchableOpacity>
+                            <Text style={styles.servingsUnit}>
+                                {result.serving_unit}
+                            </Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.sectionBlock}>
                         <Text style={styles.sectionLabel}>Servings</Text>
                         <View style={styles.servingsRow}>
                             <TouchableOpacity
                                 style={styles.servingStepButton}
-                                onPress={() => setServings(String(Math.max(0.25, parsedServings - 0.25)))}
+                                onPress={() => setServings(formatDecimal(Math.max(0.25, parsedServings - 0.25)))}
                             >
                                 <Ionicons name="remove" size={18} color={Colors.text} />
                             </TouchableOpacity>
                             <TextInput
                                 style={styles.servingsInput}
                                 value={servings}
-                                onChangeText={setServings}
+                                onChangeText={(value) => setServings(value.replace(',', '.'))}
                                 keyboardType="decimal-pad"
                                 textAlign="center"
                             />
                             <TouchableOpacity
                                 style={styles.servingStepButton}
-                                onPress={() => setServings(String((parsedServings || 0) + 0.25))}
+                                onPress={() => setServings(formatDecimal((parsedServings || 0) + 0.25))}
                             >
                                 <Ionicons name="add" size={18} color={Colors.text} />
                             </TouchableOpacity>
                             <Text style={styles.servingsUnit}>
-                                x {result.serving_size_g}{result.serving_unit === 'g' ? 'g' : ` ${result.serving_unit}`}
+                                x {servingAmount || result.serving_size_g} {result.serving_unit}
                             </Text>
                         </View>
                     </View>
@@ -172,7 +230,7 @@ export default function BarcodeScannerScreen() {
                         <Ionicons name="add-circle" size={22} color="#fff" />
                         <Text style={styles.logButtonText}>Log to {selectedMeal}</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.scanAgainBtn} onPress={() => { setResult(null); setScanned(false); }}>
+                    <TouchableOpacity style={styles.scanAgainBtn} onPress={() => { setResult(null); setScanned(false); setServings('1'); setServingAmount('0'); }}>
                         <Text style={styles.scanAgainText}>Scan Another</Text>
                     </TouchableOpacity>
                 </ScrollView>

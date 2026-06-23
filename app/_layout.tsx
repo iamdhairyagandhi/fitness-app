@@ -2,10 +2,10 @@ import { ToastProvider } from '@/components/ui';
 import { OfflineBanner } from '@/components/ui/OfflineBanner';
 import { Colors } from '@/constants/theme';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
-import { hydrateAllStores } from '@/lib/db';
 import { getLocalDateKey } from '@/lib/date';
-import { buildNutritionSummary } from '@/lib/nutritionSummary';
+import { hydrateAllStores } from '@/lib/db';
 import { addNotificationRoutingListener } from '@/lib/notifications';
+import { buildNutritionSummary } from '@/lib/nutritionSummary';
 import { setStoresHydrated, useStoresHydrated } from '@/lib/storesHydrated';
 import { supabase } from '@/lib/supabase';
 import { clearWidgetSnapshot, useWidgetSync } from '@/lib/widgetSync';
@@ -20,7 +20,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { Component, useCallback, useEffect } from 'react';
-import { ActivityIndicator, AppState, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
 
 // Error boundary to catch runtime crashes
 class ErrorBoundary extends Component<{ children: React.ReactNode }, { error: Error | null }> {
@@ -197,52 +197,58 @@ function RootLayoutContent() {
         <>
             <ThemedStatusBar />
             <OfflineBanner />
-            <Stack
-                screenOptions={{
-                    headerShown: false,
-                    contentStyle: { backgroundColor: Colors.background },
-                    animation: 'slide_from_right',
-                }}
+            <KeyboardAvoidingView
+                style={styles.navigatorContainer}
+                behavior={Platform.OS === 'android' ? 'height' : undefined}
+                enabled={Platform.OS === 'android'}
             >
-                <Stack.Screen name="(auth)" options={{ animation: 'fade' }} />
-                <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
-                <Stack.Screen
-                    name="workout/active"
-                    options={{
-                        presentation: 'fullScreenModal',
-                        animation: 'slide_from_bottom',
+                <Stack
+                    screenOptions={{
+                        headerShown: false,
+                        contentStyle: { backgroundColor: Colors.background },
+                        animation: 'slide_from_right',
                     }}
-                />
-                <Stack.Screen name="nutrition" />
-                <Stack.Screen name="progress" />
-                <Stack.Screen name="social" />
-                <Stack.Screen name="account-settings" />
-                <Stack.Screen name="customize-macros" />
-                <Stack.Screen
-                    name="premium"
-                    options={{
-                        presentation: 'modal',
-                        animation: 'slide_from_bottom',
-                    }}
-                />
-                <Stack.Screen name="ai-workout" />
-                <Stack.Screen name="ai-meal-plan" />
-                <Stack.Screen name="weekly-report" />
-                <Stack.Screen
-                    name="chat"
-                    options={{
-                        presentation: 'modal',
-                        animation: 'slide_from_bottom',
-                    }}
-                />
-                <Stack.Screen
-                    name="orbit/voice"
-                    options={{
-                        presentation: 'fullScreenModal',
-                        animation: 'slide_from_bottom',
-                    }}
-                />
-            </Stack>
+                >
+                    <Stack.Screen name="(auth)" options={{ animation: 'fade' }} />
+                    <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
+                    <Stack.Screen
+                        name="workout/active"
+                        options={{
+                            presentation: 'fullScreenModal',
+                            animation: 'slide_from_bottom',
+                        }}
+                    />
+                    <Stack.Screen name="nutrition" />
+                    <Stack.Screen name="progress" />
+                    <Stack.Screen name="social" />
+                    <Stack.Screen name="account-settings" />
+                    <Stack.Screen name="customize-macros" />
+                    <Stack.Screen
+                        name="premium"
+                        options={{
+                            presentation: 'modal',
+                            animation: 'slide_from_bottom',
+                        }}
+                    />
+                    <Stack.Screen name="ai-workout" />
+                    <Stack.Screen name="ai-meal-plan" />
+                    <Stack.Screen name="weekly-report" />
+                    <Stack.Screen
+                        name="chat"
+                        options={{
+                            presentation: 'modal',
+                            animation: 'slide_from_bottom',
+                        }}
+                    />
+                    <Stack.Screen
+                        name="orbit/voice"
+                        options={{
+                            presentation: 'fullScreenModal',
+                            animation: 'slide_from_bottom',
+                        }}
+                    />
+                </Stack>
+            </KeyboardAvoidingView>
         </>
     );
 }
@@ -272,5 +278,8 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: Colors.background,
+    },
+    navigatorContainer: {
+        flex: 1,
     },
 });

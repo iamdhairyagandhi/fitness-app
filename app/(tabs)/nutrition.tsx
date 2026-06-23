@@ -11,9 +11,9 @@ import {
     type WaterTrendInsight,
     type WeightTrendInsight,
 } from '@/lib/nutritionAnalytics';
+import { requirePremium } from '@/lib/premium';
 import { buildReadinessPlan } from '@/lib/readinessEngine';
 import AsyncStorage from '@/lib/storage';
-import { requirePremium } from '@/lib/premium';
 import { displayWeightFromKg, formatNumber, getPercentage, getWeightUnit } from '@/lib/utils';
 import { useAppleHealthStore } from '@/stores/appleHealthStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -209,6 +209,22 @@ export default function NutritionScreen() {
             moveLogEntry(entryId, targetMeal);
         }
     }, [getMealAtPageY, moveLogEntry]);
+
+    const promptMoveEntry = React.useCallback((entry: FoodLogEntry) => {
+        Alert.alert(
+            'Move food item',
+            `Move "${entry.food_item.name}" to:`,
+            [
+                ...MEAL_ORDER
+                    .filter((targetMeal) => targetMeal !== entry.meal_type)
+                    .map((targetMeal) => ({
+                        text: `${MEAL_ICONS[targetMeal]} ${targetMeal.charAt(0).toUpperCase() + targetMeal.slice(1)}`,
+                        onPress: () => moveLogEntry(entry.id, targetMeal),
+                    })),
+                { text: 'Cancel', style: 'cancel' as const },
+            ],
+        );
+    }, [moveLogEntry]);
 
     const toggleSetupValue = (value: string, values: string[], setter: (next: string[]) => void) => {
         setter(values.includes(value) ? values.filter((item) => item !== value) : [...values, value]);
@@ -535,7 +551,7 @@ export default function NutritionScreen() {
                                         key={entry.id}
                                         entry={entry}
                                         colors={colors}
-                                        onMoveEntry={moveLogEntry}
+                                        onPromptMove={promptMoveEntry}
                                         onRemoveEntry={removeLogEntry}
                                         onDragStart={(entryId) => {
                                             measureMealDropZones();
@@ -909,7 +925,7 @@ function SetupChip({ label, active, onPress }: { label: string; active: boolean;
 function DraggableFoodEntry({
     entry,
     colors,
-    onMoveEntry,
+    onPromptMove,
     onRemoveEntry,
     onDragStart,
     onDragMove,
@@ -917,7 +933,7 @@ function DraggableFoodEntry({
 }: {
     entry: FoodLogEntry;
     colors: ReturnType<typeof useTheme>['colors'];
-    onMoveEntry: (entryId: string, mealType: MealType) => void;
+    onPromptMove: (entry: FoodLogEntry) => void;
     onRemoveEntry: (entryId: string) => void;
     onDragStart: (entryId: string) => void;
     onDragMove: (pageY: number) => void;
@@ -939,7 +955,7 @@ function DraggableFoodEntry({
         () => PanResponder.create({
             onStartShouldSetPanResponder: () => true,
             onMoveShouldSetPanResponder: (_event, gesture) =>
-                Math.abs(gesture.dy) > 4 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
+                Math.abs(gesture.dy) > 2 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
             onPanResponderGrant: () => {
                 drag.setValue({ x: 0, y: 0 });
                 setIsDragging(true);
@@ -973,7 +989,13 @@ function DraggableFoodEntry({
                 },
             ]}
         >
-            <View style={styles.foodDragHandle} {...panResponder.panHandlers}>
+            <View
+                style={[
+                    styles.foodDragHandle,
+                    { backgroundColor: colors.surfaceLight, borderColor: colors.border },
+                ]}
+                {...panResponder.panHandlers}
+            >
                 <Ionicons name="reorder-three" size={18} color={colors.textTertiary} />
             </View>
             {entry.photo_uri ? (
@@ -988,36 +1010,17 @@ function DraggableFoodEntry({
                 {entry.notes ? (
                     <Text style={styles.foodNotes} numberOfLines={2}>{entry.notes}</Text>
                 ) : null}
-                <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.moveMealRow}
-                >
-                    {MEAL_ORDER.map((targetMeal) => {
-                        const active = entry.meal_type === targetMeal;
-                        return (
-                            <TouchableOpacity
-                                key={targetMeal}
-                                style={[
-                                    styles.moveMealChip,
-                                    { borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.primary + '22' : colors.surfaceLight },
-                                ]}
-                                onPress={() => onMoveEntry(entry.id, targetMeal)}
-                            >
-                                <Text style={styles.moveMealEmoji}>{MEAL_ICONS[targetMeal]}</Text>
-                                <Text style={[styles.moveMealText, { color: active ? colors.primary : colors.textTertiary }]}>
-                                    {targetMeal}
-                                </Text>
-                            </TouchableOpacity>
-                        );
-                    })}
-                </ScrollView>
             </View>
             <View style={styles.foodTrailing}>
                 <Text style={styles.foodCalories}>{entry.calories}</Text>
-                <TouchableOpacity onPress={() => onRemoveEntry(entry.id)}>
-                    <Ionicons name="close-circle" size={18} color={Colors.textTertiary} />
-                </TouchableOpacity>
+                <View style={styles.foodActions}>
+                    <TouchableOpacity style={styles.foodActionButton} onPress={() => onPromptMove(entry)}>
+                        <Ionicons name="swap-horizontal-outline" size={17} color={colors.textSecondary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.foodActionButton} onPress={() => onRemoveEntry(entry.id)}>
+                        <Ionicons name="close-circle" size={18} color={colors.textTertiary} />
+                    </TouchableOpacity>
+                </View>
             </View>
         </Animated.View>
     );
@@ -1656,7 +1659,7 @@ const styles = StyleSheet.create({
     foodEntry: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'flex-start',
+        alignItems: 'center',
         gap: Spacing.sm,
         paddingVertical: Spacing.sm,
         paddingHorizontal: 2,
@@ -1674,10 +1677,12 @@ const styles = StyleSheet.create({
         shadowRadius: 16,
     },
     foodDragHandle: {
-        width: 20,
-        minHeight: 52,
+        width: 32,
+        minHeight: 54,
         alignItems: 'center',
         justifyContent: 'center',
+        borderWidth: 1,
+        borderRadius: BorderRadius.full,
     },
     foodPhotoThumb: {
         width: 52,
@@ -1704,37 +1709,22 @@ const styles = StyleSheet.create({
         marginTop: Spacing.xs,
         lineHeight: 16,
     },
-    moveMealRow: {
-        gap: Spacing.xs,
-        paddingTop: Spacing.sm,
-        paddingRight: Spacing.md,
-    },
-    moveMealChip: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        borderRadius: BorderRadius.full,
-        borderWidth: 1,
-        paddingHorizontal: Spacing.sm,
-        paddingVertical: 5,
-    },
-    moveMealEmoji: {
-        fontSize: 12,
-    },
-    moveMealText: {
-        fontSize: FontSize.xxs,
-        fontWeight: FontWeight.semibold,
-        textTransform: 'capitalize',
-    },
     foodCalories: {
         color: Colors.textSecondary,
         fontSize: FontSize.sm,
         fontWeight: FontWeight.semibold,
     },
     foodTrailing: {
+        alignItems: 'flex-end',
+        justifyContent: 'space-between',
+        minHeight: 52,
+    },
+    foodActions: {
         flexDirection: 'row',
-        alignItems: 'center',
         gap: 8,
+    },
+    foodActionButton: {
+        paddingVertical: 2,
     },
     noFood: {
         color: Colors.textTertiary,

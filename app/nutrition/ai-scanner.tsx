@@ -54,6 +54,16 @@ function parseAIResponse(response: string): FoodItem[] {
     }
 }
 
+function parseServingInput(value: string): number {
+    const normalized = value.replace(',', '.').trim();
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatServingValue(value: number): string {
+    return Number(value.toFixed(2)).toString();
+}
+
 export default function AIScannerScreen() {
     const insets = useSafeAreaInsets();
     const { colors } = useTheme();
@@ -64,6 +74,8 @@ export default function AIScannerScreen() {
     const [description, setDescription] = useState('');
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [results, setResults] = useState<FoodItem[]>([]);
+    const [servingsById, setServingsById] = useState<Record<string, string>>({});
+    const [loggedItems, setLoggedItems] = useState<Set<string>>(new Set());
     const [selectedMeal, setSelectedMeal] = useState<MealType>(() => {
         const meal = params.meal;
         return meal === 'breakfast' || meal === 'lunch' || meal === 'dinner' || meal === 'snack'
@@ -74,6 +86,8 @@ export default function AIScannerScreen() {
     const analyzeCapturedMeal = async (base64Image: string | null, context: string) => {
         setIsAnalyzing(true);
         setResults([]);
+        setServingsById({});
+        setLoggedItems(new Set());
 
         try {
             if (AI_PROXY_ENABLED && base64Image) {
@@ -81,6 +95,13 @@ export default function AIScannerScreen() {
                 const parsed = parseAIResponse(aiResponse);
                 if (parsed.length > 0) {
                     setResults(parsed);
+                    setServingsById(
+                        parsed.reduce<Record<string, string>>((acc, item) => {
+                            acc[item.id] = '1';
+                            return acc;
+                        }, {}),
+                    );
+                    setLoggedItems(new Set());
                 } else {
                     toast.warning('AI Result', 'Could not identify foods clearly. Try a clearer photo or add more context.');
                 }
@@ -141,13 +162,40 @@ export default function AIScannerScreen() {
         }
     };
 
+    const updateServing = (foodId: string, value: string) => {
+        setServingsById((prev) => ({
+            ...prev,
+            [foodId]: value.replace(',', '.'),
+        }));
+    };
+
+    const stepServing = (foodId: string, delta: number) => {
+        const current = parseServingInput(servingsById[foodId] ?? '1') || 1;
+        const next = Math.max(0.25, current + delta);
+        setServingsById((prev) => ({
+            ...prev,
+            [foodId]: formatServingValue(next),
+        }));
+    };
+
     const handleLogFood = (food: FoodItem) => {
-        logFood(food, 1, selectedMeal, {
+        const servings = parseServingInput(servingsById[food.id] ?? '1');
+        if (servings <= 0) {
+            toast.error('Invalid servings', 'Enter a serving amount greater than zero.');
+            return;
+        }
+
+        logFood(food, servings, selectedMeal, {
             notes: description,
             photoUri: imageUri && imageUri !== 'demo' ? imageUri : null,
         });
+
+        setLoggedItems((prev) => {
+            const next = new Set(prev);
+            next.add(food.id);
+            return next;
+        });
         toast.success('Logged!', `${food.name} added to ${selectedMeal}`);
-        router.back();
     };
 
     return (
@@ -278,18 +326,53 @@ export default function AIScannerScreen() {
                                         <Text style={[styles.resultServing, { color: colors.textTertiary }]}>
                                             {food.serving_size_g}{food.serving_unit === 'g' ? 'g' : ` ${food.serving_unit}`}
                                         </Text>
+                                        <View style={styles.servingAdjustRow}>
+                                            <TouchableOpacity
+                                                style={styles.servingStepButton}
+                                                onPress={() => stepServing(food.id, -0.25)}
+                                            >
+                                                <Ionicons name="remove" size={16} color={colors.text} />
+                                            </TouchableOpacity>
+                                            <TextInput
+                                                style={[styles.servingInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.surfaceLight }]}
+                                                value={servingsById[food.id] ?? '1'}
+                                                onChangeText={(value) => updateServing(food.id, value)}
+                                                keyboardType="decimal-pad"
+                                                textAlign="center"
+                                            />
+                                            <TouchableOpacity
+                                                style={styles.servingStepButton}
+                                                onPress={() => stepServing(food.id, 0.25)}
+                                            >
+                                                <Ionicons name="add" size={16} color={colors.text} />
+                                            </TouchableOpacity>
+                                            <Text style={[styles.servingUnit, { color: colors.textTertiary }]}>servings</Text>
+                                        </View>
                                         <View style={styles.resultMacros}>
-                                            <Text style={[styles.resultMacro, { color: Colors.calories }]}>{food.calories} kcal</Text>
-                                            <Text style={[styles.resultMacro, { color: Colors.protein }]}>P {food.protein_g}g</Text>
-                                            <Text style={[styles.resultMacro, { color: Colors.carbs }]}>C {food.carbs_g}g</Text>
-                                            <Text style={[styles.resultMacro, { color: Colors.fat }]}>F {food.fat_g}g</Text>
+                                            <Text style={[styles.resultMacro, { color: Colors.calories }]}>
+                                                {Math.round(food.calories * Math.max(0, parseServingInput(servingsById[food.id] ?? '1')))} kcal
+                                            </Text>
+                                            <Text style={[styles.resultMacro, { color: Colors.protein }]}>
+                                                P {(food.protein_g * Math.max(0, parseServingInput(servingsById[food.id] ?? '1'))).toFixed(1)}g
+                                            </Text>
+                                            <Text style={[styles.resultMacro, { color: Colors.carbs }]}>
+                                                C {(food.carbs_g * Math.max(0, parseServingInput(servingsById[food.id] ?? '1'))).toFixed(1)}g
+                                            </Text>
+                                            <Text style={[styles.resultMacro, { color: Colors.fat }]}>
+                                                F {(food.fat_g * Math.max(0, parseServingInput(servingsById[food.id] ?? '1'))).toFixed(1)}g
+                                            </Text>
                                         </View>
                                     </View>
                                     <TouchableOpacity
-                                        style={styles.logBtn}
+                                        style={[styles.logBtn, loggedItems.has(food.id) && styles.logBtnDisabled]}
                                         onPress={() => handleLogFood(food)}
+                                        disabled={loggedItems.has(food.id)}
                                     >
-                                        <Ionicons name="add-circle" size={32} color={colors.primary} />
+                                        <Ionicons
+                                            name={loggedItems.has(food.id) ? 'checkmark-circle' : 'add-circle'}
+                                            size={32}
+                                            color={loggedItems.has(food.id) ? colors.success : colors.primary}
+                                        />
                                     </TouchableOpacity>
                                 </View>
                             ))}
@@ -298,7 +381,13 @@ export default function AIScannerScreen() {
                                 <Button
                                     title="Scan Again"
                                     variant="outline"
-                                    onPress={() => { setImageUri(null); setImageBase64(null); setResults([]); }}
+                                    onPress={() => {
+                                        setImageUri(null);
+                                        setImageBase64(null);
+                                        setResults([]);
+                                        setServingsById({});
+                                        setLoggedItems(new Set());
+                                    }}
                                     style={{ flex: 1 }}
                                 />
                                 <Button
@@ -448,8 +537,38 @@ const styles = StyleSheet.create({
     resultInfo: { flex: 1 },
     resultName: { color: Colors.text, fontSize: FontSize.md, fontWeight: FontWeight.semibold },
     resultServing: { color: Colors.textTertiary, fontSize: FontSize.sm, marginTop: 2 },
+    servingAdjustRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.xs,
+        marginTop: Spacing.sm,
+    },
+    servingStepButton: {
+        width: 28,
+        height: 28,
+        borderRadius: BorderRadius.full,
+        backgroundColor: Colors.surface,
+        borderWidth: 1,
+        borderColor: Colors.border,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    servingInput: {
+        width: 56,
+        height: 32,
+        borderRadius: BorderRadius.md,
+        borderWidth: 1,
+        fontSize: FontSize.sm,
+        fontWeight: FontWeight.semibold,
+    },
+    servingUnit: {
+        color: Colors.textTertiary,
+        fontSize: FontSize.xs,
+        fontWeight: FontWeight.medium,
+    },
     resultMacros: { flexDirection: 'row', gap: Spacing.md, marginTop: Spacing.sm },
     resultMacro: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
     logBtn: { paddingLeft: Spacing.md },
+    logBtnDisabled: { opacity: 0.7 },
     retryRow: { flexDirection: 'row', gap: Spacing.md, marginTop: Spacing.lg },
 });
