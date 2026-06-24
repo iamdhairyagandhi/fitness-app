@@ -2,8 +2,6 @@ import { Button, Input, toast } from '@/components/ui';
 import { BorderRadius, Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { isReviewerDemoLogin, signInWithApple, signInWithGoogle } from '@/lib/auth';
 import { hydrateAllStores } from '@/lib/db';
-import { getLocalDateKey } from '@/lib/date';
-import { buildNutritionSummary } from '@/lib/nutritionSummary';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
 import { useMealPlanStore } from '@/stores/mealPlanStore';
@@ -60,7 +58,7 @@ export default function LoginScreen() {
 
                 const nutritionStore = useNutritionStore.getState();
                 nutritionStore.setNutritionHistory(hydrated.nutritionHistory);
-                nutritionStore.setTodaySummary(buildNutritionSummary(getLocalDateKey(), hydrated.foodLogs, hydrated.waterLogs));
+                nutritionStore.hydrateTodayFromServer(hydrated.foodLogs, hydrated.waterLogs);
 
                 const ps = useProgressStore.getState();
                 if (hydrated.weightEntries.length) ps.setWeightEntries(hydrated.weightEntries);

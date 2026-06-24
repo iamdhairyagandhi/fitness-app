@@ -309,7 +309,10 @@ export async function saveFoodItem(item: FoodItem) {
         image_url: item.image_url,
     });
 
-    if (error) console.warn('saveFoodItem error:', error.message);
+    if (error) {
+        console.warn('saveFoodItem error:', error.message);
+        throw error;
+    }
 }
 
 function mapFoodItem(d: any): FoodItem {
@@ -392,7 +395,10 @@ export async function saveFoodLog(entry: FoodLogEntry) {
         photo_uri: entry.photo_uri,
     });
 
-    if (error) console.warn('saveFoodLog error:', error.message);
+    if (error) {
+        console.warn('saveFoodLog error:', error.message);
+        throw error;
+    }
 }
 
 export async function deleteFoodLog(entryId: string) {

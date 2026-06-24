@@ -1,7 +1,7 @@
 import { deleteFoodLog, saveFoodLog, saveWaterLog } from '@/lib/db';
 import { applyXPReward } from '@/lib/gamification';
 import { getLocalDateKey } from '@/lib/date';
-import { createEmptyNutritionDay, upsertNutritionHistory } from '@/lib/nutritionSummary';
+import { buildNutritionSummary, createEmptyNutritionDay, upsertNutritionHistory } from '@/lib/nutritionSummary';
 import AsyncStorage from '@/lib/storage';
 import { generateId } from '@/lib/utils';
 import type {
@@ -32,6 +32,7 @@ interface NutritionState {
     moveLogEntry: (entryId: string, mealType: MealType) => void;
     logWater: (amountMl: number) => void;
     ensureToday: () => void;
+    hydrateTodayFromServer: (foodLogs: FoodLogEntry[], waterLogs: WaterLog[]) => void;
     setTodaySummary: (summary: DailyNutritionSummary) => void;
     setNutritionHistory: (history: DailyNutritionSummary[]) => void;
     setSearchResults: (results: FoodItem[]) => void;
@@ -41,6 +42,24 @@ interface NutritionState {
 }
 
 const emptyDay = createEmptyNutritionDay;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function normalizeFoodForLogging(foodItem: FoodItem): FoodItem {
+    if (foodItem.is_custom && UUID_RE.test(foodItem.id)) {
+        return foodItem;
+    }
+
+    if (!foodItem.is_custom && UUID_RE.test(foodItem.id) && foodItem.user_id !== null) {
+        return foodItem;
+    }
+
+    return {
+        ...foodItem,
+        id: generateId(),
+        is_custom: true,
+        user_id: null,
+    };
+}
 
 function currentDayState(state: NutritionState): {
     todaySummary: DailyNutritionSummary;
@@ -78,19 +97,20 @@ export const useNutritionStore = create<NutritionState>()(
             isSearching: false,
 
             logFood: (foodItem, servings, mealType, options) => {
+                const loggableFood = normalizeFoodForLogging(foodItem);
                 const current = currentDayState(get());
                 const entry: FoodLogEntry = {
                     id: generateId(),
                     user_id: '',
-                    food_item_id: foodItem.id,
-                    food_item: foodItem,
+                    food_item_id: loggableFood.id,
+                    food_item: loggableFood,
                     meal_type: mealType,
                     servings,
                     logged_at: new Date().toISOString(),
-                    calories: Math.round(foodItem.calories * servings),
-                    protein_g: Math.round(foodItem.protein_g * servings * 10) / 10,
-                    carbs_g: Math.round(foodItem.carbs_g * servings * 10) / 10,
-                    fat_g: Math.round(foodItem.fat_g * servings * 10) / 10,
+                    calories: Math.round(loggableFood.calories * servings),
+                    protein_g: Math.round(loggableFood.protein_g * servings * 10) / 10,
+                    carbs_g: Math.round(loggableFood.carbs_g * servings * 10) / 10,
+                    fat_g: Math.round(loggableFood.fat_g * servings * 10) / 10,
                     notes: options?.notes?.trim() || null,
                     photo_uri: options?.photoUri || null,
                 };
@@ -100,8 +120,8 @@ export const useNutritionStore = create<NutritionState>()(
                 meals[mealType] = [...meals[mealType], entry];
 
                 const recentFoods = [
-                    foodItem,
-                    ...get().recentFoods.filter((food) => food.id !== foodItem.id),
+                    loggableFood,
+                    ...get().recentFoods.filter((food) => food.id !== loggableFood.id),
                 ].slice(0, 12);
 
                 const nextSummary = {
@@ -110,7 +130,7 @@ export const useNutritionStore = create<NutritionState>()(
                     total_protein_g: Math.round((todaySummary.total_protein_g + entry.protein_g) * 10) / 10,
                     total_carbs_g: Math.round((todaySummary.total_carbs_g + entry.carbs_g) * 10) / 10,
                     total_fat_g: Math.round((todaySummary.total_fat_g + entry.fat_g) * 10) / 10,
-                    total_fiber_g: Math.round((todaySummary.total_fiber_g + (foodItem.fiber_g || 0) * servings) * 10) / 10,
+                    total_fiber_g: Math.round((todaySummary.total_fiber_g + (loggableFood.fiber_g || 0) * servings) * 10) / 10,
                     meals,
                 };
 
@@ -122,7 +142,9 @@ export const useNutritionStore = create<NutritionState>()(
                 });
 
                 // Persist to Supabase
-                saveFoodLog(entry).catch(() => { });
+                saveFoodLog(entry).catch((error) => {
+                    console.warn('logFood persistence failed:', error instanceof Error ? error.message : error);
+                });
 
                 // Award XP
                 const authState = useAuthStore.getState();
@@ -239,6 +261,30 @@ export const useNutritionStore = create<NutritionState>()(
                     todaySummary: current.todaySummary,
                     waterLogs: current.waterLogs,
                     nutritionHistory: current.nutritionHistory,
+                });
+            },
+
+            hydrateTodayFromServer: (foodLogs, waterLogs) => {
+                const today = getLocalDateKey();
+                const current = currentDayState(get());
+                const localEntries = current.todaySummary.date === today
+                    ? Object.values(current.todaySummary.meals).flat()
+                    : [];
+                const serverEntryIds = new Set(foodLogs.map((entry) => entry.id));
+                const localOnlyEntries = localEntries.filter((entry) => !serverEntryIds.has(entry.id));
+                const mergedFoodLogs = [...foodLogs, ...localOnlyEntries];
+                const nextSummary = buildNutritionSummary(today, mergedFoodLogs, waterLogs);
+
+                set({
+                    todaySummary: nextSummary,
+                    waterLogs,
+                    nutritionHistory: upsertNutritionHistory(current.nutritionHistory, nextSummary),
+                });
+
+                localOnlyEntries.forEach((entry) => {
+                    saveFoodLog(entry).catch((error) => {
+                        console.warn('hydrateTodayFromServer food retry failed:', error instanceof Error ? error.message : error);
+                    });
                 });
             },
 

@@ -1,16 +1,43 @@
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from '@/constants/config';
 import { createClient } from '@supabase/supabase-js';
 import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from './storage';
+
+const fallbackKey = (key: string) => `secure-store-fallback:${key}`;
+let warnedAboutSecureStore = false;
+
+const warnSecureStoreFallback = (error: unknown) => {
+    if (warnedAboutSecureStore) return;
+    warnedAboutSecureStore = true;
+    console.warn('[supabase] SecureStore unavailable; falling back to AsyncStorage for auth session.', error);
+};
 
 const ExpoSecureStoreAdapter = {
-    getItem: (key: string) => {
-        return SecureStore.getItemAsync(key);
+    getItem: async (key: string) => {
+        try {
+            const value = await SecureStore.getItemAsync(key);
+            return value ?? await AsyncStorage.getItem(fallbackKey(key));
+        } catch (error) {
+            warnSecureStoreFallback(error);
+            return AsyncStorage.getItem(fallbackKey(key));
+        }
     },
-    setItem: (key: string, value: string) => {
-        return SecureStore.setItemAsync(key, value);
+    setItem: async (key: string, value: string) => {
+        try {
+            await SecureStore.setItemAsync(key, value);
+            await AsyncStorage.removeItem(fallbackKey(key));
+        } catch (error) {
+            warnSecureStoreFallback(error);
+            await AsyncStorage.setItem(fallbackKey(key), value);
+        }
     },
-    removeItem: (key: string) => {
-        return SecureStore.deleteItemAsync(key);
+    removeItem: async (key: string) => {
+        try {
+            await SecureStore.deleteItemAsync(key);
+        } catch (error) {
+            warnSecureStoreFallback(error);
+        }
+        await AsyncStorage.removeItem(fallbackKey(key));
     },
 };
 

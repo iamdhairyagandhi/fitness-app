@@ -123,7 +123,7 @@ export default function ReceiptScannerScreen() {
                     fiber_g: null,
                     sugar_g: null,
                     sodium_mg: null,
-                    is_custom: false,
+                    is_custom: true,
                     user_id: null,
                     image_url: null,
                 },

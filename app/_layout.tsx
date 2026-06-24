@@ -4,7 +4,6 @@ import { Colors } from '@/constants/theme';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { hydrateAllStores } from '@/lib/db';
 import { getLocalDateKey } from '@/lib/date';
-import { buildNutritionSummary } from '@/lib/nutritionSummary';
 import { addNotificationRoutingListener } from '@/lib/notifications';
 import { setStoresHydrated, useStoresHydrated } from '@/lib/storesHydrated';
 import { supabase } from '@/lib/supabase';
@@ -78,7 +77,7 @@ function RootLayoutContent() {
             // Nutrition store — rebuild today from local-day logs and retain real history for analytics.
             const nutritionStore = useNutritionStore.getState();
             nutritionStore.setNutritionHistory(data.nutritionHistory);
-            nutritionStore.setTodaySummary(buildNutritionSummary(getLocalDateKey(), data.foodLogs, data.waterLogs));
+            nutritionStore.hydrateTodayFromServer(data.foodLogs, data.waterLogs);
 
             // Progress store
             const progressStore = useProgressStore.getState();

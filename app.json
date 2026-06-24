@@ -19,6 +19,7 @@
     "ios": {
       "supportsTablet": false,
       "usesAppleSignIn": true,
+      "appleTeamId": "U9H2ZEXZB2",
       "bundleIdentifier": "com.dhairyagandhi.fitfusion",
       "entitlements": {
         "aps-environment": "production",
@@ -29,6 +30,9 @@
         "com.apple.developer.healthkit.background-delivery": true,
         "com.apple.security.application-groups": [
           "group.com.dhairyagandhi.fitfusion"
+        ],
+        "keychain-access-groups": [
+          "$(AppIdentifierPrefix)com.dhairyagandhi.fitfusion"
         ]
       },
       "infoPlist": {
@@ -93,7 +97,8 @@
         }
       ],
       "@config-plugins/react-native-webrtc",
-      "@bacons/apple-targets"
+      "@bacons/apple-targets",
+      "expo-font"
     ],
     "web": {
       "bundler": "metro",

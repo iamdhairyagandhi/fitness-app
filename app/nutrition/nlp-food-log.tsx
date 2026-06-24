@@ -596,7 +596,7 @@ export default function NLPFoodLogScreen() {
                         fiber_g: item.fiber_g,
                         sugar_g: null,
                         sodium_mg: null,
-                        is_custom: false,
+                        is_custom: true,
                         user_id: null,
                         image_url: null,
                     },
