@@ -53,6 +53,7 @@
         "backgroundColor": "#0F0F0F"
       },
       "edgeToEdgeEnabled": true,
+      "softwareKeyboardLayoutMode": "resize",
       "package": "app.bodypilot.mobile",
       "permissions": [
         "android.permission.CAMERA",

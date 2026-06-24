@@ -9,17 +9,17 @@
  * All numeric inputs are clamped; all routes are allow-listed.
  */
 
-import { router } from 'expo-router';
-import { generateId } from '@/lib/utils';
+import { AI_PROXY_ENABLED } from '@/constants/config';
 import { getLocalDateKey } from '@/lib/date';
+import { parseNaturalLanguageFood, parseNaturalLanguageFoodDemo } from '@/lib/nutritionIntelligence';
+import { generateId } from '@/lib/utils';
+import { useAppleHealthStore } from '@/stores/appleHealthStore';
+import { useAuthStore } from '@/stores/authStore';
 import { useNutritionStore } from '@/stores/nutritionStore';
 import { useRecoveryStore } from '@/stores/recoveryStore';
 import { useWorkoutStore } from '@/stores/workoutStore';
-import { useAppleHealthStore } from '@/stores/appleHealthStore';
-import { useAuthStore } from '@/stores/authStore';
-import { parseNaturalLanguageFood, parseNaturalLanguageFoodDemo } from '@/lib/nutritionIntelligence';
-import { AI_PROXY_ENABLED } from '@/constants/config';
 import type { MealType } from '@/types';
+import { router } from 'expo-router';
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -135,75 +135,107 @@ async function handleLogFood(args: Record<string, unknown>): Promise<OrbitToolRe
 
     const meal = coerceMeal(args.meal);
     const logFood = useNutritionStore.getState().logFood;
+    const maxLoggedItems = 24;
 
     let logged = 0;
     const summaries: string[] = [];
 
     for (const raw of rawItems) {
+        if (logged >= maxLoggedItems) break;
         const name = typeof raw.name === 'string' ? raw.name.trim() : '';
         if (!name) continue;
         const quantity = clampNumber(raw.quantity, 0.1, 5000) ?? 1;
         const unit = inferUnit(raw.unit);
 
-        // If macros missing, fall back to the existing NLP parser (single phrase).
+        const itemsToLog: Array<{
+            name: string;
+            quantity: number;
+            unit: string;
+            macros: { calories: number; protein_g: number; carbs_g: number; fat_g: number; fiber_g: number };
+        }> = [];
+
+        // If macros are missing, fall back to the NLP parser and log every parsed item.
         const hasMacros = typeof raw.calories === 'number';
-        let macros: { calories: number; protein_g: number; carbs_g: number; fat_g: number; fiber_g: number };
 
         if (hasMacros) {
-            macros = {
-                calories: clampInt(raw.calories, 0, 5000) ?? 0,
-                protein_g: clampNumber(raw.protein_g, 0, 500) ?? 0,
-                carbs_g: clampNumber(raw.carbs_g, 0, 1000) ?? 0,
-                fat_g: clampNumber(raw.fat_g, 0, 500) ?? 0,
-                fiber_g: clampNumber(raw.fiber_g, 0, 200) ?? 0,
-            };
+            itemsToLog.push({
+                name,
+                quantity,
+                unit,
+                macros: {
+                    calories: clampInt(raw.calories, 0, 5000) ?? 0,
+                    protein_g: clampNumber(raw.protein_g, 0, 500) ?? 0,
+                    carbs_g: clampNumber(raw.carbs_g, 0, 1000) ?? 0,
+                    fat_g: clampNumber(raw.fat_g, 0, 500) ?? 0,
+                    fiber_g: clampNumber(raw.fiber_g, 0, 200) ?? 0,
+                },
+            });
         } else {
             try {
                 const phrase = `${quantity} ${unit} ${name}`;
                 const parsed = AI_PROXY_ENABLED
                     ? await parseNaturalLanguageFood(phrase)
                     : parseNaturalLanguageFoodDemo(phrase);
-                const first = parsed.items[0];
-                macros = first
-                    ? {
-                        calories: first.calories,
-                        protein_g: first.protein_g,
-                        carbs_g: first.carbs_g,
-                        fat_g: first.fat_g,
-                        fiber_g: first.fiber_g,
-                    }
-                    : { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0, fiber_g: 0 };
+
+                if (parsed.items.length > 0) {
+                    parsed.items.forEach((parsedItem) => {
+                        itemsToLog.push({
+                            name: parsedItem.name?.trim() || name,
+                            quantity: clampNumber(parsedItem.quantity, 0.1, 5000) ?? quantity,
+                            unit: inferUnit(parsedItem.unit, unit),
+                            macros: {
+                                calories: clampInt(parsedItem.calories, 0, 5000) ?? 0,
+                                protein_g: clampNumber(parsedItem.protein_g, 0, 500) ?? 0,
+                                carbs_g: clampNumber(parsedItem.carbs_g, 0, 1000) ?? 0,
+                                fat_g: clampNumber(parsedItem.fat_g, 0, 500) ?? 0,
+                                fiber_g: clampNumber(parsedItem.fiber_g, 0, 200) ?? 0,
+                            },
+                        });
+                    });
+                }
             } catch {
-                macros = { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0, fiber_g: 0 };
+                // Fallback below logs a single item with unknown macros.
+            }
+
+            if (itemsToLog.length === 0) {
+                itemsToLog.push({
+                    name,
+                    quantity,
+                    unit,
+                    macros: { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0, fiber_g: 0 },
+                });
             }
         }
 
-        logFood(
-            {
-                id: generateId(),
-                name,
-                brand: 'Orbit',
-                barcode: null,
-                serving_size_g: quantity,
-                serving_unit: unit,
-                calories: macros.calories,
-                protein_g: macros.protein_g,
-                carbs_g: macros.carbs_g,
-                fat_g: macros.fat_g,
-                fiber_g: macros.fiber_g,
-                sugar_g: null,
-                sodium_mg: null,
-                is_custom: false,
-                user_id: null,
-                image_url: null,
-            },
-            1,
-            meal,
-            { notes: `Voice-logged via Orbit (${unit})` },
-        );
+        for (const itemToLog of itemsToLog) {
+            if (logged >= maxLoggedItems) break;
+            logFood(
+                {
+                    id: generateId(),
+                    name: itemToLog.name,
+                    brand: 'Orbit',
+                    barcode: null,
+                    serving_size_g: itemToLog.quantity,
+                    serving_unit: itemToLog.unit,
+                    calories: itemToLog.macros.calories,
+                    protein_g: itemToLog.macros.protein_g,
+                    carbs_g: itemToLog.macros.carbs_g,
+                    fat_g: itemToLog.macros.fat_g,
+                    fiber_g: itemToLog.macros.fiber_g,
+                    sugar_g: null,
+                    sodium_mg: null,
+                    is_custom: false,
+                    user_id: null,
+                    image_url: null,
+                },
+                1,
+                meal,
+                { notes: `Voice-logged via Orbit (${itemToLog.unit})` },
+            );
 
-        logged += 1;
-        summaries.push(`${name} (~${Math.round(macros.calories)} cal)`);
+            logged += 1;
+            summaries.push(`${itemToLog.name} (~${Math.round(itemToLog.macros.calories)} cal)`);
+        }
     }
 
     if (logged === 0) {
